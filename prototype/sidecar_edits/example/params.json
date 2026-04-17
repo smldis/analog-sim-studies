@@ -1,0 +1,6 @@
+{
+  "netlist_path": "/work/netlists/rc_filter_corner_tt.scs",
+  "vdd": "1.20",
+  "temp_c": "27",
+  "run_label": "tt_1v2_27c"
+}

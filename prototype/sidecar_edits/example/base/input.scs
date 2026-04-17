@@ -1,0 +1,7 @@
+simulator lang=spectre
+include "/seed/netlists/rc_filter.scs"
+
+parameters vdd=0.90 temp=25
+
+tran tran stop=10u
+save V(out)

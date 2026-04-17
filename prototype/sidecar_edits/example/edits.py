@@ -1,3 +1,11 @@
+from pathlib import Path
+
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+APPLY_PATCH_MANIFEST = REPO_ROOT.parent / "apply-patch" / "Cargo.toml"
+APPLY_PATCH_TARGET_DIR = REPO_ROOT / ".cargo-target" / "apply-patch"
+
+
 BASE_DIR = "base"
 
 DEFAULTS = {
@@ -37,8 +45,19 @@ EDITS = [
     },
     {
         "op": "apply_patch",
-        "description": "optional apply_patch hook for future workspace-aware edits",
-        "optional": True,
+        "description": "workspace apply_patch hook through the local Rust crate",
+        "command": [
+            "env",
+            f"CARGO_TARGET_DIR={APPLY_PATCH_TARGET_DIR}",
+            "cargo",
+            "run",
+            "--quiet",
+            "--manifest-path",
+            str(APPLY_PATCH_MANIFEST),
+            "--bin",
+            "apply_patch",
+            "--",
+        ],
         "patch": """*** Begin Patch
 *** Add File: APPLY_PATCH_PROOF.txt
 +run_label={run_label}

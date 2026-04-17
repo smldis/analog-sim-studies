@@ -41,6 +41,17 @@ def write_text(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
+def ensure_parent(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+
+def resolve_source_path(edit: dict, params: dict[str, object], config_dir: Path) -> Path:
+    source = Path(format_text(edit["path"], params))
+    if source.is_absolute():
+        return source
+    return (config_dir / source).resolve()
+
+
 def apply_replace(target: Path, edit: dict, params: dict[str, object]) -> None:
     old = format_text(edit["old"], params)
     new = format_text(edit["new"], params)
@@ -112,8 +123,21 @@ def apply_unified_patch(target_dir: Path, edit: dict, params: dict[str, object])
     run_external_patch(target_dir, patch_text, command, optional, description)
 
 
-def apply_edit(target_dir: Path, edit: dict, params: dict[str, object]) -> None:
+def apply_copy(target_dir: Path, edit: dict, params: dict[str, object], config_dir: Path) -> None:
+    source = resolve_source_path(edit, params, config_dir)
+    if not source.is_file():
+        raise EditError(f"copy source does not exist: {source}")
+    dest_name = format_text(edit.get("to", source.name), params)
+    destination = target_dir / dest_name
+    ensure_parent(destination)
+    shutil.copy2(source, destination)
+
+
+def apply_edit(target_dir: Path, edit: dict, params: dict[str, object], config_dir: Path) -> None:
     op = edit["op"]
+    if op == "copy_file":
+        apply_copy(target_dir, edit, params, config_dir)
+        return
     if op == "replace":
         apply_replace(target_dir / edit["path"], edit, params)
         return
@@ -146,7 +170,7 @@ def main() -> int:
         raise EditError(f"output directory already exists: {output_dir}")
     shutil.copytree(base_dir, output_dir)
     for edit in edits:
-        apply_edit(output_dir, edit, params)
+        apply_edit(output_dir, edit, params, args.config.resolve().parent)
     print(f"rendered {output_dir}")
     return 0
 

@@ -11,6 +11,7 @@ The model is:
 
 Supported edit kinds:
 
+- `copy_file`
 - `replace`
 - `regex_replace`
 - `patch` using the system `patch` command

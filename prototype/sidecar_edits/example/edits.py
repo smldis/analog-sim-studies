@@ -14,6 +14,11 @@ DEFAULTS = {
 
 EDITS = [
     {
+        "op": "copy_file",
+        "path": "assets/model_override.scs",
+        "to": "include/model_override.scs",
+    },
+    {
         "op": "replace",
         "path": "input.scs",
         "old": 'include "/seed/netlists/rc_filter.scs"',

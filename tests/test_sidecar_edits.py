@@ -24,6 +24,10 @@ def test_example_render_applies_patch_and_apply_patch(tmp_path: Path) -> None:
     )
 
     assert output_dir.exists()
+    assert (output_dir / "include" / "model_override.scs").read_text(encoding="utf-8") == (
+        "simulator lang=spectre\n"
+        "parameters gain_trim=1.05\n"
+    )
     assert (output_dir / "input.scs").read_text(encoding="utf-8") == (
         'simulator lang=spectre\n'
         'include "/work/netlists/rc_filter_corner_tt.scs"\n\n'

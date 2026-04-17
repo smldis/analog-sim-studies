@@ -26,3 +26,6 @@ python3 prototype/sidecar_edits/render.py \
   prototype/sidecar_edits/example/params.json \
   prototype/sidecar_edits/out/example_run
 ```
+
+There is also a pytest integration test that runs the example and verifies that
+both the standard patch step and the `apply_patch` step take effect.

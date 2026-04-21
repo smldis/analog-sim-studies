@@ -72,6 +72,7 @@ EDITS = [
     {
         "op": "apply_patch",
         "description": "workspace apply_patch hook through the local Rust crate",
+        "optional": True,
         "command": [
             "env",
             f"CARGO_TARGET_DIR={APPLY_PATCH_TARGET_DIR}",

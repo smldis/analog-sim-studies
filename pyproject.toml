@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "sidecar-edits-prototype"
 version = "0.1.0"
 description = "Prototype sidecar edit pipeline for text-first simulation studies."
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 
 [project.scripts]
 sidecar-render = "sidecar_edits.render:main"

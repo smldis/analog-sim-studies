@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import re
 import runpy
@@ -15,15 +16,16 @@ class EditError(RuntimeError):
     pass
 
 
-def load_config(config_path: Path) -> tuple[Path, list[dict], list[dict], dict]:
+def load_config(config_path: Path) -> tuple[Path, list[str], list[dict], list[dict], dict]:
     loaded = runpy.run_path(str(config_path))
     base_dir = loaded.get("BASE_DIR", "base")
+    copy_ignore = loaded.get("COPY_IGNORE", [])
     pre_edits = loaded.get("PRE_EDITS", [])
     edits = loaded.get("EDITS")
     defaults = loaded.get("DEFAULTS", {})
     if edits is None:
         raise EditError(f"{config_path} does not define EDITS")
-    return (config_path.parent / base_dir).resolve(), pre_edits, edits, defaults
+    return (config_path.parent / base_dir).resolve(), copy_ignore, pre_edits, edits, defaults
 
 
 def format_text(value: str, params: dict[str, object]) -> str:
@@ -44,6 +46,50 @@ def write_text(path: Path, content: str) -> None:
 
 def ensure_parent(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+
+
+def normalize_copy_ignore(patterns: list[str]) -> list[str]:
+    normalized = []
+    for pattern in patterns:
+        stripped = str(pattern).strip()
+        if stripped and not stripped.startswith("#"):
+            normalized.append(stripped)
+    return normalized
+
+
+def matches_copy_ignore(rel_path: str, name: str, is_dir: bool, pattern: str) -> bool:
+    dirs_only = pattern.endswith("/")
+    clean_pattern = pattern.strip("/")
+    if not clean_pattern:
+        return False
+    if dirs_only and not is_dir:
+        return False
+    if "/" in clean_pattern:
+        return fnmatch.fnmatchcase(rel_path, clean_pattern)
+    return fnmatch.fnmatchcase(name, clean_pattern)
+
+
+def build_copy_ignore(base_dir: Path, patterns: list[str]):
+    ignore_patterns = normalize_copy_ignore(patterns)
+    if not ignore_patterns:
+        return None
+
+    def ignore(current_dir: str, names: list[str]) -> set[str]:
+        ignored = set()
+        current_path = Path(current_dir)
+        for name in names:
+            candidate = current_path / name
+            rel_path = candidate.relative_to(base_dir).as_posix()
+            is_dir = candidate.is_dir()
+            if any(matches_copy_ignore(rel_path, name, is_dir, pattern) for pattern in ignore_patterns):
+                ignored.add(name)
+        return ignored
+
+    return ignore
+
+
+def copy_base_tree(base_dir: Path, output_dir: Path, copy_ignore: list[str]) -> None:
+    shutil.copytree(base_dir, output_dir, ignore=build_copy_ignore(base_dir, copy_ignore))
 
 
 def resolve_source_path(edit: dict, params: dict[str, object], config_dir: Path) -> Path:
@@ -198,12 +244,12 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    base_dir, pre_edits, edits, defaults = load_config(args.config)
+    base_dir, copy_ignore, pre_edits, edits, defaults = load_config(args.config)
     params = defaults | json.loads(args.params.read_text(encoding="utf-8"))
     output_dir = args.output.resolve()
     if output_dir.exists():
         raise EditError(f"output directory already exists: {output_dir}")
-    shutil.copytree(base_dir, output_dir)
+    copy_base_tree(base_dir, output_dir, copy_ignore)
     for edit in pre_edits:
         apply_edit(output_dir, edit, params, args.config.resolve().parent)
     for edit in edits:

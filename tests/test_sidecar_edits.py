@@ -15,7 +15,7 @@ PARAMS = EXAMPLE_DIR / "params.json"
 
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from sidecar_edits.render import EditError, apply_regex_replace, apply_replace  # noqa: E402
+from sidecar_edits.render import EditError, apply_regex_replace, apply_replace, copy_base_tree  # noqa: E402
 
 
 def build_package(tmp_path: Path) -> Path:
@@ -74,6 +74,27 @@ def test_example_render_applies_patch_and_apply_patch(tmp_path: Path) -> None:
     assert (output_dir / "APPLY_PATCH_PROOF.txt").read_text(encoding="utf-8") == (
         "run_label=tt_1v2_27c\n"
     )
+    assert not (output_dir / "psf").exists()
+    assert not (output_dir / "scratch.tmp").exists()
+
+
+def test_copy_base_tree_ignores_directories_basenames_and_relative_paths(tmp_path: Path) -> None:
+    base_dir = tmp_path / "base"
+    output_dir = tmp_path / "run"
+    (base_dir / "psf").mkdir(parents=True)
+    (base_dir / "logs").mkdir()
+    (base_dir / "nested").mkdir()
+    (base_dir / "input.scs").write_text("netlist\n", encoding="utf-8")
+    (base_dir / "psf" / "old.raw").write_text("waveform\n", encoding="utf-8")
+    (base_dir / "nested" / "scratch.tmp").write_text("scratch\n", encoding="utf-8")
+    (base_dir / "logs" / "run.txt").write_text("log\n", encoding="utf-8")
+
+    copy_base_tree(base_dir, output_dir, ["psf/", "*.tmp", "logs/*.txt"])
+
+    assert (output_dir / "input.scs").is_file()
+    assert not (output_dir / "psf").exists()
+    assert not (output_dir / "nested" / "scratch.tmp").exists()
+    assert not (output_dir / "logs" / "run.txt").exists()
 
 
 def test_replace_allows_missing_match_when_requested(tmp_path: Path) -> None:

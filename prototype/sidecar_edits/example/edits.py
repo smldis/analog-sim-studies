@@ -10,6 +10,11 @@ APPLY_PATCH_TARGET_DIR = REPO_ROOT / ".cargo-target" / "apply-patch"
 
 BASE_DIR = "base"
 
+COPY_IGNORE = [
+    "psf/",
+    "*.tmp",
+]
+
 DEFAULTS = {
     "simulator_cmd": "spectre",
 }

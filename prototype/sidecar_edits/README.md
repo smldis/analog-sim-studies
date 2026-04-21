@@ -7,6 +7,7 @@ small runnable example.
 The model is:
 
 - `base/` contains raw files copied into a run directory
+- `COPY_IGNORE` can exclude copied files or directories with simple glob patterns
 - `PRE_EDITS` can run preparation commands after copy and before edits
 - `edits.py` contains the parameterized modifications
 - `params.json` contains one run's values
@@ -23,6 +24,11 @@ Supported edit kinds:
 
 `replace` and `regex_replace` are strict by default. Set
 `allow_no_match: True` when a missing match should be accepted.
+
+`COPY_IGNORE` is a list in `edits.py`, not a separate ignore file. Patterns are
+matched during the initial copy. Use a trailing slash for directories, for
+example `psf/`, basename globs such as `*.tmp`, or relative path globs such as
+`logs/*.txt`.
 
 The `apply_patch` step is intentionally optional in this prototype. If no compatible executable is present, the render still succeeds and prints a skip message.
 

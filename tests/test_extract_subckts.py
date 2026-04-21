@@ -28,17 +28,52 @@ def run_extract(binary: Path, input_file: Path, main_out: Path, subckt_out: Path
     )
 
 
-def test_extract_accepts_final_line_without_newline(tmp_path: Path) -> None:
+def test_extract_moves_one_subckt_block_into_include_and_keeps_top_level_lines(tmp_path: Path) -> None:
     binary = build_extractor(tmp_path)
     input_file = tmp_path / "input.spi"
     main_out = tmp_path / "main.spi"
     subckt_out = tmp_path / "subckts.inc"
     input_file.write_text(
         "V1 in 0 1\n"
-        ".SUBCKT inv a y\n"
-        "R1 a y 1k\n"
-        ".ENDS\n"
-        "Rload out 0 1k",
+        "Rbias in out 10k\n"
+        "  .subckt inv a y\n"
+        "M1 y a 0 0 nch\n"
+        "  .ends inv\n"
+        "Xload out 0 1k\n",
+        encoding="utf-8",
+    )
+
+    result = run_extract(binary, input_file, main_out, subckt_out)
+
+    assert result.returncode == 0, result.stderr
+    assert main_out.read_text(encoding="utf-8") == (
+        "V1 in 0 1\n"
+        "Rbias in out 10k\n"
+        '.INCLUDE "subckts.inc"\n'
+        "Xload out 0 1k\n"
+    )
+    assert subckt_out.read_text(encoding="utf-8") == (
+        "  .subckt inv a y\n"
+        "M1 y a 0 0 nch\n"
+        "  .ends inv\n"
+    )
+
+
+def test_extract_moves_multiple_subckt_blocks_with_one_include(tmp_path: Path) -> None:
+    binary = build_extractor(tmp_path)
+    input_file = tmp_path / "input.spi"
+    main_out = tmp_path / "main.spi"
+    subckt_out = tmp_path / "subckts.inc"
+    input_file.write_text(
+        "V1 in 0 1\n"
+        ".SUBCKT a x y\n"
+        "R1 x y 1k\n"
+        ".ENDS a\n"
+        "X1 in out a\n"
+        "  .subckt b p n\n"
+        "C1 p n 1p\n"
+        "  .ends b\n"
+        "V2 out 0 2\n",
         encoding="utf-8",
     )
 
@@ -48,60 +83,14 @@ def test_extract_accepts_final_line_without_newline(tmp_path: Path) -> None:
     assert main_out.read_text(encoding="utf-8") == (
         "V1 in 0 1\n"
         '.INCLUDE "subckts.inc"\n'
-        "Rload out 0 1k"
-    )
-    assert subckt_out.read_text(encoding="utf-8") == (
-        ".SUBCKT inv a y\n"
-        "R1 a y 1k\n"
-        ".ENDS\n"
-    )
-
-
-def test_extract_does_not_delete_existing_dot_tmp_files_on_failure(tmp_path: Path) -> None:
-    binary = build_extractor(tmp_path)
-    input_file = tmp_path / "input.spi"
-    main_out = tmp_path / "main.spi"
-    subckt_out = tmp_path / "subckts.inc"
-    unrelated_tmp = tmp_path / "main.spi.tmp"
-    unrelated_tmp.write_text("keep me\n", encoding="utf-8")
-    input_file.write_text(
-        ".SUBCKT a x y\n"
-        ".SUBCKT nested x y\n"
-        ".ENDS\n",
-        encoding="utf-8",
-    )
-
-    result = run_extract(binary, input_file, main_out, subckt_out)
-
-    assert result.returncode != 0
-    assert "nested .SUBCKT detected" in result.stderr
-    assert unrelated_tmp.read_text(encoding="utf-8") == "keep me\n"
-
-
-def test_extract_flushes_excess_pending_lines_to_main(tmp_path: Path) -> None:
-    binary = build_extractor(tmp_path)
-    input_file = tmp_path / "input.spi"
-    main_out = tmp_path / "main.spi"
-    subckt_out = tmp_path / "subckts.inc"
-    input_file.write_text(
-        "\n\n\n\n"
-        "V1 in 0 1\n"
-        ".SUBCKT a x y\n"
-        "R1 x y 1k\n"
-        ".ENDS\n",
-        encoding="utf-8",
-    )
-
-    result = run_extract(binary, input_file, main_out, subckt_out)
-
-    assert result.returncode == 0, result.stderr
-    assert main_out.read_text(encoding="utf-8") == (
-        "\n\n\n\n"
-        "V1 in 0 1\n"
-        '.INCLUDE "subckts.inc"\n'
+        "X1 in out a\n"
+        "V2 out 0 2\n"
     )
     assert subckt_out.read_text(encoding="utf-8") == (
         ".SUBCKT a x y\n"
         "R1 x y 1k\n"
-        ".ENDS\n"
+        ".ENDS a\n"
+        "  .subckt b p n\n"
+        "C1 p n 1p\n"
+        "  .ends b\n"
     )

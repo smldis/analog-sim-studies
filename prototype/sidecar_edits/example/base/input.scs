@@ -3,5 +3,12 @@ include "/seed/netlists/rc_filter.scs"
 
 parameters vdd=0.90 temp=25
 
+*** reusable subcircuit definitions
+.SUBCKT rc_filter in out
+R1 in out 1k
+C1 out 0 1p
+.ENDS rc_filter
+
+X1 in out rc_filter
 tran tran stop=10u
 save V(out)

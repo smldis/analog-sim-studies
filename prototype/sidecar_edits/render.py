@@ -15,14 +15,15 @@ class EditError(RuntimeError):
     pass
 
 
-def load_config(config_path: Path) -> tuple[Path, list[dict], dict]:
+def load_config(config_path: Path) -> tuple[Path, list[dict], list[dict], dict]:
     loaded = runpy.run_path(str(config_path))
     base_dir = loaded.get("BASE_DIR", "base")
+    pre_edits = loaded.get("PRE_EDITS", [])
     edits = loaded.get("EDITS")
     defaults = loaded.get("DEFAULTS", {})
     if edits is None:
         raise EditError(f"{config_path} does not define EDITS")
-    return (config_path.parent / base_dir).resolve(), edits, defaults
+    return (config_path.parent / base_dir).resolve(), pre_edits, edits, defaults
 
 
 def format_text(value: str, params: dict[str, object]) -> str:
@@ -103,6 +104,33 @@ def run_external_patch(
         raise EditError(f"{description} failed: {details}") from exc
 
 
+def run_command(target_dir: Path, edit: dict, params: dict[str, object]) -> None:
+    description = edit.get("description", "run command")
+    optional = edit.get("optional", False)
+    command = [format_text(str(arg), params) for arg in edit["command"]]
+    try:
+        subprocess.run(
+            command,
+            cwd=target_dir,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError as exc:
+        if optional:
+            print(f"skip optional {description}: command not found: {command[0]}")
+            return
+        raise EditError(f"required command not found: {command[0]}") from exc
+    except subprocess.CalledProcessError as exc:
+        stderr = exc.stderr.strip()
+        stdout = exc.stdout.strip()
+        details = stderr or stdout or str(exc)
+        if optional:
+            print(f"skip optional {description}: {details}")
+            return
+        raise EditError(f"{description} failed: {details}") from exc
+
+
 def apply_patch_edit(target_dir: Path, edit: dict, params: dict[str, object]) -> None:
     optional = edit.get("optional", False)
     patch_text = format_text(edit["patch"], params)
@@ -135,6 +163,9 @@ def apply_copy(target_dir: Path, edit: dict, params: dict[str, object], config_d
 
 def apply_edit(target_dir: Path, edit: dict, params: dict[str, object], config_dir: Path) -> None:
     op = edit["op"]
+    if op == "run":
+        run_command(target_dir, edit, params)
+        return
     if op == "copy_file":
         apply_copy(target_dir, edit, params, config_dir)
         return
@@ -163,12 +194,14 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    base_dir, edits, defaults = load_config(args.config)
+    base_dir, pre_edits, edits, defaults = load_config(args.config)
     params = defaults | json.loads(args.params.read_text(encoding="utf-8"))
     output_dir = args.output.resolve()
     if output_dir.exists():
         raise EditError(f"output directory already exists: {output_dir}")
     shutil.copytree(base_dir, output_dir)
+    for edit in pre_edits:
+        apply_edit(output_dir, edit, params, args.config.resolve().parent)
     for edit in edits:
         apply_edit(output_dir, edit, params, args.config.resolve().parent)
     print(f"rendered {output_dir}")

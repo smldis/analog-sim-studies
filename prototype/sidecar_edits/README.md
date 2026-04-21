@@ -5,12 +5,14 @@ This prototype keeps simulation source files mostly untouched.
 The model is:
 
 - `base/` contains raw files copied into a run directory
+- `PRE_EDITS` can run preparation commands after copy and before edits
 - `edits.py` contains the parameterized modifications
 - `params.json` contains one run's values
 - `render.py` copies the tree and applies edits in order
 
 Supported edit kinds:
 
+- `run`
 - `copy_file`
 - `replace`
 - `regex_replace`

@@ -28,12 +28,22 @@ def test_example_render_applies_patch_and_apply_patch(tmp_path: Path) -> None:
         "simulator lang=spectre\n"
         "parameters gain_trim=1.05\n"
     )
-    assert (output_dir / "input.scs").read_text(encoding="utf-8") == (
+    assert (output_dir / "input_main.scs").read_text(encoding="utf-8") == (
         'simulator lang=spectre\n'
         'include "/work/netlists/rc_filter_corner_tt.scs"\n\n'
-        "parameters vdd=1.20 temp=27\n\n"
+        "parameters vdd=1.20 temp=27\n"
+        '.INCLUDE "subckts.inc"\n'
+        "X1 in out rc_filter\n"
         "tran tran stop=10u\n"
         "save V(out)\n"
+    )
+    assert (output_dir / "subckts.inc").read_text(encoding="utf-8") == (
+        "\n"
+        "*** reusable subcircuit definitions\n"
+        ".SUBCKT rc_filter in out\n"
+        "R1 in out 1k\n"
+        "C1 out 0 1p\n"
+        ".ENDS rc_filter\n\n"
     )
     assert (output_dir / "notes.txt").read_text(encoding="utf-8") == (
         "base example\n"

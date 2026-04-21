@@ -1,4 +1,4 @@
 #!/bin/sh
 set -eu
 
-spectre input.scs -format psfxl -raw ./psf
+spectre input_main.scs -format psfxl -raw ./psf

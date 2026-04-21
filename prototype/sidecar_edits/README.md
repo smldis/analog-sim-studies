@@ -1,6 +1,8 @@
 # Sidecar Edits Prototype
 
-This prototype keeps simulation source files mostly untouched.
+This prototype keeps simulation source files mostly untouched. The renderer
+implementation lives in `src/sidecar_edits/`; this directory is kept as a
+small runnable example.
 
 The model is:
 
@@ -8,7 +10,7 @@ The model is:
 - `PRE_EDITS` can run preparation commands after copy and before edits
 - `edits.py` contains the parameterized modifications
 - `params.json` contains one run's values
-- `render.py` copies the tree and applies edits in order
+- `python -m sidecar_edits.render` copies the tree and applies edits in order
 
 Supported edit kinds:
 

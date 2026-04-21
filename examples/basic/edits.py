@@ -3,7 +3,7 @@ from pathlib import Path
 from sidecar_edits import tool_path
 
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 APPLY_PATCH_MANIFEST = REPO_ROOT.parent / "apply-patch" / "Cargo.toml"
 APPLY_PATCH_TARGET_DIR = REPO_ROOT / ".cargo-target" / "apply-patch"
 

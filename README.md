@@ -2,11 +2,14 @@
 
 The design note for this package lives in [design/manifesto.md](design/manifesto.md).
 
-## Prototype
+## Layout
 
-A tiny sidecar-edits prototype lives in [`prototype/sidecar_edits/`](prototype/sidecar_edits/).
+- `src/sidecar_edits/` contains the package implementation
+- `examples/basic/` contains a small runnable sidecar-edit example
+- `tests/` contains the pytest coverage for the current behavior
+- `design/` contains the project note and high-level intent
 
-## Build And Run From A Fresh Workspace
+## Install From A Fresh Workspace
 
 Requirements:
 
@@ -15,47 +18,61 @@ Requirements:
 - `patch` for standard unified-diff edit steps
 - `cargo` only if you want to exercise the optional `apply_patch` hook
 
-Clone the repository and create a local environment:
+Clone the repository, activate any virtual environment you want to use, then
+install the package:
 
 ```bash
 git clone git@github.com:smldis/analog-sim-studies-manifesto.git
 cd analog-sim-studies-manifesto
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install --upgrade pip setuptools wheel pytest
+python3 -m venv ../eda-venv
+. ../eda-venv/bin/activate
+python -m pip install --upgrade pip setuptools wheel
+python -m pip install -e .
 ```
 
-Build the package:
+The virtual environment does not need to live inside this repository. Once it is
+activated, use `python`, `pip`, and `sidecar-render` directly. The editable
+install rebuilds the native helper if needed and points the CLI at the source
+under `src/sidecar_edits/`, so Python source changes are picked up without
+reinstalling. If you change the C helper in `src/sidecar_edits/native/`, rerun
+`python -m pip install -e .`.
+
+If you do not want an editable install, use:
 
 ```bash
-python setup.py build_py
+python -m pip install .
 ```
 
-This compiles the packaged native helper into `build/lib/sidecar_edits/bin/`.
-Run the sidecar example with the built package on `PYTHONPATH`:
+## Run The Example
+
+With the virtual environment activated:
 
 ```bash
-PYTHONPATH=build/lib python -m sidecar_edits.render \
-  prototype/sidecar_edits/example/edits.py \
-  prototype/sidecar_edits/example/params.json \
+sidecar-render \
+  examples/basic/edits.py \
+  examples/basic/params.json \
   /tmp/sidecar_example_run
 ```
 
-The example copies `base/`, applies `COPY_IGNORE`, runs `PRE_EDITS`, then
-applies the configured edit steps. The optional `apply_patch` hook is skipped if
-the local Rust `apply_patch` workspace is not available.
+The example copies `examples/basic/base/`, applies `COPY_IGNORE`, runs
+`PRE_EDITS`, then applies the configured edit steps. The optional `apply_patch`
+hook is skipped if the local Rust `apply_patch` workspace is not available.
 
 Run the tests:
 
 ```bash
+python -m pip install pytest
 python -m pytest -q
 ```
 
-The package also exposes a console entrypoint after installation:
+## Manual Build Flow
+
+For a build without installing into the environment:
 
 ```bash
-python -m pip install .
-sidecar-render prototype/sidecar_edits/example/edits.py \
-  prototype/sidecar_edits/example/params.json \
-  /tmp/sidecar_example_run_installed
+python setup.py build_py
+PYTHONPATH=build/lib python -m sidecar_edits.render \
+  examples/basic/edits.py \
+  examples/basic/params.json \
+  /tmp/sidecar_example_run_manual
 ```

@@ -9,9 +9,10 @@ import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-EXAMPLE_DIR = REPO_ROOT / "prototype" / "sidecar_edits" / "example"
+EXAMPLE_DIR = REPO_ROOT / "examples" / "basic"
 EDITS = EXAMPLE_DIR / "edits.py"
 PARAMS = EXAMPLE_DIR / "params.json"
+APPLY_PATCH_MANIFEST = REPO_ROOT.parent / "apply-patch" / "Cargo.toml"
 
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
@@ -30,7 +31,7 @@ def build_package(tmp_path: Path) -> Path:
     return build_lib
 
 
-def test_example_render_applies_patch_and_apply_patch(tmp_path: Path) -> None:
+def test_example_render_applies_configured_edits(tmp_path: Path) -> None:
     build_lib = build_package(tmp_path)
     output_dir = tmp_path / "example_run"
     env = os.environ.copy()
@@ -71,9 +72,12 @@ def test_example_render_applies_patch_and_apply_patch(tmp_path: Path) -> None:
         "base example\n"
         "run_label=tt_1v2_27c\n"
     )
-    assert (output_dir / "APPLY_PATCH_PROOF.txt").read_text(encoding="utf-8") == (
-        "run_label=tt_1v2_27c\n"
-    )
+    if APPLY_PATCH_MANIFEST.exists():
+        assert (output_dir / "APPLY_PATCH_PROOF.txt").read_text(encoding="utf-8") == (
+            "run_label=tt_1v2_27c\n"
+        )
+    else:
+        assert not (output_dir / "APPLY_PATCH_PROOF.txt").exists()
     assert not (output_dir / "psf").exists()
     assert not (output_dir / "scratch.tmp").exists()
 

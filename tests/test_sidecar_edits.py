@@ -4,12 +4,18 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RENDER = REPO_ROOT / "prototype" / "sidecar_edits" / "render.py"
 EXAMPLE_DIR = REPO_ROOT / "prototype" / "sidecar_edits" / "example"
 EDITS = EXAMPLE_DIR / "edits.py"
 PARAMS = EXAMPLE_DIR / "params.json"
+
+sys.path.insert(0, str(RENDER.parent))
+
+from render import EditError, apply_regex_replace, apply_replace  # noqa: E402
 
 
 def test_example_render_applies_patch_and_apply_patch(tmp_path: Path) -> None:
@@ -52,3 +58,45 @@ def test_example_render_applies_patch_and_apply_patch(tmp_path: Path) -> None:
     assert (output_dir / "APPLY_PATCH_PROOF.txt").read_text(encoding="utf-8") == (
         "run_label=tt_1v2_27c\n"
     )
+
+
+def test_replace_allows_missing_match_when_requested(tmp_path: Path) -> None:
+    target = tmp_path / "input.scs"
+    target.write_text("parameters vdd=1.2\n", encoding="utf-8")
+
+    apply_replace(
+        target,
+        {
+            "old": "missing token",
+            "new": "replacement",
+            "allow_no_match": True,
+        },
+        {},
+    )
+
+    assert target.read_text(encoding="utf-8") == "parameters vdd=1.2\n"
+
+
+def test_replace_remains_strict_by_default(tmp_path: Path) -> None:
+    target = tmp_path / "input.scs"
+    target.write_text("parameters vdd=1.2\n", encoding="utf-8")
+
+    with pytest.raises(EditError, match="replace target not found"):
+        apply_replace(target, {"old": "missing token", "new": "replacement"}, {})
+
+
+def test_regex_replace_allows_missing_match_when_requested(tmp_path: Path) -> None:
+    target = tmp_path / "input.scs"
+    target.write_text("parameters vdd=1.2\n", encoding="utf-8")
+
+    apply_regex_replace(
+        target,
+        {
+            "pattern": r"temp=\S+",
+            "new": "temp=27",
+            "allow_no_match": True,
+        },
+        {},
+    )
+
+    assert target.read_text(encoding="utf-8") == "parameters vdd=1.2\n"

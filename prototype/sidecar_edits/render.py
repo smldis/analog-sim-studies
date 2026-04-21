@@ -58,6 +58,8 @@ def apply_replace(target: Path, edit: dict, params: dict[str, object]) -> None:
     new = format_text(edit["new"], params)
     content = read_text(target)
     if old not in content:
+        if edit.get("allow_no_match", False):
+            return
         raise EditError(f"replace target not found in {target}")
     write_text(target, content.replace(old, new))
 
@@ -69,6 +71,8 @@ def apply_regex_replace(target: Path, edit: dict, params: dict[str, object]) -> 
     content = read_text(target)
     updated, replacements = re.subn(pattern, repl, content, count=count, flags=re.MULTILINE)
     if replacements == 0:
+        if edit.get("allow_no_match", False):
+            return
         raise EditError(f"regex pattern not found in {target}: {pattern}")
     write_text(target, updated)
 

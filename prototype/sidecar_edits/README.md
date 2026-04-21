@@ -19,6 +19,9 @@ Supported edit kinds:
 - `patch` using the system `patch` command
 - `apply_patch` as an optional external hook
 
+`replace` and `regex_replace` are strict by default. Set
+`allow_no_match: True` when a missing match should be accepted.
+
 The `apply_patch` step is intentionally optional in this prototype. If no compatible executable is present, the render still succeeds and prints a skip message.
 
 Example:

@@ -4,7 +4,6 @@
 
 #define MAX_LINE 8192
 #define MAX_PENDING 3
-#define MAX_PATH_LEN 1024
 
 typedef enum {
     ST_OUTSIDE = 0,
@@ -107,15 +106,21 @@ static void clear_pending(PendingBuffer *pb) {
     pb->count = 0;
 }
 
-static int append_pending_strict(PendingBuffer *pb,
-                                 const char *line,
-                                 long line_no,
-                                 ExtractError *err)
+static int append_pending(PendingBuffer *pb,
+                          FILE *main_out,
+                          const char *line,
+                          long line_no,
+                          ExtractError *err)
 {
     if (pb->count >= MAX_PENDING) {
-        set_error(err, line_no,
-                  "more than 3 pre-.SUBCKT context lines detected");
-        return -1;
+        if (fputs(pb->lines[0], main_out) == EOF) {
+            set_error(err, line_no, "write error on main output file");
+            return -1;
+        }
+
+        memmove(&pb->lines[0], &pb->lines[1], (MAX_PENDING - 1) * MAX_LINE);
+        memmove(&pb->line_no[0], &pb->line_no[1], (MAX_PENDING - 1) * sizeof(pb->line_no[0]));
+        pb->count--;
     }
 
     if (safe_copy_line(pb->lines[pb->count], sizeof(pb->lines[pb->count]), line) != 0) {
@@ -128,28 +133,12 @@ static int append_pending_strict(PendingBuffer *pb,
     return 0;
 }
 
-static int copy_stream(FILE *in, FILE *out) {
-    char line[MAX_LINE];
-
-    while (fgets(line, sizeof(line), in) != NULL) {
-        if (fputs(line, out) == EOF) {
-            return -1;
-        }
-    }
-
-    if (ferror(in)) {
-        return -1;
-    }
-
-    return 0;
-}
-
-static int line_was_truncated(const char *line) {
+static int line_was_truncated(const char *line, FILE *in) {
     size_t n = strlen(line);
     if (n == 0) {
         return 0;
     }
-    return (line[n - 1] != '\n');
+    return (line[n - 1] != '\n' && !feof(in));
 }
 
 static void close_if_open(FILE **fp) {
@@ -159,25 +148,14 @@ static void close_if_open(FILE **fp) {
     }
 }
 
-static void cleanup_file(const char *path) {
-    if (path && *path) {
-        remove(path);
-    }
-}
-
 /* ---------- main extraction ---------- */
 
 int extract_subckts_strict(const ExtractOptions *opt, ExtractError *err) {
     FILE *in = NULL;
     FILE *main_tmp = NULL;
     FILE *sub_tmp = NULL;
-    FILE *main_tmp_read = NULL;
-    FILE *main_out = NULL;
-    FILE *sub_out = NULL;
 
     char line[MAX_LINE];
-    char main_tmp_path[MAX_PATH_LEN];
-    char sub_tmp_path[MAX_PATH_LEN];
 
     long input_line_no = 0;
     int include_inserted = 0;
@@ -191,38 +169,28 @@ int extract_subckts_strict(const ExtractOptions *opt, ExtractError *err) {
         return -1;
     }
 
-    if (snprintf(main_tmp_path, sizeof(main_tmp_path), "%s.tmp", opt->main_out_path) >= (int)sizeof(main_tmp_path)) {
-        set_error(err, 0, "main temp path too long");
-        return -1;
-    }
-
-    if (snprintf(sub_tmp_path, sizeof(sub_tmp_path), "%s.tmp", opt->subckt_out_path) >= (int)sizeof(sub_tmp_path)) {
-        set_error(err, 0, "subckt temp path too long");
-        return -1;
-    }
-
     in = fopen(opt->input_path, "r");
     if (!in) {
         set_error(err, 0, "cannot open input file");
         return -1;
     }
 
-    main_tmp = fopen(main_tmp_path, "w");
+    main_tmp = fopen(opt->main_out_path, "w");
     if (!main_tmp) {
-        set_error(err, 0, "cannot open main temp output file");
+        set_error(err, 0, "cannot open main output file");
         goto fail;
     }
 
-    sub_tmp = fopen(sub_tmp_path, "w");
+    sub_tmp = fopen(opt->subckt_out_path, "w");
     if (!sub_tmp) {
-        set_error(err, 0, "cannot open subckt temp output file");
+        set_error(err, 0, "cannot open subckt output file");
         goto fail;
     }
 
     while (fgets(line, sizeof(line), in) != NULL) {
         input_line_no++;
 
-        if (line_was_truncated(line)) {
+        if (line_was_truncated(line, in)) {
             set_error(err, input_line_no, "input line exceeds MAX_LINE");
             goto fail;
         }
@@ -230,7 +198,7 @@ int extract_subckts_strict(const ExtractOptions *opt, ExtractError *err) {
         switch (state) {
         case ST_OUTSIDE:
             if (is_blank_line(line) || starts_with_three_stars(line)) {
-                if (append_pending_strict(&pending, line, input_line_no, err) != 0) {
+                if (append_pending(&pending, main_tmp, line, input_line_no, err) != 0) {
                     goto fail;
                 }
             } else if (starts_with_kw_icase(line, ".SUBCKT")) {
@@ -333,61 +301,12 @@ int extract_subckts_strict(const ExtractOptions *opt, ExtractError *err) {
     close_if_open(&in);
     close_if_open(&main_tmp);
     close_if_open(&sub_tmp);
-
-    main_tmp_read = fopen(main_tmp_path, "r");
-    if (!main_tmp_read) {
-        set_error(err, 0, "cannot reopen main temp file");
-        goto fail;
-    }
-
-    main_out = fopen(opt->main_out_path, "w");
-    if (!main_out) {
-        set_error(err, 0, "cannot open final main output file");
-        goto fail;
-    }
-
-    if (copy_stream(main_tmp_read, main_out) != 0) {
-        set_error(err, 0, "error while copying main temp to final output");
-        goto fail;
-    }
-
-    close_if_open(&main_tmp_read);
-    close_if_open(&main_out);
-
-    sub_tmp = fopen(sub_tmp_path, "r");
-    if (!sub_tmp) {
-        set_error(err, 0, "cannot reopen subckt temp file");
-        goto fail;
-    }
-
-    sub_out = fopen(opt->subckt_out_path, "w");
-    if (!sub_out) {
-        set_error(err, 0, "cannot open final subckt output file");
-        goto fail;
-    }
-
-    if (copy_stream(sub_tmp, sub_out) != 0) {
-        set_error(err, 0, "error while copying subckt temp to final output");
-        goto fail;
-    }
-
-    close_if_open(&sub_tmp);
-    close_if_open(&sub_out);
-
-    cleanup_file(main_tmp_path);
-    cleanup_file(sub_tmp_path);
     return 0;
 
 fail:
     close_if_open(&in);
     close_if_open(&main_tmp);
     close_if_open(&sub_tmp);
-    close_if_open(&main_tmp_read);
-    close_if_open(&main_out);
-    close_if_open(&sub_out);
-
-    cleanup_file(main_tmp_path);
-    cleanup_file(sub_tmp_path);
     return -1;
 }
 

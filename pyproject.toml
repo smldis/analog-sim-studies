@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sidecar-edits-prototype"
+version = "0.1.0"
+description = "Prototype sidecar edit pipeline for text-first simulation studies."
+requires-python = ">=3.11"
+
+[project.scripts]
+sidecar-render = "sidecar_edits.render:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+sidecar_edits = ["bin/*"]

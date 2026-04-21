@@ -1,3 +1,5 @@
 .cargo-target/
+build/
+*.egg-info/
 prototype/sidecar_edits/out/
 __pycache__/

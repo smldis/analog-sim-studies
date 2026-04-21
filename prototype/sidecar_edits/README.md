@@ -27,11 +27,15 @@ The `apply_patch` step is intentionally optional in this prototype. If no compat
 Example:
 
 ```bash
-python3 prototype/sidecar_edits/render.py \
+python3 setup.py build_py
+PYTHONPATH=build/lib python3 -m sidecar_edits.render \
   prototype/sidecar_edits/example/edits.py \
   prototype/sidecar_edits/example/params.json \
   prototype/sidecar_edits/out/example_run
 ```
+
+The package build compiles the native `extract_subckts` helper once. The render
+pipeline then calls the packaged helper instead of rebuilding it per run.
 
 There is also a pytest integration test that runs the example and verifies that
 both the standard patch step and the `apply_patch` step take effect.

@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SOURCE = REPO_ROOT / "prototype" / "sidecar_edits" / "extract_subckts.c"
+SOURCE = REPO_ROOT / "src" / "sidecar_edits" / "native" / "extract_subckts.c"
 
 
 def build_extractor(tmp_path: Path) -> Path:

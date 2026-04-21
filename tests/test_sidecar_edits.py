@@ -2,28 +2,44 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import os
 from pathlib import Path
 
 import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-RENDER = REPO_ROOT / "prototype" / "sidecar_edits" / "render.py"
 EXAMPLE_DIR = REPO_ROOT / "prototype" / "sidecar_edits" / "example"
 EDITS = EXAMPLE_DIR / "edits.py"
 PARAMS = EXAMPLE_DIR / "params.json"
 
-sys.path.insert(0, str(RENDER.parent))
+sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from render import EditError, apply_regex_replace, apply_replace  # noqa: E402
+from sidecar_edits.render import EditError, apply_regex_replace, apply_replace  # noqa: E402
+
+
+def build_package(tmp_path: Path) -> Path:
+    build_lib = tmp_path / "build_lib"
+    subprocess.run(
+        [sys.executable, "setup.py", "build_py", "--build-lib", str(build_lib)],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return build_lib
 
 
 def test_example_render_applies_patch_and_apply_patch(tmp_path: Path) -> None:
+    build_lib = build_package(tmp_path)
     output_dir = tmp_path / "example_run"
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(build_lib)
 
     subprocess.run(
-        [sys.executable, str(RENDER), str(EDITS), str(PARAMS), str(output_dir)],
+        [sys.executable, "-m", "sidecar_edits.render", str(EDITS), str(PARAMS), str(output_dir)],
         cwd=REPO_ROOT,
+        env=env,
         check=True,
         capture_output=True,
         text=True,

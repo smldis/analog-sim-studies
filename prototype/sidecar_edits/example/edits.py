@@ -1,10 +1,11 @@
 from pathlib import Path
 
+from sidecar_edits import tool_path
+
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 APPLY_PATCH_MANIFEST = REPO_ROOT.parent / "apply-patch" / "Cargo.toml"
 APPLY_PATCH_TARGET_DIR = REPO_ROOT / ".cargo-target" / "apply-patch"
-EXTRACT_SUBCKTS_SOURCE = REPO_ROOT / "prototype" / "sidecar_edits" / "extract_subckts.c"
 
 
 BASE_DIR = "base"
@@ -16,23 +17,9 @@ DEFAULTS = {
 PRE_EDITS = [
     {
         "op": "run",
-        "description": "build extract_subckts helper",
-        "command": [
-            "cc",
-            "-Wall",
-            "-Wextra",
-            "-Werror",
-            "-std=c11",
-            "-o",
-            "extract_subckts",
-            str(EXTRACT_SUBCKTS_SOURCE),
-        ],
-    },
-    {
-        "op": "run",
         "description": "extract subcircuits before applying main-file edits",
         "command": [
-            "./extract_subckts",
+            str(tool_path("extract_subckts")),
             "input.scs",
             "input_main.scs",
             "subckts.inc",

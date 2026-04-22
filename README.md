@@ -32,10 +32,11 @@ python -m pip install -e .
 
 The virtual environment does not need to live inside this repository. Once it is
 activated, use `python`, `pip`, and `sidecar-render` directly. The editable
-install rebuilds the native helper if needed and points the CLI at the source
-under `src/sidecar_edits/`, so Python source changes are picked up without
-reinstalling. If you change the C helper in `src/sidecar_edits/native/`, rerun
-`python -m pip install -e .`.
+install points the CLI at the source under `src/sidecar_edits/`, so Python
+source changes are picked up without reinstalling. The native `extract_subckts`
+helper is compiled into `src/sidecar_edits/bin/` on first use when it is missing.
+If you change the C helper in `src/sidecar_edits/native/`, remove the old helper
+or reinstall before running again.
 
 If you do not want an editable install, use:
 

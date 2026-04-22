@@ -16,6 +16,7 @@ APPLY_PATCH_EDITS = APPLY_PATCH_EXAMPLE_DIR / "edits.py"
 
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
+import sidecar_edits  # noqa: E402
 from sidecar_edits.render import (  # noqa: E402
     EditError,
     apply_copy,
@@ -40,6 +41,49 @@ def build_package(tmp_path: Path) -> Path:
         text=True,
     )
     return build_lib
+
+
+def test_tool_path_builds_extract_subckts_for_editable_source_tree(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    package_root = tmp_path / "sidecar_edits"
+    (package_root / "native").mkdir(parents=True)
+    (package_root / "native" / "extract_subckts.c").write_text("int main(void) { return 0; }\n", encoding="utf-8")
+    captured = {}
+
+    def fake_files(package: str) -> Path:
+        assert package == "sidecar_edits"
+        return package_root
+
+    def fake_run(command: list[str], check: bool) -> None:
+        captured["command"] = command
+        captured["check"] = check
+        target = Path(command[command.index("-o") + 1])
+        target.write_text("binary\n", encoding="utf-8")
+
+    monkeypatch.setattr(sidecar_edits, "files", fake_files)
+    monkeypatch.setattr(sidecar_edits.subprocess, "run", fake_run)
+
+    path = sidecar_edits.tool_path("extract_subckts")
+
+    assert path == package_root / "bin" / "extract_subckts"
+    assert path.read_text(encoding="utf-8") == "binary\n"
+    assert captured["check"] is True
+    assert captured["command"][-1] == str(package_root / "native" / "extract_subckts.c")
+
+
+def test_tool_path_reports_missing_native_source_for_unbuilt_tool(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    package_root = tmp_path / "sidecar_edits"
+    package_root.mkdir()
+
+    monkeypatch.setattr(sidecar_edits, "files", lambda package: package_root)
+
+    with pytest.raises(RuntimeError, match="Install a built wheel"):
+        sidecar_edits.tool_path("extract_subckts")
 
 
 def test_basic_example_render_applies_configured_edits(tmp_path: Path) -> None:

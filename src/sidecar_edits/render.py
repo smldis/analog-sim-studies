@@ -70,6 +70,14 @@ def ensure_parent(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
 
 
+def edit_description(edit: dict) -> str:
+    description = edit.get("description")
+    if description:
+        return str(description)
+    op = edit.get("op", "edit")
+    return f"{op} edit"
+
+
 def normalize_copy_ignore(patterns: list[str]) -> list[str]:
     normalized = []
     for pattern in patterns:
@@ -122,17 +130,19 @@ def resolve_source_path(edit: dict, params: dict[str, object], config_dir: Path)
 
 
 def apply_replace(target: Path, edit: dict, params: dict[str, object]) -> None:
+    description = edit_description(edit)
     old = format_text(edit["old"], params)
     new = format_text(edit["new"], params)
     content = read_text(target)
     if old not in content:
         if edit.get("allow_no_match", False):
             return
-        raise EditError(f"replace target not found in {target}")
+        raise EditError(f"{description} failed: replace target not found in {target}")
     write_text(target, content.replace(old, new))
 
 
 def apply_regex_replace(target: Path, edit: dict, params: dict[str, object]) -> None:
+    description = edit_description(edit)
     pattern = edit["pattern"]
     repl = format_text(edit["new"], params)
     count = edit.get("count", 0)
@@ -141,7 +151,7 @@ def apply_regex_replace(target: Path, edit: dict, params: dict[str, object]) -> 
     if replacements == 0:
         if edit.get("allow_no_match", False):
             return
-        raise EditError(f"regex pattern not found in {target}: {pattern}")
+        raise EditError(f"{description} failed: regex pattern not found in {target}: {pattern}")
     write_text(target, updated)
 
 
@@ -165,7 +175,7 @@ def run_external_patch(
         if optional:
             print(f"skip optional {description}: command not found: {command[0]}")
             return
-        raise EditError(f"required command not found: {command[0]}") from exc
+        raise EditError(f"{description} failed: required command not found: {command[0]}") from exc
     except subprocess.CalledProcessError as exc:
         stderr = exc.stderr.strip()
         stdout = exc.stdout.strip()
@@ -177,7 +187,7 @@ def run_external_patch(
 
 
 def run_command(target_dir: Path, edit: dict, params: dict[str, object]) -> None:
-    description = edit.get("description", "run command")
+    description = edit_description(edit)
     optional = edit.get("optional", False)
     command = [format_text(str(arg), params) for arg in edit["command"]]
     try:
@@ -192,7 +202,7 @@ def run_command(target_dir: Path, edit: dict, params: dict[str, object]) -> None
         if optional:
             print(f"skip optional {description}: command not found: {command[0]}")
             return
-        raise EditError(f"required command not found: {command[0]}") from exc
+        raise EditError(f"{description} failed: required command not found: {command[0]}") from exc
     except subprocess.CalledProcessError as exc:
         stderr = exc.stderr.strip()
         stdout = exc.stdout.strip()
@@ -206,7 +216,7 @@ def run_command(target_dir: Path, edit: dict, params: dict[str, object]) -> None
 def apply_patch_edit(target_dir: Path, edit: dict, params: dict[str, object]) -> None:
     optional = edit.get("optional", False)
     patch_text = format_text(edit["patch"], params)
-    description = edit.get("description", "apply_patch edit")
+    description = edit_description(edit)
     command = edit.get("command")
     if command is None:
         binary = str(edit.get("binary", "apply_patch"))
@@ -228,15 +238,16 @@ def apply_unified_patch(target_dir: Path, edit: dict, params: dict[str, object])
     optional = edit.get("optional", False)
     patch_text = format_text(edit["patch"], params)
     strip = str(edit.get("strip", 0))
-    description = edit.get("description", "patch edit")
+    description = edit_description(edit)
     command = ["patch", f"-p{strip}"]
     run_external_patch(target_dir, patch_text, command, optional, description)
 
 
 def apply_copy(target_dir: Path, edit: dict, params: dict[str, object], config_dir: Path) -> None:
+    description = edit_description(edit)
     source = resolve_source_path(edit, params, config_dir)
     if not source.is_file():
-        raise EditError(f"copy source does not exist: {source}")
+        raise EditError(f"{description} failed: copy source does not exist: {source}")
     dest_name = format_text(edit.get("to", source.name), params)
     destination = target_dir / dest_name
     ensure_parent(destination)

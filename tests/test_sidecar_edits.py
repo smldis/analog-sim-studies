@@ -142,6 +142,47 @@ def test_apply_patch_missing_binary_fails_in_renderer(tmp_path: Path, monkeypatc
         )
 
 
+def test_apply_patch_can_be_optional_when_binary_is_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    empty_path = tmp_path / "empty_path"
+    empty_path.mkdir()
+    monkeypatch.setenv("PATH", str(empty_path))
+
+    apply_patch_edit(
+        tmp_path,
+        {
+            "op": "apply_patch",
+            "description": "optional proof file edit",
+            "optional": True,
+            "patch": "*** Begin Patch\n*** Add File: out.txt\n+content\n*** End Patch\n",
+        },
+        {},
+    )
+
+    assert "skip optional optional proof file edit" in capsys.readouterr().out
+    assert not (tmp_path / "out.txt").exists()
+
+
+def test_replace_failure_uses_edit_description(tmp_path: Path) -> None:
+    target = tmp_path / "input.scs"
+    target.write_text("parameters vdd=1.2\n", encoding="utf-8")
+
+    with pytest.raises(EditError, match="update supply include failed"):
+        apply_replace(
+            target,
+            {
+                "op": "replace",
+                "description": "update supply include",
+                "old": "missing token",
+                "new": "replacement",
+            },
+            {},
+        )
+
+
 def test_config_can_load_params_from_file(tmp_path: Path) -> None:
     (tmp_path / "base").mkdir()
     (tmp_path / "params.json").write_text('{"run_label": "file"}\n', encoding="utf-8")

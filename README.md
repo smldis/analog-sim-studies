@@ -71,6 +71,11 @@ The `apply_patch` operation uses the installed `apply_patch` executable from
 `EditError` with an installation/configuration hint; the example does not call
 `cargo` or define tool-specific environment variables.
 
+Every edit operation may include an optional `description`. It should describe
+the intended edit, for example `add run label to notes`, not the command or tool
+used to perform it. Required edits fail by default; set `optional: True` only
+when a skipped edit is acceptable.
+
 Parameters are selected inside `edits.py`, not on the command line. Use
 `PARAMS_FILE = "params.json"` to load a JSON file next to the edit spec, or use
 inline Python values:

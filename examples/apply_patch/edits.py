@@ -54,7 +54,7 @@ EDITS = [
     },
     {
         "op": "patch",
-        "description": "optional unified diff hook for structural tweaks",
+        "description": "add run label to notes",
         "optional": True,
         "strip": 0,
         "patch": """--- notes.txt.orig
@@ -66,7 +66,7 @@ EDITS = [
     },
     {
         "op": "apply_patch",
-        "description": "installed apply_patch hook",
+        "description": "add apply_patch proof file",
         "patch": """*** Begin Patch
 *** Add File: APPLY_PATCH_PROOF.txt
 +run_label={run_label}

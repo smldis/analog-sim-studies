@@ -24,8 +24,6 @@ def load_config(config_path: Path) -> tuple[Path, list[str], list[dict], dict[st
     copy_ignore = loaded.get("COPY_IGNORE", [])
     edits = loaded.get("EDITS")
     params = load_params(config_path, loaded)
-    if "PRE_EDITS" in loaded:
-        raise EditError(f"{config_path} defines PRE_EDITS; put ordered operations in EDITS instead")
     if edits is None:
         raise EditError(f"{config_path} does not define EDITS")
     return (config_path.parent / base_dir).resolve(), copy_ignore, edits, params

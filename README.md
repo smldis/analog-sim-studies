@@ -54,7 +54,7 @@ sidecar-render \
 ```
 
 The basic example copies `examples/basic/base/` into the output directory, then applies
-the configured edit steps. It only uses `copy_file` and
+the configured edit steps. It uses `extract_subckts`, `copy_file`, and
 `replace`; other operations are listed as a comment in `examples/basic/edits.py`.
 
 The fuller example also exercises `extract_subckts`, `regex_replace`, `patch`,

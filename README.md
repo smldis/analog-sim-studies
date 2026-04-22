@@ -6,6 +6,7 @@ The design note for this package lives in [design/manifesto.md](design/manifesto
 
 - `src/sidecar_edits/` contains the package implementation
 - `examples/basic/` contains a small runnable sidecar-edit example
+- `examples/apply_patch/` contains the fuller example with `apply_patch`
 - `tests/` contains the pytest coverage for the current behavior
 - `design/` contains the project note and high-level intent
 
@@ -15,6 +16,7 @@ Requirements:
 
 - Python 3.10 or newer
 - a C compiler available as `cc`
+- `patch` and an installed `apply_patch` executable on `PATH` for `examples/apply_patch/`
 
 Clone the repository, activate any virtual environment you want to use, then
 install the package:
@@ -51,9 +53,23 @@ sidecar-render \
   /tmp/sidecar_example_run
 ```
 
-The example copies `examples/basic/base/` into the output directory, then applies
-the configured edit steps. The basic example only uses `copy_file` and
+The basic example copies `examples/basic/base/` into the output directory, then applies
+the configured edit steps. It only uses `copy_file` and
 `replace`; other operations are listed as a comment in `examples/basic/edits.py`.
+
+The fuller example also exercises `run`, `regex_replace`, `patch`, and
+`apply_patch`:
+
+```bash
+sidecar-render \
+  examples/apply_patch/edits.py \
+  /tmp/sidecar_apply_patch_run
+```
+
+The `apply_patch` operation uses the installed `apply_patch` executable from
+`PATH` by default. If it is missing, the renderer raises a package-level
+`EditError` with an installation/configuration hint; the example does not call
+`cargo` or define tool-specific environment variables.
 
 Parameters are selected inside `edits.py`, not on the command line. Use
 `PARAMS_FILE = "params.json"` to load a JSON file next to the edit spec, or use

@@ -9,12 +9,21 @@ import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-EXAMPLE_DIR = REPO_ROOT / "examples" / "basic"
-EDITS = EXAMPLE_DIR / "edits.py"
+BASIC_EXAMPLE_DIR = REPO_ROOT / "examples" / "basic"
+BASIC_EDITS = BASIC_EXAMPLE_DIR / "edits.py"
+APPLY_PATCH_EXAMPLE_DIR = REPO_ROOT / "examples" / "apply_patch"
+APPLY_PATCH_EDITS = APPLY_PATCH_EXAMPLE_DIR / "edits.py"
 
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from sidecar_edits.render import EditError, apply_regex_replace, apply_replace, copy_base_tree, load_config  # noqa: E402
+from sidecar_edits.render import (  # noqa: E402
+    EditError,
+    apply_patch_edit,
+    apply_regex_replace,
+    apply_replace,
+    copy_base_tree,
+    load_config,
+)
 
 
 def build_package(tmp_path: Path) -> Path:
@@ -29,14 +38,14 @@ def build_package(tmp_path: Path) -> Path:
     return build_lib
 
 
-def test_example_render_applies_configured_edits(tmp_path: Path) -> None:
+def test_basic_example_render_applies_configured_edits(tmp_path: Path) -> None:
     build_lib = build_package(tmp_path)
     output_dir = tmp_path / "example_run"
     env = os.environ.copy()
     env["PYTHONPATH"] = str(build_lib)
 
     subprocess.run(
-        [sys.executable, "-m", "sidecar_edits.render", str(EDITS), str(output_dir)],
+        [sys.executable, "-m", "sidecar_edits.render", str(BASIC_EDITS), str(output_dir)],
         cwd=REPO_ROOT,
         env=env,
         check=True,
@@ -56,6 +65,81 @@ def test_example_render_applies_configured_edits(tmp_path: Path) -> None:
         "tran tran stop=10u\n"
         "save V(out)\n"
     )
+
+
+def write_fake_apply_patch(bin_dir: Path) -> Path:
+    binary = bin_dir / "apply_patch"
+    binary.write_text(
+        f"""#!{sys.executable}
+from pathlib import Path
+import sys
+
+patch = sys.stdin.read()
+if "*** Add File: APPLY_PATCH_PROOF.txt" not in patch:
+    raise SystemExit(2)
+Path("APPLY_PATCH_PROOF.txt").write_text("run_label=tt_1v2_27c\\n", encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
+    binary.chmod(0o755)
+    return binary
+
+
+def test_apply_patch_example_uses_installed_apply_patch_binary(tmp_path: Path) -> None:
+    build_lib = build_package(tmp_path)
+    output_dir = tmp_path / "apply_patch_run"
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    write_fake_apply_patch(bin_dir)
+
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(build_lib)
+    env["PATH"] = f"{bin_dir}{os.pathsep}{env.get('PATH', '')}"
+
+    subprocess.run(
+        [sys.executable, "-m", "sidecar_edits.render", str(APPLY_PATCH_EDITS), str(output_dir)],
+        cwd=REPO_ROOT,
+        env=env,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert (output_dir / "APPLY_PATCH_PROOF.txt").read_text(encoding="utf-8") == (
+        "run_label=tt_1v2_27c\n"
+    )
+    assert (output_dir / "notes.txt").read_text(encoding="utf-8") == (
+        "base example\n"
+        "run_label=tt_1v2_27c\n"
+    )
+    assert (output_dir / "input_main.scs").read_text(encoding="utf-8") == (
+        'simulator lang=spectre\n'
+        'include "/work/netlists/rc_filter_corner_tt.scs"\n\n'
+        "parameters vdd=1.20 temp=27\n"
+        '.INCLUDE "subckts.inc"\n'
+        "X1 in out rc_filter\n"
+        "tran tran stop=10u\n"
+        "save V(out)\n"
+    )
+    assert not (output_dir / "psf").exists()
+    assert not (output_dir / "scratch.tmp").exists()
+
+
+def test_apply_patch_missing_binary_fails_in_renderer(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    empty_path = tmp_path / "empty_path"
+    empty_path.mkdir()
+    monkeypatch.setenv("PATH", str(empty_path))
+
+    with pytest.raises(EditError, match="apply_patch executable not found"):
+        apply_patch_edit(
+            tmp_path,
+            {
+                "op": "apply_patch",
+                "description": "missing binary test",
+                "patch": "*** Begin Patch\n*** Add File: out.txt\n+content\n*** End Patch\n",
+            },
+            {},
+        )
 
 
 def test_config_can_load_params_from_file(tmp_path: Path) -> None:

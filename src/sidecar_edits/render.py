@@ -209,8 +209,18 @@ def apply_patch_edit(target_dir: Path, edit: dict, params: dict[str, object]) ->
     description = edit.get("description", "apply_patch edit")
     command = edit.get("command")
     if command is None:
-        binary = edit.get("binary") or shutil.which("apply_patch") or "apply_patch"
-        command = [binary]
+        binary = str(edit.get("binary", "apply_patch"))
+        resolved = shutil.which(binary)
+        if resolved is None:
+            message = (
+                f"apply_patch executable not found for {description}. "
+                "Install apply_patch on PATH or set the edit's binary/command."
+            )
+            if optional:
+                print(f"skip optional {description}: {message}")
+                return
+            raise EditError(message)
+        command = [resolved]
     run_external_patch(target_dir, patch_text, command, optional, description)
 
 

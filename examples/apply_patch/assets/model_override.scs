@@ -1,0 +1,2 @@
+simulator lang=spectre
+parameters gain_trim=1.05

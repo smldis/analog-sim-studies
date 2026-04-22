@@ -15,8 +15,6 @@ Requirements:
 
 - Python 3.10 or newer
 - a C compiler available as `cc`
-- `patch` for standard unified-diff edit steps
-- `cargo` only if you want to exercise the optional `apply_patch` hook
 
 Clone the repository, activate any virtual environment you want to use, then
 install the package:
@@ -53,9 +51,9 @@ sidecar-render \
   /tmp/sidecar_example_run
 ```
 
-The example copies `examples/basic/base/`, applies `COPY_IGNORE`, runs
-`PRE_EDITS`, then applies the configured edit steps. The optional `apply_patch`
-hook is skipped if the local Rust `apply_patch` workspace is not available.
+The example copies `examples/basic/base/` into the output directory, then applies
+the configured edit steps. The basic example only uses `copy_file` and
+`replace`; other operations are listed as a comment in `examples/basic/edits.py`.
 
 Parameters are selected inside `edits.py`, not on the command line. Use
 `PARAMS_FILE = "params.json"` to load a JSON file next to the edit spec, or use
@@ -64,9 +62,6 @@ inline Python values:
 ```python
 PARAMS = {
     "netlist_path": "/work/netlists/rc_filter_corner_tt.scs",
-    "vdd": "1.20",
-    "temp_c": "27",
-    "run_label": "tt_1v2_27c",
 }
 ```
 

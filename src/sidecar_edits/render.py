@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import fnmatch
 import json
+import os
 import re
 import runpy
 import shutil
@@ -20,13 +21,13 @@ class EditError(RuntimeError):
 
 def load_config(config_path: Path) -> tuple[Path, list[str], list[dict], dict[str, object]]:
     loaded = runpy.run_path(str(config_path))
-    base_dir = loaded.get("BASE_DIR", "base")
     copy_ignore = loaded.get("COPY_IGNORE", [])
     edits = loaded.get("EDITS")
     params = load_params(config_path, loaded)
     if edits is None:
         raise EditError(f"{config_path} does not define EDITS")
-    return (config_path.parent / base_dir).resolve(), copy_ignore, edits, params
+    base_dir = resolve_config_path(config_path.parent, str(loaded.get("BASE_DIR", "base")), params)
+    return base_dir, copy_ignore, edits, params
 
 
 def load_params(config_path: Path, loaded: dict[str, object]) -> dict[str, object]:
@@ -38,9 +39,7 @@ def load_params(config_path: Path, loaded: dict[str, object]) -> dict[str, objec
     if inline_params is not None:
         params = inline_params
     elif params_file is not None:
-        params_path = Path(str(params_file))
-        if not params_path.is_absolute():
-            params_path = config_path.parent / params_path
+        params_path = resolve_config_path(config_path.parent, str(params_file), defaults)
         params = json.loads(params_path.read_text(encoding="utf-8"))
     else:
         params = {}
@@ -59,6 +58,10 @@ def format_text(value: str, params: dict[str, object]) -> str:
         raise EditError(f"missing parameter: {missing}") from exc
 
 
+def format_path_text(value: str, params: dict[str, object]) -> str:
+    return os.path.expandvars(format_text(value, params))
+
+
 def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
@@ -69,6 +72,13 @@ def write_text(path: Path, content: str) -> None:
 
 def ensure_parent(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+
+
+def resolve_config_path(base_dir: Path, value: str, params: dict[str, object]) -> Path:
+    path = Path(format_path_text(value, params))
+    if path.is_absolute():
+        return path
+    return (base_dir / path).resolve()
 
 
 def edit_description(edit: dict) -> str:
@@ -124,10 +134,7 @@ def copy_base_tree(base_dir: Path, output_dir: Path, copy_ignore: list[str]) -> 
 
 
 def resolve_source_path(edit: dict, params: dict[str, object], config_dir: Path) -> Path:
-    source = Path(format_text(edit["path"], params))
-    if source.is_absolute():
-        return source
-    return (config_dir / source).resolve()
+    return resolve_config_path(config_dir, str(edit["path"]), params)
 
 
 def apply_replace(target: Path, edit: dict, params: dict[str, object]) -> None:
@@ -190,7 +197,7 @@ def run_external_patch(
 def run_command(target_dir: Path, edit: dict, params: dict[str, object]) -> None:
     description = edit_description(edit)
     optional = edit.get("optional", False)
-    command = [format_text(str(arg), params) for arg in edit["command"]]
+    command = [format_path_text(str(arg), params) for arg in edit["command"]]
     run_command_args(target_dir, command, optional, description)
 
 
@@ -221,7 +228,7 @@ def run_command_args(target_dir: Path, command: list[str], optional: bool, descr
 def apply_extract_subckts(target_dir: Path, edit: dict, params: dict[str, object]) -> None:
     description = edit_description(edit)
     optional = edit.get("optional", False)
-    include_path = format_text(str(edit.get("include", "subckts.inc")), params)
+    include_path = format_path_text(str(edit.get("include", "subckts.inc")), params)
     try:
         binary = str(tool_path("extract_subckts"))
     except RuntimeError as exc:
@@ -231,10 +238,10 @@ def apply_extract_subckts(target_dir: Path, edit: dict, params: dict[str, object
         raise EditError(f"{description} failed: {exc}") from exc
     command = [
         binary,
-        format_text(str(edit.get("input", "input.scs")), params),
-        format_text(str(edit.get("output", "input_main.scs")), params),
+        format_path_text(str(edit.get("input", "input.scs")), params),
+        format_path_text(str(edit.get("output", "input_main.scs")), params),
         include_path,
-        format_text(str(edit.get("subckts", include_path)), params),
+        format_path_text(str(edit.get("subckts", include_path)), params),
     ]
     run_command_args(target_dir, command, optional, description)
 
@@ -245,7 +252,7 @@ def apply_patch_edit(target_dir: Path, edit: dict, params: dict[str, object]) ->
     description = edit_description(edit)
     command = edit.get("command")
     if command is None:
-        binary = str(edit.get("binary", "apply_patch"))
+        binary = format_path_text(str(edit.get("binary", "apply_patch")), params)
         resolved = shutil.which(binary)
         if resolved is None:
             message = (
@@ -257,6 +264,8 @@ def apply_patch_edit(target_dir: Path, edit: dict, params: dict[str, object]) ->
                 return
             raise EditError(message)
         command = [resolved]
+    else:
+        command = [format_path_text(str(arg), params) for arg in command]
     run_external_patch(target_dir, patch_text, command, optional, description)
 
 
@@ -274,7 +283,7 @@ def apply_copy(target_dir: Path, edit: dict, params: dict[str, object], config_d
     source = resolve_source_path(edit, params, config_dir)
     if not source.is_file():
         raise EditError(f"{description} failed: copy source does not exist: {source}")
-    dest_name = format_text(edit.get("to", source.name), params)
+    dest_name = format_path_text(str(edit.get("to", source.name)), params)
     destination = target_dir / dest_name
     ensure_parent(destination)
     shutil.copy2(source, destination)
@@ -292,10 +301,10 @@ def apply_edit(target_dir: Path, edit: dict, params: dict[str, object], config_d
         apply_copy(target_dir, edit, params, config_dir)
         return
     if op == "replace":
-        apply_replace(target_dir / edit["path"], edit, params)
+        apply_replace(target_dir / format_path_text(str(edit["path"]), params), edit, params)
         return
     if op == "regex_replace":
-        apply_regex_replace(target_dir / edit["path"], edit, params)
+        apply_regex_replace(target_dir / format_path_text(str(edit["path"]), params), edit, params)
         return
     if op == "apply_patch":
         apply_patch_edit(target_dir, edit, params)
@@ -316,7 +325,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     base_dir, copy_ignore, edits, params = load_config(args.config)
-    output_dir = args.output.resolve()
+    output_dir = Path(os.path.expandvars(str(args.output))).resolve()
     if output_dir.exists():
         raise EditError(f"output directory already exists: {output_dir}")
     copy_base_tree(base_dir, output_dir, copy_ignore)

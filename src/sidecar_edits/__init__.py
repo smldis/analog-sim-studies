@@ -5,6 +5,8 @@ from pathlib import Path
 
 
 def tool_path(name: str) -> Path:
+    # TODO: make editable installs build or discover packaged native tools without
+    # requiring a manual compile into src/sidecar_edits/bin.
     path = Path(str(files("sidecar_edits").joinpath("bin", name)))
     if not path.exists():
         raise RuntimeError(

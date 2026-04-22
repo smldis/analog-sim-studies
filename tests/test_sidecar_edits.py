@@ -18,12 +18,15 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from sidecar_edits.render import (  # noqa: E402
     EditError,
+    apply_copy,
+    apply_edit,
     apply_extract_subckts,
     apply_patch_edit,
     apply_regex_replace,
     apply_replace,
     copy_base_tree,
     load_config,
+    run_command,
 )
 
 
@@ -235,6 +238,30 @@ EDITS = []
     assert params["run_label"] == "file"
 
 
+def test_config_expands_env_vars_in_base_dir_and_params_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    env_root = tmp_path / "env_root"
+    (env_root / "base").mkdir(parents=True)
+    (env_root / "params.json").write_text('{"run_label": "env-file"}\n', encoding="utf-8")
+    monkeypatch.setenv("SIDECAR_TEST_ROOT", str(env_root))
+    config = tmp_path / "edits.py"
+    config.write_text(
+        """
+BASE_DIR = "$SIDECAR_TEST_ROOT/base"
+PARAMS_FILE = "$SIDECAR_TEST_ROOT/params.json"
+EDITS = []
+""",
+        encoding="utf-8",
+    )
+
+    base_dir, _, _, params = load_config(config)
+
+    assert base_dir == env_root / "base"
+    assert params["run_label"] == "env-file"
+
+
 def test_config_can_define_params_inline(tmp_path: Path) -> None:
     (tmp_path / "base").mkdir()
     config = tmp_path / "edits.py"
@@ -251,6 +278,119 @@ EDITS = []
     _, _, _, params = load_config(config)
 
     assert params == {"simulator_cmd": "aps", "run_label": "inline"}
+
+
+def test_copy_file_expands_env_vars_in_paths(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assets_dir = tmp_path / "assets"
+    target_dir = tmp_path / "run"
+    assets_dir.mkdir()
+    target_dir.mkdir()
+    (assets_dir / "model.scs").write_text("model\n", encoding="utf-8")
+    monkeypatch.setenv("SIDECAR_ASSETS", str(assets_dir))
+    monkeypatch.setenv("SIDECAR_COPY_DEST", "include")
+
+    apply_copy(
+        target_dir,
+        {
+            "op": "copy_file",
+            "path": "$SIDECAR_ASSETS/model.scs",
+            "to": "$SIDECAR_COPY_DEST/copied.scs",
+        },
+        {},
+        tmp_path,
+    )
+
+    assert (target_dir / "include" / "copied.scs").read_text(encoding="utf-8") == "model\n"
+
+
+def test_edit_target_path_expands_env_vars(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target_dir = tmp_path / "run"
+    target_dir.mkdir()
+    (target_dir / "input_main.scs").write_text('include "old.scs"\n', encoding="utf-8")
+    monkeypatch.setenv("TARGET_FILE", "input_main.scs")
+
+    apply_edit(
+        target_dir,
+        {
+            "op": "replace",
+            "path": "$TARGET_FILE",
+            "old": 'include "old.scs"',
+            "new": 'include "new.scs"',
+        },
+        {},
+        tmp_path,
+    )
+
+    assert (target_dir / "input_main.scs").read_text(encoding="utf-8") == 'include "new.scs"\n'
+
+
+def test_extract_subckts_expands_env_vars_in_file_fields(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import sidecar_edits.render as render
+
+    captured = {}
+
+    def fake_run_command_args(target_dir: Path, command: list[str], optional: bool, description: str) -> None:
+        captured["command"] = command
+
+    monkeypatch.setattr(render, "tool_path", lambda name: Path(f"/tools/{name}"))
+    monkeypatch.setattr(render, "run_command_args", fake_run_command_args)
+    monkeypatch.setenv("INPUT_NETLIST", "input.scs")
+    monkeypatch.setenv("MAIN_NETLIST", "main.scs")
+    monkeypatch.setenv("SIDE_INCLUDE", "generated/subckts.inc")
+
+    apply_extract_subckts(
+        tmp_path,
+        {
+            "op": "extract_subckts",
+            "input": "$INPUT_NETLIST",
+            "output": "$MAIN_NETLIST",
+            "include": "$SIDE_INCLUDE",
+        },
+        {},
+    )
+
+    assert captured["command"] == [
+        "/tools/extract_subckts",
+        "input.scs",
+        "main.scs",
+        "generated/subckts.inc",
+        "generated/subckts.inc",
+    ]
+
+
+def test_run_command_expands_env_vars_in_arguments(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import sidecar_edits.render as render
+
+    captured = {}
+
+    def fake_run_command_args(target_dir: Path, command: list[str], optional: bool, description: str) -> None:
+        captured["command"] = command
+
+    monkeypatch.setattr(render, "run_command_args", fake_run_command_args)
+    monkeypatch.setenv("TOOL_ROOT", "/opt/tools")
+
+    run_command(
+        tmp_path,
+        {
+            "op": "run",
+            "command": ["$TOOL_ROOT/bin/tool", "--input", "{INPUT_PATH}"],
+        },
+        {"INPUT_PATH": "netlists/input.scs"},
+    )
+
+    assert captured["command"] == ["/opt/tools/bin/tool", "--input", "netlists/input.scs"]
 
 
 def test_config_rejects_ambiguous_param_sources(tmp_path: Path) -> None:

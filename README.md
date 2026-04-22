@@ -86,6 +86,12 @@ PARAMS = {
 }
 ```
 
+Path-like fields expand environment variables such as `$PDK_ROOT` and
+`${RUN_ROOT}`. This applies to `BASE_DIR`, `PARAMS_FILE`, the CLI output path,
+edit target paths, `copy_file` source/destination paths, `extract_subckts` file
+fields, and command arguments. Replacement text is left as normal text, so
+simulator-side environment variables can still be preserved intentionally.
+
 Run the tests:
 
 ```bash

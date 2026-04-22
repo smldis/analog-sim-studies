@@ -16,16 +16,38 @@ class EditError(RuntimeError):
     pass
 
 
-def load_config(config_path: Path) -> tuple[Path, list[str], list[dict], list[dict], dict]:
+def load_config(config_path: Path) -> tuple[Path, list[str], list[dict], list[dict], dict[str, object]]:
     loaded = runpy.run_path(str(config_path))
     base_dir = loaded.get("BASE_DIR", "base")
     copy_ignore = loaded.get("COPY_IGNORE", [])
     pre_edits = loaded.get("PRE_EDITS", [])
     edits = loaded.get("EDITS")
-    defaults = loaded.get("DEFAULTS", {})
+    params = load_params(config_path, loaded)
     if edits is None:
         raise EditError(f"{config_path} does not define EDITS")
-    return (config_path.parent / base_dir).resolve(), copy_ignore, pre_edits, edits, defaults
+    return (config_path.parent / base_dir).resolve(), copy_ignore, pre_edits, edits, params
+
+
+def load_params(config_path: Path, loaded: dict[str, object]) -> dict[str, object]:
+    defaults = loaded.get("DEFAULTS", {})
+    inline_params = loaded.get("PARAMS")
+    params_file = loaded.get("PARAMS_FILE")
+    if inline_params is not None and params_file is not None:
+        raise EditError(f"{config_path} defines both PARAMS and PARAMS_FILE")
+    if inline_params is not None:
+        params = inline_params
+    elif params_file is not None:
+        params_path = Path(str(params_file))
+        if not params_path.is_absolute():
+            params_path = config_path.parent / params_path
+        params = json.loads(params_path.read_text(encoding="utf-8"))
+    else:
+        params = {}
+    if not isinstance(defaults, dict):
+        raise EditError(f"{config_path} DEFAULTS must be a dict")
+    if not isinstance(params, dict):
+        raise EditError(f"{config_path} parameters must be a dict")
+    return defaults | params
 
 
 def format_text(value: str, params: dict[str, object]) -> str:
@@ -237,15 +259,13 @@ def apply_edit(target_dir: Path, edit: dict, params: dict[str, object], config_d
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Render a run directory from a base tree and sidecar edits.")
     parser.add_argument("config", type=Path, help="Path to edits.py")
-    parser.add_argument("params", type=Path, help="Path to params.json")
     parser.add_argument("output", type=Path, help="Output run directory")
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
-    base_dir, copy_ignore, pre_edits, edits, defaults = load_config(args.config)
-    params = defaults | json.loads(args.params.read_text(encoding="utf-8"))
+    base_dir, copy_ignore, pre_edits, edits, params = load_config(args.config)
     output_dir = args.output.resolve()
     if output_dir.exists():
         raise EditError(f"output directory already exists: {output_dir}")

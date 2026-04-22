@@ -50,13 +50,25 @@ With the virtual environment activated:
 ```bash
 sidecar-render \
   examples/basic/edits.py \
-  examples/basic/params.json \
   /tmp/sidecar_example_run
 ```
 
 The example copies `examples/basic/base/`, applies `COPY_IGNORE`, runs
 `PRE_EDITS`, then applies the configured edit steps. The optional `apply_patch`
 hook is skipped if the local Rust `apply_patch` workspace is not available.
+
+Parameters are selected inside `edits.py`, not on the command line. Use
+`PARAMS_FILE = "params.json"` to load a JSON file next to the edit spec, or use
+inline Python values:
+
+```python
+PARAMS = {
+    "netlist_path": "/work/netlists/rc_filter_corner_tt.scs",
+    "vdd": "1.20",
+    "temp_c": "27",
+    "run_label": "tt_1v2_27c",
+}
+```
 
 Run the tests:
 
@@ -73,6 +85,5 @@ For a build without installing into the environment:
 python setup.py build_py
 PYTHONPATH=build/lib python -m sidecar_edits.render \
   examples/basic/edits.py \
-  examples/basic/params.json \
   /tmp/sidecar_example_run_manual
 ```

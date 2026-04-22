@@ -11,12 +11,11 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 EXAMPLE_DIR = REPO_ROOT / "examples" / "basic"
 EDITS = EXAMPLE_DIR / "edits.py"
-PARAMS = EXAMPLE_DIR / "params.json"
 APPLY_PATCH_MANIFEST = REPO_ROOT.parent / "apply-patch" / "Cargo.toml"
 
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from sidecar_edits.render import EditError, apply_regex_replace, apply_replace, copy_base_tree  # noqa: E402
+from sidecar_edits.render import EditError, apply_regex_replace, apply_replace, copy_base_tree, load_config  # noqa: E402
 
 
 def build_package(tmp_path: Path) -> Path:
@@ -38,7 +37,7 @@ def test_example_render_applies_configured_edits(tmp_path: Path) -> None:
     env["PYTHONPATH"] = str(build_lib)
 
     subprocess.run(
-        [sys.executable, "-m", "sidecar_edits.render", str(EDITS), str(PARAMS), str(output_dir)],
+        [sys.executable, "-m", "sidecar_edits.render", str(EDITS), str(output_dir)],
         cwd=REPO_ROOT,
         env=env,
         check=True,
@@ -80,6 +79,61 @@ def test_example_render_applies_configured_edits(tmp_path: Path) -> None:
         assert not (output_dir / "APPLY_PATCH_PROOF.txt").exists()
     assert not (output_dir / "psf").exists()
     assert not (output_dir / "scratch.tmp").exists()
+
+
+def test_config_can_load_params_from_file(tmp_path: Path) -> None:
+    (tmp_path / "base").mkdir()
+    (tmp_path / "params.json").write_text('{"run_label": "file"}\n', encoding="utf-8")
+    config = tmp_path / "edits.py"
+    config.write_text(
+        """
+BASE_DIR = "base"
+DEFAULTS = {"simulator_cmd": "spectre"}
+PARAMS_FILE = "params.json"
+EDITS = []
+""",
+        encoding="utf-8",
+    )
+
+    _, _, _, _, params = load_config(config)
+
+    assert params["simulator_cmd"] == "spectre"
+    assert params["run_label"] == "file"
+
+
+def test_config_can_define_params_inline(tmp_path: Path) -> None:
+    (tmp_path / "base").mkdir()
+    config = tmp_path / "edits.py"
+    config.write_text(
+        """
+BASE_DIR = "base"
+DEFAULTS = {"simulator_cmd": "spectre"}
+PARAMS = {"simulator_cmd": "aps", "run_label": "inline"}
+EDITS = []
+""",
+        encoding="utf-8",
+    )
+
+    _, _, _, _, params = load_config(config)
+
+    assert params == {"simulator_cmd": "aps", "run_label": "inline"}
+
+
+def test_config_rejects_ambiguous_param_sources(tmp_path: Path) -> None:
+    (tmp_path / "base").mkdir()
+    config = tmp_path / "edits.py"
+    config.write_text(
+        """
+BASE_DIR = "base"
+PARAMS = {"run_label": "inline"}
+PARAMS_FILE = "params.json"
+EDITS = []
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(EditError, match="defines both PARAMS and PARAMS_FILE"):
+        load_config(config)
 
 
 def test_copy_base_tree_ignores_directories_basenames_and_relative_paths(tmp_path: Path) -> None:

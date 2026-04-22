@@ -19,6 +19,8 @@ DEFAULTS = {
     "simulator_cmd": "spectre",
 }
 
+PARAMS_FILE = "params.json"
+
 PRE_EDITS = [
     {
         "op": "run",

@@ -229,7 +229,7 @@ EDITS = []
         encoding="utf-8",
     )
 
-    _, _, _, _, params = load_config(config)
+    _, _, _, params = load_config(config)
 
     assert params["simulator_cmd"] == "spectre"
     assert params["run_label"] == "file"
@@ -248,7 +248,7 @@ EDITS = []
         encoding="utf-8",
     )
 
-    _, _, _, _, params = load_config(config)
+    _, _, _, params = load_config(config)
 
     assert params == {"simulator_cmd": "aps", "run_label": "inline"}
 
@@ -267,6 +267,22 @@ EDITS = []
     )
 
     with pytest.raises(EditError, match="defines both PARAMS and PARAMS_FILE"):
+        load_config(config)
+
+
+def test_config_rejects_pre_edits(tmp_path: Path) -> None:
+    (tmp_path / "base").mkdir()
+    config = tmp_path / "edits.py"
+    config.write_text(
+        """
+BASE_DIR = "base"
+PRE_EDITS = []
+EDITS = []
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(EditError, match="defines PRE_EDITS"):
         load_config(config)
 
 

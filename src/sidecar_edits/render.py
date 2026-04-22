@@ -18,16 +18,17 @@ class EditError(RuntimeError):
     pass
 
 
-def load_config(config_path: Path) -> tuple[Path, list[str], list[dict], list[dict], dict[str, object]]:
+def load_config(config_path: Path) -> tuple[Path, list[str], list[dict], dict[str, object]]:
     loaded = runpy.run_path(str(config_path))
     base_dir = loaded.get("BASE_DIR", "base")
     copy_ignore = loaded.get("COPY_IGNORE", [])
-    pre_edits = loaded.get("PRE_EDITS", [])
     edits = loaded.get("EDITS")
     params = load_params(config_path, loaded)
+    if "PRE_EDITS" in loaded:
+        raise EditError(f"{config_path} defines PRE_EDITS; put ordered operations in EDITS instead")
     if edits is None:
         raise EditError(f"{config_path} does not define EDITS")
-    return (config_path.parent / base_dir).resolve(), copy_ignore, pre_edits, edits, params
+    return (config_path.parent / base_dir).resolve(), copy_ignore, edits, params
 
 
 def load_params(config_path: Path, loaded: dict[str, object]) -> dict[str, object]:
@@ -316,13 +317,11 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    base_dir, copy_ignore, pre_edits, edits, params = load_config(args.config)
+    base_dir, copy_ignore, edits, params = load_config(args.config)
     output_dir = args.output.resolve()
     if output_dir.exists():
         raise EditError(f"output directory already exists: {output_dir}")
     copy_base_tree(base_dir, output_dir, copy_ignore)
-    for edit in pre_edits:
-        apply_edit(output_dir, edit, params, args.config.resolve().parent)
     for edit in edits:
         apply_edit(output_dir, edit, params, args.config.resolve().parent)
     print(f"rendered {output_dir}")

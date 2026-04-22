@@ -57,8 +57,8 @@ The basic example copies `examples/basic/base/` into the output directory, then 
 the configured edit steps. It only uses `copy_file` and
 `replace`; other operations are listed as a comment in `examples/basic/edits.py`.
 
-The fuller example also exercises `run`, `regex_replace`, `patch`, and
-`apply_patch`:
+The fuller example also exercises `extract_subckts`, `regex_replace`, `patch`,
+and `apply_patch`:
 
 ```bash
 sidecar-render \

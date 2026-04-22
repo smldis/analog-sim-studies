@@ -11,6 +11,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from sidecar_edits import tool_path
+
 
 class EditError(RuntimeError):
     pass
@@ -190,6 +192,10 @@ def run_command(target_dir: Path, edit: dict, params: dict[str, object]) -> None
     description = edit_description(edit)
     optional = edit.get("optional", False)
     command = [format_text(str(arg), params) for arg in edit["command"]]
+    run_command_args(target_dir, command, optional, description)
+
+
+def run_command_args(target_dir: Path, command: list[str], optional: bool, description: str) -> None:
     try:
         subprocess.run(
             command,
@@ -211,6 +217,27 @@ def run_command(target_dir: Path, edit: dict, params: dict[str, object]) -> None
             print(f"skip optional {description}: {details}")
             return
         raise EditError(f"{description} failed: {details}") from exc
+
+
+def apply_extract_subckts(target_dir: Path, edit: dict, params: dict[str, object]) -> None:
+    description = edit_description(edit)
+    optional = edit.get("optional", False)
+    include_path = format_text(str(edit.get("include", "subckts.inc")), params)
+    try:
+        binary = str(tool_path("extract_subckts"))
+    except RuntimeError as exc:
+        if optional:
+            print(f"skip optional {description}: {exc}")
+            return
+        raise EditError(f"{description} failed: {exc}") from exc
+    command = [
+        binary,
+        format_text(str(edit.get("input", "input.scs")), params),
+        format_text(str(edit.get("output", "input_main.scs")), params),
+        include_path,
+        format_text(str(edit.get("subckts", include_path)), params),
+    ]
+    run_command_args(target_dir, command, optional, description)
 
 
 def apply_patch_edit(target_dir: Path, edit: dict, params: dict[str, object]) -> None:
@@ -258,6 +285,9 @@ def apply_edit(target_dir: Path, edit: dict, params: dict[str, object], config_d
     op = edit["op"]
     if op == "run":
         run_command(target_dir, edit, params)
+        return
+    if op == "extract_subckts":
+        apply_extract_subckts(target_dir, edit, params)
         return
     if op == "copy_file":
         apply_copy(target_dir, edit, params, config_dir)

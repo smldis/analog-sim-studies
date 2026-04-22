@@ -1,6 +1,3 @@
-from sidecar_edits import tool_path
-
-
 BASE_DIR = "base"
 
 COPY_IGNORE = [
@@ -14,21 +11,14 @@ DEFAULTS = {
 
 PARAMS_FILE = "params.json"
 
-PRE_EDITS = [
-    {
-        "op": "run",
-        "description": "extract subcircuits before applying main-file edits",
-        "command": [
-            str(tool_path("extract_subckts")),
-            "input.scs",
-            "input_main.scs",
-            "subckts.inc",
-            "subckts.inc",
-        ],
-    },
-]
-
 EDITS = [
+    {
+        "op": "extract_subckts",
+        "description": "split reusable subcircuits from main netlist",
+        "input": "input.scs",
+        "output": "input_main.scs",
+        "include": "subckts.inc",
+    },
     {
         "op": "copy_file",
         "path": "assets/model_override.scs",

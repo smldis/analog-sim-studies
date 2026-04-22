@@ -6,7 +6,7 @@ PARAMS = {
     "netlist_path": "/work/netlists/rc_filter_corner_tt.scs",
 }
 
-# Other supported operations: run, regex_replace, patch, apply_patch.
+# Other supported operations: run, extract_subckts, regex_replace, patch, apply_patch.
 
 EDITS = [
     {

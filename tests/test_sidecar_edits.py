@@ -18,6 +18,7 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from sidecar_edits.render import (  # noqa: E402
     EditError,
+    apply_extract_subckts,
     apply_patch_edit,
     apply_regex_replace,
     apply_replace,
@@ -164,6 +165,28 @@ def test_apply_patch_can_be_optional_when_binary_is_missing(
 
     assert "skip optional optional proof file edit" in capsys.readouterr().out
     assert not (tmp_path / "out.txt").exists()
+
+
+def test_extract_subckts_missing_packaged_tool_fails_as_edit_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import sidecar_edits.render as render
+
+    def missing_tool(name: str) -> Path:
+        raise RuntimeError(f"packaged tool is not built: {name}")
+
+    monkeypatch.setattr(render, "tool_path", missing_tool)
+
+    with pytest.raises(EditError, match="extract reusable subcircuits failed"):
+        apply_extract_subckts(
+            tmp_path,
+            {
+                "op": "extract_subckts",
+                "description": "extract reusable subcircuits",
+            },
+            {},
+        )
 
 
 def test_replace_failure_uses_edit_description(tmp_path: Path) -> None:

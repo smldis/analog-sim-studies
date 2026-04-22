@@ -1,4 +1,4 @@
-# Analog Sim Studies Manifesto
+# Analog Sim Studies
 
 The design note for this package lives in [design/manifesto.md](design/manifesto.md).
 
@@ -22,8 +22,8 @@ Clone the repository, activate any virtual environment you want to use, then
 install the package:
 
 ```bash
-git clone git@github.com:smldis/analog-sim-studies-manifesto.git
-cd analog-sim-studies-manifesto
+git clone git@github.com:smldis/analog-sim-studies.git
+cd analog-sim-studies
 python3 -m venv ../eda-venv
 . ../eda-venv/bin/activate
 python -m pip install --upgrade pip setuptools wheel

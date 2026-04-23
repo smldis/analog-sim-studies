@@ -1,0 +1,4 @@
+simulator lang=spectre
+include "/seed/netlists/amp.scs"
+parameters corner=seed vdd=seed temp=seed
+save V(out)

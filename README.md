@@ -7,6 +7,7 @@ The design note for this package lives in [design/manifesto.md](design/manifesto
 - `src/sidecar_edits/` contains the package implementation
 - `examples/basic/` contains a small runnable sidecar-edit example
 - `examples/apply_patch/` contains the fuller example with `apply_patch`
+- `examples/param_matrix/` contains a named parameter-set plus matrix example
 - `tests/` contains the pytest coverage for the current behavior
 - `design/` contains the project note and high-level intent
 
@@ -69,6 +70,23 @@ sidecar-render \
 
 Because this example defines one named parameter set, it renders
 `/tmp/sidecar_apply_patch_run_tt_1v2` by default.
+
+The parameter-set and matrix example renders all named process corners and all
+explicit voltage/temperature combinations:
+
+```bash
+sidecar-render \
+  examples/param_matrix/edits.py \
+  /tmp/sidecar_matrix_run
+```
+
+That creates paths such as:
+
+```text
+/tmp/sidecar_matrix_run_tt/vdd_0p90_temp_c_m40/
+/tmp/sidecar_matrix_run_tt/vdd_1p20_temp_c_125/
+/tmp/custom_ss_sweep/vdd_0p90_temp_c_m40/
+```
 
 The `apply_patch` operation uses the installed `apply_patch` executable from
 `PATH` by default. If it is missing, the renderer raises a package-level

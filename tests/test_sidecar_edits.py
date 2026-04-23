@@ -13,6 +13,8 @@ BASIC_EXAMPLE_DIR = REPO_ROOT / "examples" / "basic"
 BASIC_EDITS = BASIC_EXAMPLE_DIR / "edits.py"
 APPLY_PATCH_EXAMPLE_DIR = REPO_ROOT / "examples" / "apply_patch"
 APPLY_PATCH_EDITS = APPLY_PATCH_EXAMPLE_DIR / "edits.py"
+PARAM_MATRIX_EXAMPLE_DIR = REPO_ROOT / "examples" / "param_matrix"
+PARAM_MATRIX_EDITS = PARAM_MATRIX_EXAMPLE_DIR / "edits.py"
 
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
@@ -183,6 +185,37 @@ def test_apply_patch_example_uses_installed_apply_patch_binary(tmp_path: Path) -
     )
     assert not (output_dir / "psf").exists()
     assert not (output_dir / "scratch.tmp").exists()
+
+
+def test_param_matrix_example_renders_named_matrix_dirs(tmp_path: Path) -> None:
+    output_base = tmp_path / "matrix_run"
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(REPO_ROOT / "src")
+
+    subprocess.run(
+        [sys.executable, "-m", "sidecar_edits.render", str(PARAM_MATRIX_EDITS), str(output_base)],
+        cwd=REPO_ROOT,
+        env=env,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    tt_run = tmp_path / "matrix_run_tt" / "vdd_0p90_temp_c_m40" / "input.scs"
+    ss_run = tmp_path / "custom_ss_sweep" / "vdd_1p20_temp_c_125" / "input.scs"
+
+    assert tt_run.read_text(encoding="utf-8") == (
+        "simulator lang=spectre\n"
+        'include "/work/netlists/amp_tt.scs"\n'
+        "parameters corner=tt vdd=0.90 temp=-40\n"
+        "save V(out)\n"
+    )
+    assert ss_run.read_text(encoding="utf-8") == (
+        "simulator lang=spectre\n"
+        'include "/work/netlists/amp_ss.scs"\n'
+        "parameters corner=ss vdd=1.20 temp=125\n"
+        "save V(out)\n"
+    )
 
 
 def test_apply_patch_missing_binary_fails_in_renderer(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

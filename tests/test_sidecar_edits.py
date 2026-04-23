@@ -443,6 +443,113 @@ EDITS = []
     assert "unknown parameter set" in result.stderr
 
 
+def test_param_matrix_single_run_renders_under_output_base(tmp_path: Path) -> None:
+    base_dir = tmp_path / "base"
+    base_dir.mkdir()
+    (base_dir / "input.txt").write_text("vdd=seed\ntemp=seed\n", encoding="utf-8")
+    config = tmp_path / "edits.py"
+    config.write_text(
+        """
+BASE_DIR = "base"
+COMMON_PARAMS = {"vdd": "from_common"}
+PARAM_MATRIX = {
+    "vdd": ["0.90", "1.20"],
+    "temp_c": [27],
+}
+EDITS = [
+    {"op": "replace", "path": "input.txt", "old": "vdd=seed", "new": "vdd={vdd}"},
+    {"op": "replace", "path": "input.txt", "old": "temp=seed", "new": "temp={temp_c}"},
+]
+""",
+        encoding="utf-8",
+    )
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(REPO_ROOT / "src")
+
+    subprocess.run(
+        [sys.executable, "-m", "sidecar_edits.render", str(config), str(tmp_path / "run")],
+        cwd=REPO_ROOT,
+        env=env,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert (tmp_path / "run" / "vdd_0p90_temp_c_27" / "input.txt").read_text(encoding="utf-8") == (
+        "vdd=0.90\ntemp=27\n"
+    )
+    assert (tmp_path / "run" / "vdd_1p20_temp_c_27" / "input.txt").read_text(encoding="utf-8") == (
+        "vdd=1.20\ntemp=27\n"
+    )
+
+
+def test_param_matrix_named_sets_use_nested_dirs_and_targetdir(tmp_path: Path) -> None:
+    base_dir = tmp_path / "base"
+    base_dir.mkdir()
+    (base_dir / "input.txt").write_text("corner=seed\ntemp=seed\n", encoding="utf-8")
+    config = tmp_path / "edits.py"
+    config.write_text(
+        """
+BASE_DIR = "base"
+PARAM_SETS = [
+    {"name": "tt", "params": {"corner": "tt"}},
+    {"name": "ss", "targetdir": "custom_ss", "params": {"corner": "ss"}},
+]
+PARAM_MATRIX = {
+    "temp_c": [-40, 125],
+}
+EDITS = [
+    {"op": "replace", "path": "input.txt", "old": "corner=seed", "new": "corner={corner}"},
+    {"op": "replace", "path": "input.txt", "old": "temp=seed", "new": "temp={temp_c}"},
+]
+""",
+        encoding="utf-8",
+    )
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(REPO_ROOT / "src")
+
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "sidecar_edits.render",
+            str(config),
+            str(tmp_path / "run"),
+            "--run",
+            "ss",
+        ],
+        cwd=REPO_ROOT,
+        env=env,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert not (tmp_path / "run_tt").exists()
+    assert (tmp_path / "custom_ss" / "temp_c_m40" / "input.txt").read_text(encoding="utf-8") == (
+        "corner=ss\ntemp=-40\n"
+    )
+    assert (tmp_path / "custom_ss" / "temp_c_125" / "input.txt").read_text(encoding="utf-8") == (
+        "corner=ss\ntemp=125\n"
+    )
+
+
+def test_param_matrix_rejects_empty_axis(tmp_path: Path) -> None:
+    (tmp_path / "base").mkdir()
+    config = tmp_path / "edits.py"
+    config.write_text(
+        """
+BASE_DIR = "base"
+PARAM_MATRIX = {"vdd": []}
+EDITS = []
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(EditError, match="PARAM_MATRIX entry vdd must not be empty"):
+        load_config(config)
+
+
 def test_all_is_allowed_for_single_run_config() -> None:
     param_set = ParamSet(name=None, params={"corner": "tt"})
 

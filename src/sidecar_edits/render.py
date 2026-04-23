@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import itertools
 import json
 import os
 import re
@@ -36,10 +37,17 @@ class RenderConfig:
     copy_ignore: list[str]
     edits: list[dict]
     param_sets: list[ParamSet]
+    param_matrix: dict[str, list[object]]
 
     @property
     def config_dir(self) -> Path:
         return self.config_path.parent
+
+
+@dataclass(frozen=True)
+class MatrixCase:
+    suffix: str | None
+    params: dict[str, object]
 
 
 PARAM_SET_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -53,8 +61,9 @@ def load_config(config_path: Path) -> RenderConfig:
         raise EditError(f"{config_path} does not define EDITS")
     common_params = load_common_params(config_path, loaded)
     param_sets = load_param_sets(config_path, loaded, common_params)
+    param_matrix = load_param_matrix(config_path, loaded)
     base_dir = resolve_config_path(config_path.parent, str(loaded.get("BASE_DIR", "base")), common_params)
-    return RenderConfig(config_path, base_dir, copy_ignore, edits, param_sets)
+    return RenderConfig(config_path, base_dir, copy_ignore, edits, param_sets, param_matrix)
 
 
 def load_common_params(config_path: Path, loaded: dict[str, object]) -> dict[str, object]:
@@ -129,6 +138,23 @@ def load_param_sets(
     if not param_sets:
         raise EditError(f"{config_path} PARAM_SETS must not be empty")
     return param_sets
+
+
+def load_param_matrix(config_path: Path, loaded: dict[str, object]) -> dict[str, list[object]]:
+    raw_matrix = loaded.get("PARAM_MATRIX", {})
+    if not isinstance(raw_matrix, dict):
+        raise EditError(f"{config_path} PARAM_MATRIX must be a dict")
+
+    matrix = {}
+    for key, values in raw_matrix.items():
+        if not isinstance(key, str) or not PARAM_SET_NAME_RE.match(key):
+            raise EditError(f"{config_path} PARAM_MATRIX key must be a valid identifier: {key}")
+        if not isinstance(values, list):
+            raise EditError(f"{config_path} PARAM_MATRIX entry {key} must be a list")
+        if not values:
+            raise EditError(f"{config_path} PARAM_MATRIX entry {key} must not be empty")
+        matrix[key] = values
+    return matrix
 
 
 def format_text(value: str, params: dict[str, object]) -> str:
@@ -427,7 +453,33 @@ def select_param_sets(
     return selected
 
 
-def output_dir_for_param_set(output_base: Path, param_set: ParamSet) -> Path:
+def path_slug(value: object) -> str:
+    text = str(value).strip()
+    if text.startswith("-"):
+        text = "m" + text[1:]
+    text = text.replace(".", "p")
+    text = re.sub(r"[^A-Za-z0-9_]+", "_", text)
+    text = re.sub(r"_+", "_", text).strip("_")
+    return text or "value"
+
+
+def expand_param_matrix(param_matrix: dict[str, list[object]]) -> list[MatrixCase]:
+    if not param_matrix:
+        return [MatrixCase(suffix=None, params={})]
+
+    keys = list(param_matrix)
+    cases = []
+    for values in itertools.product(*(param_matrix[key] for key in keys)):
+        params = dict(zip(keys, values))
+        suffix = "_".join(
+            f"{path_slug(key)}_{path_slug(value)}"
+            for key, value in params.items()
+        )
+        cases.append(MatrixCase(suffix=suffix, params=params))
+    return cases
+
+
+def base_output_dir_for_param_set(output_base: Path, param_set: ParamSet) -> Path:
     if param_set.name is None:
         return output_base
     if param_set.targetdir:
@@ -438,15 +490,22 @@ def output_dir_for_param_set(output_base: Path, param_set: ParamSet) -> Path:
     return output_base.parent / f"{output_base.name}_{param_set.name}"
 
 
-def render_param_set(config: RenderConfig, param_set: ParamSet, output_dir: Path) -> None:
+def output_dir_for_job(output_base: Path, param_set: ParamSet, matrix_case: MatrixCase) -> Path:
+    base_dir = base_output_dir_for_param_set(output_base, param_set)
+    if matrix_case.suffix is None:
+        return base_dir
+    return base_dir / matrix_case.suffix
+
+
+def render_job(config: RenderConfig, params: dict[str, object], output_dir: Path, label: str | None) -> None:
     if output_dir.exists():
         raise EditError(f"output directory already exists: {output_dir}")
     output_dir.parent.mkdir(parents=True, exist_ok=True)
     copy_base_tree(config.base_dir, output_dir, config.copy_ignore)
     for edit in config.edits:
-        apply_edit(output_dir, edit, param_set.params, config.config_dir)
-    if param_set.name:
-        print(f"rendered {param_set.name}: {output_dir}")
+        apply_edit(output_dir, edit, params, config.config_dir)
+    if label:
+        print(f"rendered {label}: {output_dir}")
     else:
         print(f"rendered {output_dir}")
 
@@ -474,8 +533,13 @@ def main() -> int:
         args = parse_args()
         config = load_config(args.config)
         output_base = Path(os.path.expandvars(str(args.output))).resolve()
+        matrix_cases = expand_param_matrix(config.param_matrix)
         for param_set in select_param_sets(config.param_sets, args.run_names, args.all):
-            render_param_set(config, param_set, output_dir_for_param_set(output_base, param_set))
+            for matrix_case in matrix_cases:
+                params = param_set.params | matrix_case.params
+                output_dir = output_dir_for_job(output_base, param_set, matrix_case)
+                label_parts = [part for part in [param_set.name, matrix_case.suffix] if part]
+                render_job(config, params, output_dir, "_".join(label_parts) or None)
         return 0
     except EditError as exc:
         print(f"error: {exc}", file=sys.stderr)

@@ -113,6 +113,31 @@ PARAM_SETS = [
 ]
 ```
 
+To render every combination of a few explicit axes, add `PARAM_MATRIX`.
+`PARAM_MATRIX` is applied after each selected parameter set, so matrix values
+override common or set-specific values with the same key. Matrix combinations are
+rendered one level deeper:
+
+```python
+PARAM_MATRIX = {
+    "vdd": ["0.90", "1.20"],
+    "temp_c": [27, 125],
+}
+```
+
+For `sidecar-render edits.py /tmp/run --run tt_1v2`, the output layout is:
+
+```text
+/tmp/run_tt_1v2/vdd_0p90_temp_c_27/
+/tmp/run_tt_1v2/vdd_0p90_temp_c_125/
+/tmp/run_tt_1v2/vdd_1p20_temp_c_27/
+/tmp/run_tt_1v2/vdd_1p20_temp_c_125/
+```
+
+If the selected parameter set has `targetdir`, that directory replaces
+`/tmp/run_tt_1v2` as the parent directory. The matrix syntax intentionally only
+accepts lists; generate sweep lists directly in Python if needed.
+
 Path-like fields expand environment variables such as `$PDK_ROOT` and
 `${RUN_ROOT}`. This applies to `BASE_DIR`, `COMMON_PARAMS_FILE`, per-group
 `params_file`, the CLI output path, `targetdir`, edit target paths, `copy_file`

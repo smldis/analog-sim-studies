@@ -2,6 +2,8 @@
 
 ## Named Parameter Sets
 
+Status: Done.
+
 The prototype supports multiple named parameter configurations in one `edits.py`,
 then lets the CLI select one or more runs to prepare.
 
@@ -71,17 +73,17 @@ Default output layout:
 The command renders all named groups by default. `--all` is accepted mostly for
 readability; `--run` selects one or more groups before matrix expansion.
 
-Design notes:
+Implementation notes:
 
-- Keep `edits.py` as the study definition.
-- Let the CLI select which named parameter sets to render.
-- Keep single-run examples simple by using only `COMMON_PARAMS`.
-- For named parameter sets, treat the output argument as a base output path.
-- Merge `COMMON_PARAMS | PARAM_SETS[i]["params"]` per run.
-- Apply `PARAM_MATRIX` after parameter-set selection and render matrix cases one level deeper.
-- Keep matrix values as explicit lists; users can generate those lists in Python if they want sweep syntax.
-- Avoid putting loops or orchestration logic inside `edits.py` for now.
-- Keep tests around selected runs, all runs by default, explicit target directories, and unknown run names.
+- Done: `edits.py` remains the study definition.
+- Done: the CLI selects named parameter sets with `--run`; no selection renders all named sets.
+- Done: single-run examples use `COMMON_PARAMS` without requiring `PARAM_SETS`.
+- Done: named parameter sets treat the output argument as a base output path.
+- Done: per-run parameters merge as `COMMON_PARAMS | PARAM_SETS[i]["params"]`.
+- Done: `PARAM_MATRIX` applies after parameter-set selection and renders matrix cases one level deeper.
+- Done: matrix values are explicit lists only; users can generate those lists in Python if they want sweep syntax.
+- Done: tests cover selected runs, all runs by default, explicit target directories, matrix expansion, and unknown run names.
+- Open: avoid putting loops or orchestration logic inside `edits.py` until a concrete use case requires it.
 
 This adds multi-run preparation without turning the prototype into a full
 scheduler or dependency graph yet.

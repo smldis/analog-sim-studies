@@ -19,6 +19,7 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 import sidecar_edits  # noqa: E402
 from sidecar_edits.render import (  # noqa: E402
     EditError,
+    ParamSet,
     apply_copy,
     apply_edit,
     apply_extract_subckts,
@@ -28,6 +29,7 @@ from sidecar_edits.render import (  # noqa: E402
     copy_base_tree,
     load_config,
     run_command,
+    select_param_sets,
 )
 
 
@@ -144,7 +146,8 @@ Path("APPLY_PATCH_PROOF.txt").write_text("run_label=tt_1v2_27c\\n", encoding="ut
 
 def test_apply_patch_example_uses_installed_apply_patch_binary(tmp_path: Path) -> None:
     build_lib = build_package(tmp_path)
-    output_dir = tmp_path / "apply_patch_run"
+    output_base = tmp_path / "apply_patch_run"
+    output_dir = tmp_path / "apply_patch_run_tt_1v2"
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     write_fake_apply_patch(bin_dir)
@@ -154,7 +157,7 @@ def test_apply_patch_example_uses_installed_apply_patch_binary(tmp_path: Path) -
     env["PATH"] = f"{bin_dir}{os.pathsep}{env.get('PATH', '')}"
 
     subprocess.run(
-        [sys.executable, "-m", "sidecar_edits.render", str(APPLY_PATCH_EDITS), str(output_dir)],
+        [sys.executable, "-m", "sidecar_edits.render", str(APPLY_PATCH_EDITS), str(output_base)],
         cwd=REPO_ROOT,
         env=env,
         check=True,
@@ -269,16 +272,15 @@ def test_config_can_load_params_from_file(tmp_path: Path) -> None:
     config.write_text(
         """
 BASE_DIR = "base"
-DEFAULTS = {"simulator_cmd": "spectre"}
-PARAMS_FILE = "params.json"
+COMMON_PARAMS_FILE = "params.json"
 EDITS = []
 """,
         encoding="utf-8",
     )
 
-    _, _, _, params = load_config(config)
+    render_config = load_config(config)
+    params = render_config.param_sets[0].params
 
-    assert params["simulator_cmd"] == "spectre"
     assert params["run_label"] == "file"
 
 
@@ -294,15 +296,16 @@ def test_config_expands_env_vars_in_base_dir_and_params_file(
     config.write_text(
         """
 BASE_DIR = "$SIDECAR_TEST_ROOT/base"
-PARAMS_FILE = "$SIDECAR_TEST_ROOT/params.json"
+COMMON_PARAMS_FILE = "$SIDECAR_TEST_ROOT/params.json"
 EDITS = []
 """,
         encoding="utf-8",
     )
 
-    base_dir, _, _, params = load_config(config)
+    render_config = load_config(config)
+    params = render_config.param_sets[0].params
 
-    assert base_dir == env_root / "base"
+    assert render_config.base_dir == env_root / "base"
     assert params["run_label"] == "env-file"
 
 
@@ -312,16 +315,138 @@ def test_config_can_define_params_inline(tmp_path: Path) -> None:
     config.write_text(
         """
 BASE_DIR = "base"
-DEFAULTS = {"simulator_cmd": "spectre"}
-PARAMS = {"simulator_cmd": "aps", "run_label": "inline"}
+COMMON_PARAMS = {"simulator_cmd": "aps", "run_label": "inline"}
 EDITS = []
 """,
         encoding="utf-8",
     )
 
-    _, _, _, params = load_config(config)
+    params = load_config(config).param_sets[0].params
 
     assert params == {"simulator_cmd": "aps", "run_label": "inline"}
+
+
+def test_named_param_sets_render_all_by_default(tmp_path: Path) -> None:
+    base_dir = tmp_path / "base"
+    base_dir.mkdir()
+    (base_dir / "input.txt").write_text("corner=seed\nvdd=seed\n", encoding="utf-8")
+    (tmp_path / "ss.json").write_text('{"corner": "ss", "vdd": "0.90"}\n', encoding="utf-8")
+    config = tmp_path / "edits.py"
+    config.write_text(
+        """
+BASE_DIR = "base"
+COMMON_PARAMS = {"vdd": "1.20"}
+PARAM_SETS = [
+    {"name": "tt", "description": "typical", "params": {"corner": "tt"}},
+    {"name": "ss", "targetdir": "custom_ss", "params_file": "ss.json"},
+]
+EDITS = [
+    {"op": "replace", "path": "input.txt", "old": "corner=seed", "new": "corner={corner}"},
+    {"op": "replace", "path": "input.txt", "old": "vdd=seed", "new": "vdd={vdd}"},
+]
+""",
+        encoding="utf-8",
+    )
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(REPO_ROOT / "src")
+
+    subprocess.run(
+        [sys.executable, "-m", "sidecar_edits.render", str(config), str(tmp_path / "run")],
+        cwd=REPO_ROOT,
+        env=env,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert (tmp_path / "run_tt" / "input.txt").read_text(encoding="utf-8") == "corner=tt\nvdd=1.20\n"
+    assert (tmp_path / "custom_ss" / "input.txt").read_text(encoding="utf-8") == "corner=ss\nvdd=0.90\n"
+
+
+def test_named_param_sets_run_filter(tmp_path: Path) -> None:
+    base_dir = tmp_path / "base"
+    base_dir.mkdir()
+    (base_dir / "input.txt").write_text("corner=seed\n", encoding="utf-8")
+    config = tmp_path / "edits.py"
+    config.write_text(
+        """
+BASE_DIR = "base"
+PARAM_SETS = [
+    {"name": "tt", "params": {"corner": "tt"}},
+    {"name": "ff", "params": {"corner": "ff"}},
+]
+EDITS = [
+    {"op": "replace", "path": "input.txt", "old": "corner=seed", "new": "corner={corner}"},
+]
+""",
+        encoding="utf-8",
+    )
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(REPO_ROOT / "src")
+
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "sidecar_edits.render",
+            str(config),
+            str(tmp_path / "run"),
+            "--run",
+            "ff",
+        ],
+        cwd=REPO_ROOT,
+        env=env,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert not (tmp_path / "run_tt").exists()
+    assert (tmp_path / "run_ff" / "input.txt").read_text(encoding="utf-8") == "corner=ff\n"
+
+
+def test_named_param_sets_unknown_run_fails(tmp_path: Path) -> None:
+    base_dir = tmp_path / "base"
+    base_dir.mkdir()
+    (base_dir / "input.txt").write_text("corner=seed\n", encoding="utf-8")
+    config = tmp_path / "edits.py"
+    config.write_text(
+        """
+BASE_DIR = "base"
+PARAM_SETS = [
+    {"name": "tt", "params": {"corner": "tt"}},
+]
+EDITS = []
+""",
+        encoding="utf-8",
+    )
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(REPO_ROOT / "src")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "sidecar_edits.render",
+            str(config),
+            str(tmp_path / "run"),
+            "--run",
+            "missing",
+        ],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "unknown parameter set" in result.stderr
+
+
+def test_all_is_allowed_for_single_run_config() -> None:
+    param_set = ParamSet(name=None, params={"corner": "tt"})
+
+    assert select_param_sets([param_set], run_names=None, all_runs=True) == [param_set]
 
 
 def test_copy_file_expands_env_vars_in_paths(
@@ -443,14 +568,14 @@ def test_config_rejects_ambiguous_param_sources(tmp_path: Path) -> None:
     config.write_text(
         """
 BASE_DIR = "base"
-PARAMS = {"run_label": "inline"}
-PARAMS_FILE = "params.json"
+COMMON_PARAMS = {"run_label": "inline"}
+COMMON_PARAMS_FILE = "params.json"
 EDITS = []
 """,
         encoding="utf-8",
     )
 
-    with pytest.raises(EditError, match="defines both PARAMS and PARAMS_FILE"):
+    with pytest.raises(EditError, match="defines both COMMON_PARAMS and COMMON_PARAMS_FILE"):
         load_config(config)
 
 

@@ -1,8 +1,6 @@
 BASE_DIR = "base"
 
-DEFAULTS = {}
-
-PARAMS = {
+COMMON_PARAMS = {
     "netlist_path": "/work/netlists/rc_filter_corner_tt.scs",
 }
 

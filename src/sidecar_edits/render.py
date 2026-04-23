@@ -10,6 +10,8 @@ import re
 import runpy
 import shutil
 import subprocess
+import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 from sidecar_edits import tool_path
@@ -19,35 +21,114 @@ class EditError(RuntimeError):
     pass
 
 
-def load_config(config_path: Path) -> tuple[Path, list[str], list[dict], dict[str, object]]:
+@dataclass(frozen=True)
+class ParamSet:
+    name: str | None
+    params: dict[str, object]
+    description: str | None = None
+    targetdir: str | None = None
+
+
+@dataclass(frozen=True)
+class RenderConfig:
+    config_path: Path
+    base_dir: Path
+    copy_ignore: list[str]
+    edits: list[dict]
+    param_sets: list[ParamSet]
+
+    @property
+    def config_dir(self) -> Path:
+        return self.config_path.parent
+
+
+PARAM_SET_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def load_config(config_path: Path) -> RenderConfig:
     loaded = runpy.run_path(str(config_path))
     copy_ignore = loaded.get("COPY_IGNORE", [])
     edits = loaded.get("EDITS")
-    params = load_params(config_path, loaded)
     if edits is None:
         raise EditError(f"{config_path} does not define EDITS")
-    base_dir = resolve_config_path(config_path.parent, str(loaded.get("BASE_DIR", "base")), params)
-    return base_dir, copy_ignore, edits, params
+    common_params = load_common_params(config_path, loaded)
+    param_sets = load_param_sets(config_path, loaded, common_params)
+    base_dir = resolve_config_path(config_path.parent, str(loaded.get("BASE_DIR", "base")), common_params)
+    return RenderConfig(config_path, base_dir, copy_ignore, edits, param_sets)
 
 
-def load_params(config_path: Path, loaded: dict[str, object]) -> dict[str, object]:
-    defaults = loaded.get("DEFAULTS", {})
-    inline_params = loaded.get("PARAMS")
-    params_file = loaded.get("PARAMS_FILE")
+def load_common_params(config_path: Path, loaded: dict[str, object]) -> dict[str, object]:
+    inline_params = loaded.get("COMMON_PARAMS")
+    params_file = loaded.get("COMMON_PARAMS_FILE")
     if inline_params is not None and params_file is not None:
-        raise EditError(f"{config_path} defines both PARAMS and PARAMS_FILE")
+        raise EditError(f"{config_path} defines both COMMON_PARAMS and COMMON_PARAMS_FILE")
     if inline_params is not None:
         params = inline_params
     elif params_file is not None:
-        params_path = resolve_config_path(config_path.parent, str(params_file), defaults)
+        params_path = resolve_config_path(config_path.parent, str(params_file), {})
         params = json.loads(params_path.read_text(encoding="utf-8"))
     else:
         params = {}
-    if not isinstance(defaults, dict):
-        raise EditError(f"{config_path} DEFAULTS must be a dict")
     if not isinstance(params, dict):
-        raise EditError(f"{config_path} parameters must be a dict")
-    return defaults | params
+        raise EditError(f"{config_path} COMMON_PARAMS must be a dict")
+    return params
+
+
+def load_param_sets(
+    config_path: Path,
+    loaded: dict[str, object],
+    common_params: dict[str, object],
+) -> list[ParamSet]:
+    raw_param_sets = loaded.get("PARAM_SETS")
+    if raw_param_sets is None:
+        return [ParamSet(name=None, params=common_params)]
+    if not isinstance(raw_param_sets, list):
+        raise EditError(f"{config_path} PARAM_SETS must be a list")
+
+    param_sets = []
+    seen_names = set()
+    for index, raw_param_set in enumerate(raw_param_sets, start=1):
+        if not isinstance(raw_param_set, dict):
+            raise EditError(f"{config_path} PARAM_SETS entry {index} must be a dict")
+        name = raw_param_set.get("name")
+        if not isinstance(name, str) or not PARAM_SET_NAME_RE.match(name):
+            raise EditError(
+                f"{config_path} PARAM_SETS entry {index} needs a valid identifier name"
+            )
+        if name in seen_names:
+            raise EditError(f"{config_path} defines duplicate PARAM_SETS name: {name}")
+        seen_names.add(name)
+
+        inline_params = raw_param_set.get("params")
+        params_file = raw_param_set.get("params_file")
+        if inline_params is not None and params_file is not None:
+            raise EditError(f"{config_path} PARAM_SETS entry {name} defines both params and params_file")
+        if inline_params is not None:
+            params = inline_params
+        elif params_file is not None:
+            params_path = resolve_config_path(config_path.parent, str(params_file), common_params)
+            params = json.loads(params_path.read_text(encoding="utf-8"))
+        else:
+            params = {}
+        if not isinstance(params, dict):
+            raise EditError(f"{config_path} PARAM_SETS entry {name} params must be a dict")
+        description = raw_param_set.get("description")
+        if description is not None and not isinstance(description, str):
+            raise EditError(f"{config_path} PARAM_SETS entry {name} description must be a string")
+        targetdir = raw_param_set.get("targetdir")
+        if targetdir is not None and not isinstance(targetdir, str):
+            raise EditError(f"{config_path} PARAM_SETS entry {name} targetdir must be a string")
+        param_sets.append(
+            ParamSet(
+                name=name,
+                description=description,
+                targetdir=targetdir,
+                params=common_params | params,
+            )
+        )
+    if not param_sets:
+        raise EditError(f"{config_path} PARAM_SETS must not be empty")
+    return param_sets
 
 
 def format_text(value: str, params: dict[str, object]) -> str:
@@ -315,24 +396,90 @@ def apply_edit(target_dir: Path, edit: dict, params: dict[str, object], config_d
     raise EditError(f"unsupported op: {op}")
 
 
+def select_param_sets(
+    param_sets: list[ParamSet],
+    run_names: list[str] | None,
+    all_runs: bool,
+) -> list[ParamSet]:
+    named_sets = {param_set.name: param_set for param_set in param_sets if param_set.name is not None}
+    if not named_sets:
+        if run_names:
+            raise EditError("config does not define PARAM_SETS")
+        return param_sets
+
+    if run_names and all_runs:
+        raise EditError("use either --run or --all, not both")
+    if all_runs or not run_names:
+        return param_sets
+
+    selected = []
+    missing = []
+    for run_name in run_names:
+        param_set = named_sets.get(run_name)
+        if param_set is None:
+            missing.append(run_name)
+        else:
+            selected.append(param_set)
+    if missing:
+        available = ", ".join(sorted(named_sets))
+        missing_text = ", ".join(missing)
+        raise EditError(f"unknown parameter set(s): {missing_text}; available: {available}")
+    return selected
+
+
+def output_dir_for_param_set(output_base: Path, param_set: ParamSet) -> Path:
+    if param_set.name is None:
+        return output_base
+    if param_set.targetdir:
+        target = Path(format_path_text(param_set.targetdir, param_set.params))
+        if target.is_absolute():
+            return target
+        return (output_base.parent / target).resolve()
+    return output_base.parent / f"{output_base.name}_{param_set.name}"
+
+
+def render_param_set(config: RenderConfig, param_set: ParamSet, output_dir: Path) -> None:
+    if output_dir.exists():
+        raise EditError(f"output directory already exists: {output_dir}")
+    output_dir.parent.mkdir(parents=True, exist_ok=True)
+    copy_base_tree(config.base_dir, output_dir, config.copy_ignore)
+    for edit in config.edits:
+        apply_edit(output_dir, edit, param_set.params, config.config_dir)
+    if param_set.name:
+        print(f"rendered {param_set.name}: {output_dir}")
+    else:
+        print(f"rendered {output_dir}")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Render a run directory from a base tree and sidecar edits.")
     parser.add_argument("config", type=Path, help="Path to edits.py")
     parser.add_argument("output", type=Path, help="Output run directory")
+    parser.add_argument(
+        "--run",
+        action="append",
+        dest="run_names",
+        help="Named PARAM_SETS entry to render. Repeat to render multiple groups.",
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Render all named PARAM_SETS entries. This is already the default for named configs.",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
-    args = parse_args()
-    base_dir, copy_ignore, edits, params = load_config(args.config)
-    output_dir = Path(os.path.expandvars(str(args.output))).resolve()
-    if output_dir.exists():
-        raise EditError(f"output directory already exists: {output_dir}")
-    copy_base_tree(base_dir, output_dir, copy_ignore)
-    for edit in edits:
-        apply_edit(output_dir, edit, params, args.config.resolve().parent)
-    print(f"rendered {output_dir}")
-    return 0
+    try:
+        args = parse_args()
+        config = load_config(args.config)
+        output_base = Path(os.path.expandvars(str(args.output))).resolve()
+        for param_set in select_param_sets(config.param_sets, args.run_names, args.all):
+            render_param_set(config, param_set, output_dir_for_param_set(output_base, param_set))
+        return 0
+    except EditError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

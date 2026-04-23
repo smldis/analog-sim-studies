@@ -5,11 +5,17 @@ COPY_IGNORE = [
     "*.tmp",
 ]
 
-DEFAULTS = {
+COMMON_PARAMS = {
     "simulator_cmd": "spectre",
 }
 
-PARAMS_FILE = "params.json"
+PARAM_SETS = [
+    {
+        "name": "tt_1v2",
+        "description": "typical corner at 1.2 V",
+        "params_file": "params.json",
+    },
+]
 
 EDITS = [
     {

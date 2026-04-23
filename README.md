@@ -67,6 +67,9 @@ sidecar-render \
   /tmp/sidecar_apply_patch_run
 ```
 
+Because this example defines one named parameter set, it renders
+`/tmp/sidecar_apply_patch_run_tt_1v2` by default.
+
 The `apply_patch` operation uses the installed `apply_patch` executable from
 `PATH` by default. If it is missing, the renderer raises a package-level
 `EditError` with an installation/configuration hint; the example does not call
@@ -77,21 +80,45 @@ the intended edit, for example `add run label to notes`, not the command or tool
 used to perform it. Required edits fail by default; set `optional: True` only
 when a skipped edit is acceptable.
 
-Parameters are selected inside `edits.py`, not on the command line. Use
-`PARAMS_FILE = "params.json"` to load a JSON file next to the edit spec, or use
-inline Python values:
+Parameters are defined inside `edits.py`, not assembled on the command line. For
+a single run, use inline common parameters:
 
 ```python
-PARAMS = {
+COMMON_PARAMS = {
     "netlist_path": "/work/netlists/rc_filter_corner_tt.scs",
 }
 ```
 
+For multiple configurations, add `PARAM_SETS`. Rendering all named groups is the
+default; use `--run <name>` one or more times to render a subset. By default,
+`sidecar-render edits.py /tmp/run` writes named groups next to the requested path
+as `/tmp/run_<name>`. A group can override that with `targetdir`.
+
+```python
+COMMON_PARAMS = {
+    "simulator_cmd": "spectre",
+}
+
+PARAM_SETS = [
+    {
+        "name": "tt_1v2",
+        "description": "typical corner at 1.2 V",
+        "params_file": "params.json",
+    },
+    {
+        "name": "ss_0v9",
+        "targetdir": "custom_ss_run",
+        "params": {"netlist_path": "/work/netlists/rc_filter_ss.scs", "vdd": "0.90"},
+    },
+]
+```
+
 Path-like fields expand environment variables such as `$PDK_ROOT` and
-`${RUN_ROOT}`. This applies to `BASE_DIR`, `PARAMS_FILE`, the CLI output path,
-edit target paths, `copy_file` source/destination paths, `extract_subckts` file
-fields, and command arguments. Replacement text is left as normal text, so
-simulator-side environment variables can still be preserved intentionally.
+`${RUN_ROOT}`. This applies to `BASE_DIR`, `COMMON_PARAMS_FILE`, per-group
+`params_file`, the CLI output path, `targetdir`, edit target paths, `copy_file`
+source/destination paths, `extract_subckts` file fields, and command arguments.
+Replacement text is left as normal text, so simulator-side environment variables
+can still be preserved intentionally.
 
 Run the tests:
 

@@ -276,6 +276,9 @@ def test_extract_subckts_missing_packaged_tool_fails_as_edit_error(
             {
                 "op": "extract_subckts",
                 "description": "extract reusable subcircuits",
+                "input": "input.scs",
+                "output_main": "input_main.scs",
+                "output_subckts": "subckts.inc",
             },
             {},
         )
@@ -639,6 +642,28 @@ def test_edit_target_path_expands_env_vars(
     assert (target_dir / "input_main.scs").read_text(encoding="utf-8") == 'include "new.scs"\n'
 
 
+def test_extract_subckts_requires_output_paths_before_loading_tool(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import sidecar_edits.render as render
+
+    def fail_tool_path(name: str) -> Path:
+        raise AssertionError("tool_path should not be called when required fields are missing")
+
+    monkeypatch.setattr(render, "tool_path", fail_tool_path)
+
+    with pytest.raises(EditError, match=r"missing required field\(s\): output_main, output_subckts"):
+        apply_extract_subckts(
+            tmp_path,
+            {
+                "op": "extract_subckts",
+                "input": "input.scs",
+            },
+            {},
+        )
+
+
 def test_extract_subckts_expands_env_vars_in_file_fields(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -654,15 +679,51 @@ def test_extract_subckts_expands_env_vars_in_file_fields(
     monkeypatch.setattr(render, "run_command_args", fake_run_command_args)
     monkeypatch.setenv("INPUT_NETLIST", "input.scs")
     monkeypatch.setenv("MAIN_NETLIST", "main.scs")
-    monkeypatch.setenv("SIDE_INCLUDE", "generated/subckts.inc")
+    monkeypatch.setenv("SUBCKT_OUTPUT", "generated/subckts.inc")
+    monkeypatch.setenv("SIDE_INCLUDE", "../generated/subckts.inc")
 
     apply_extract_subckts(
         tmp_path,
         {
             "op": "extract_subckts",
             "input": "$INPUT_NETLIST",
-            "output": "$MAIN_NETLIST",
+            "output_main": "$MAIN_NETLIST",
+            "output_subckts": "$SUBCKT_OUTPUT",
             "include": "$SIDE_INCLUDE",
+        },
+        {},
+    )
+
+    assert captured["command"] == [
+        "/tools/extract_subckts",
+        "input.scs",
+        "main.scs",
+        "generated/subckts.inc",
+        "../generated/subckts.inc",
+    ]
+
+
+def test_extract_subckts_defaults_include_to_output_subckts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import sidecar_edits.render as render
+
+    captured = {}
+
+    def fake_run_command_args(target_dir: Path, command: list[str], optional: bool, description: str) -> None:
+        captured["command"] = command
+
+    monkeypatch.setattr(render, "tool_path", lambda name: Path(f"/tools/{name}"))
+    monkeypatch.setattr(render, "run_command_args", fake_run_command_args)
+
+    apply_extract_subckts(
+        tmp_path,
+        {
+            "op": "extract_subckts",
+            "input": "input.scs",
+            "output_main": "main.scs",
+            "output_subckts": "generated/subckts.inc",
         },
         {},
     )

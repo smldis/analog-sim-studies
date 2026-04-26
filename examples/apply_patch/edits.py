@@ -22,8 +22,8 @@ EDITS = [
         "op": "extract_subckts",
         "description": "split reusable subcircuits from main netlist",
         "input": "input.scs",
-        "output": "input_main.scs",
-        "include": "subckts.inc",
+        "output_main": "input_main.scs",
+        "output_subckts": "subckts.inc",
     },
     {
         "op": "copy_file",

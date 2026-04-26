@@ -335,7 +335,13 @@ def run_command_args(target_dir: Path, command: list[str], optional: bool, descr
 def apply_extract_subckts(target_dir: Path, edit: dict, params: dict[str, object]) -> None:
     description = edit_description(edit)
     optional = edit.get("optional", False)
-    include_path = format_path_text(str(edit.get("include", "subckts.inc")), params)
+    missing = [field for field in ("input", "output_main", "output_subckts") if field not in edit]
+    if missing:
+        fields = ", ".join(missing)
+        raise EditError(f"{description} failed: extract_subckts missing required field(s): {fields}")
+
+    output_subckts = format_path_text(str(edit["output_subckts"]), params)
+    include_path = format_path_text(str(edit.get("include", output_subckts)), params)
     try:
         binary = str(tool_path("extract_subckts"))
     except RuntimeError as exc:
@@ -345,10 +351,10 @@ def apply_extract_subckts(target_dir: Path, edit: dict, params: dict[str, object
         raise EditError(f"{description} failed: {exc}") from exc
     command = [
         binary,
-        format_path_text(str(edit.get("input", "input.scs")), params),
-        format_path_text(str(edit.get("output", "input_main.scs")), params),
+        format_path_text(str(edit["input"]), params),
+        format_path_text(str(edit["output_main"]), params),
+        output_subckts,
         include_path,
-        format_path_text(str(edit.get("subckts", include_path)), params),
     ]
     run_command_args(target_dir, command, optional, description)
 

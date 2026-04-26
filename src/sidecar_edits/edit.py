@@ -91,6 +91,22 @@ class WriteFileEdit:
 
 
 @dataclass(frozen=True)
+class AppendFileEdit:
+    op: Literal["append_file"]
+    path: str
+    content: str
+    description: str | None
+    source_stack: tuple[SourceFrame, ...]
+
+    def apply(self, context: RenderContext) -> None:
+        from sidecar_edits import render
+
+        path = render.format_path_text(self.path, context.params)
+        content = render.format_text(self.content, context.params)
+        render.apply_append_file(context.target_dir, path, content, edit_description(self))
+
+
+@dataclass(frozen=True)
 class ReplaceEdit:
     op: Literal["replace"]
     path: str
@@ -205,6 +221,7 @@ EditSpec: TypeAlias = (
     ExtractSubcktsEdit
     | CopyFileEdit
     | WriteFileEdit
+    | AppendFileEdit
     | ReplaceEdit
     | RegexReplaceEdit
     | RunEdit
@@ -260,6 +277,22 @@ def write_file(
     """Write generated text to a file in the rendered run directory."""
     return WriteFileEdit(
         op="write_file",
+        path=path,
+        content=content,
+        description=description,
+        source_stack=_capture_source_stack(),
+    )
+
+
+def append_file(
+    *,
+    path: str,
+    content: str,
+    description: str | None = None,
+) -> AppendFileEdit:
+    """Append generated text to an existing file in the rendered run directory."""
+    return AppendFileEdit(
+        op="append_file",
         path=path,
         content=content,
         description=description,
@@ -370,6 +403,7 @@ def is_edit_spec(value: object) -> bool:
             ExtractSubcktsEdit,
             CopyFileEdit,
             WriteFileEdit,
+            AppendFileEdit,
             ReplaceEdit,
             RegexReplaceEdit,
             RunEdit,

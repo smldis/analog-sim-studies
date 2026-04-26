@@ -119,6 +119,11 @@ EDITS = [
         content="Vstim in 0 PWL(0 0 1n {vdd})\n",
         description="generate PWL source include",
     ),
+    edit.append_file(
+        path="input_main.scs",
+        content='include "generated/pwl_sources.inc"\n',
+        description="append generated PWL include",
+    ),
     edit.replace(
         path="input_main.scs",
         old='include "/seed/netlists/rc_filter.scs"',

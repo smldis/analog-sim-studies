@@ -39,6 +39,11 @@ EDITS = [
         content="Vstim in 0 PWL(0 0 1n {vdd})\n",
         description="generate PWL source include",
     ),
+    edit.append_file(
+        path="input_main.scs",
+        content='include "generated/pwl_sources.inc"\n',
+        description="append generated PWL include",
+    ),
     edit.replace(
         path="input_main.scs",
         old='include "/seed/netlists/rc_filter.scs"',
@@ -75,6 +80,9 @@ Different fields have different formatting rules:
 - Replacement text, generated file content, and patch text use parameter formatting without
   environment-variable expansion.
 - Descriptions are static text and are not parameter-formatted.
+
+`edit.append_file` appends exactly the text passed in `content`; it does not add
+newlines automatically. It fails if the target file does not already exist.
 
 ## Dynamic Generation
 

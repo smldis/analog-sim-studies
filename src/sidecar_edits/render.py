@@ -520,6 +520,18 @@ def apply_write_file(target_dir: Path, path: str, content: str) -> None:
     write_text(destination, content)
 
 
+def append_text(path: Path, content: str) -> None:
+    with path.open("a", encoding="utf-8") as file:
+        file.write(content)
+
+
+def apply_append_file(target_dir: Path, path: str, content: str, description: str) -> None:
+    destination = target_dir / path
+    if not destination.is_file():
+        raise EditError(f"{description} failed: append target does not exist: {destination}")
+    append_text(destination, content)
+
+
 def apply_edit(
     target_dir: Path,
     edit: edit_api.EditSpec,

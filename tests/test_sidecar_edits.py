@@ -439,6 +439,80 @@ EDITS = [
     )
 
 
+def test_append_file_edit_appends_generated_text_with_params(tmp_path: Path) -> None:
+    base_dir = tmp_path / "base"
+    base_dir.mkdir()
+    (base_dir / "input.scs").write_text("simulator lang=spectre\n", encoding="utf-8")
+    config = tmp_path / "edits.py"
+    config.write_text(
+        """
+from sidecar_edits import edit
+
+BASE_DIR = "base"
+COMMON_PARAMS = {"include_path": "generated/pwl_sources.inc"}
+EDITS = [
+    edit.append_file(
+        path="input.scs",
+        content='include "{include_path}"\\n',
+        description="append generated PWL include",
+    ),
+]
+""",
+        encoding="utf-8",
+    )
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(REPO_ROOT / "src")
+
+    subprocess.run(
+        [sys.executable, "-m", "sidecar_edits.render", str(config), str(tmp_path / "run")],
+        cwd=REPO_ROOT,
+        env=env,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert (tmp_path / "run" / "input.scs").read_text(encoding="utf-8") == (
+        "simulator lang=spectre\n"
+        'include "generated/pwl_sources.inc"\n'
+    )
+
+
+def test_append_file_edit_fails_when_target_is_missing(tmp_path: Path) -> None:
+    base_dir = tmp_path / "base"
+    base_dir.mkdir()
+    config = tmp_path / "edits.py"
+    config.write_text(
+        """
+from sidecar_edits import edit
+
+BASE_DIR = "base"
+EDITS = [
+    edit.append_file(
+        path="missing.scs",
+        content="include generated/pwl_sources.inc\\n",
+        description="append generated PWL include",
+    ),
+]
+""",
+        encoding="utf-8",
+    )
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(REPO_ROOT / "src")
+
+    result = subprocess.run(
+        [sys.executable, "-m", "sidecar_edits.render", str(config), str(tmp_path / "run")],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 2
+    assert 'EDITS[1] append_file "append generated PWL include" failed' in result.stderr
+    assert "append target does not exist" in result.stderr
+
+
 def test_named_param_sets_run_filter(tmp_path: Path) -> None:
     base_dir = tmp_path / "base"
     base_dir.mkdir()

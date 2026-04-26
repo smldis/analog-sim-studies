@@ -2,25 +2,30 @@
 
 Status: Implemented in the prototype.
 
-The sidecar edit prototype previously described edits as raw dictionaries inside
-`edits.py`. That was compact, but it made failures harder to fix: after an edit
-failed, the renderer could usually say what operation failed, but it could not
-reliably point back to the Python call that created the edit.
+`edits.py` defines how a base simulation directory is turned into one or more
+rendered run directories. Edit operations are written as Python helper calls
+under the `sidecar_edits.edit` namespace.
 
-The prototype replaces raw edit dictionaries with traced edit helper functions.
-The goal is better user-facing errors without adding a separate configuration
-compilation step.
+The helpers return typed edit objects. Each object records the source location
+where it was created, so renderer errors can point users back to the relevant
+line in `edits.py` or in a helper module.
 
-## User Model
+## Authoring Edits
 
-Users keep writing normal Python config files. Dynamic generation remains a
-first-class use case.
+Use `from sidecar_edits import edit` and place edit objects in `EDITS`.
 
 ```python
 from sidecar_edits import edit
 
+BASE_DIR = "base"
+
+COMMON_PARAMS = {
+    "netlist_path": "/work/netlists/rc_filter_corner_tt.scs",
+}
+
 EDITS = [
     edit.extract_subckts(
+        description="split reusable subcircuits from main netlist",
         input="input.scs",
         output_main="input_main.scs",
         output_subckts="subckts.inc",
@@ -38,78 +43,42 @@ EDITS = [
 ]
 ```
 
-The `edit` namespace is intentional. It gives users autocomplete for supported
-operations and gives maintainers one obvious place for API documentation.
+The `edit` namespace is part of the user interface. It keeps supported
+operations discoverable through editor autocomplete and gives each operation a
+normal Python signature and docstring.
 
-Each edit function should be a normal typed Python function with a docstring.
-That makes documentation reachable from editors, `help(sidecar_edits.edit)`, and
-future generated docs.
+Descriptions are optional. Use them for human intent, not for restating the
+operation name. For example, `description="select corner netlist"` is more useful
+than `description="replace include line"`.
 
-## Error Reporting
+## Parameter Formatting
 
-Each helper captures a short user call stack when it creates the edit object.
-When the renderer reports a failure, it should include:
-
-- the config path
-- the `EDITS` entry index
-- the operation name
-- the optional description, when present
-- the captured source location or small call stack
-- the existing exception reason
-
-Example:
-
-```text
-error: examples/basic/edits.py: EDITS[3] replace "select corner netlist" failed
-created at examples/basic/edits.py:18
-reason: replace target not found in /tmp/run/input_main.scs
-```
-
-For wrapped or generated edits, the helper may capture more than one user frame:
-
-```text
-created at edits.py:7 in model_include
-called from edits.py:15 in <module>
-```
-
-This is not meant to be a full traceback. Two to four user frames should be
-enough to locate the edit without making errors noisy.
-
-## API Shape
-
-The public API should accept traced edit objects, not raw dictionaries and not a
-generic wrapper around dictionaries.
-
-Internally, each operation can have a small typed dataclass:
+Edit fields are templates. They are formatted for each selected parameter set and
+matrix case when the edit is applied.
 
 ```python
-@dataclass(frozen=True)
-class ReplaceEdit:
-    op: Literal["replace"]
-    path: str
-    old: str
-    new: str
-    description: str | None
-    allow_no_match: bool
-    source_stack: tuple[SourceFrame, ...]
+edit.replace(
+    path="input.scs",
+    old="parameters corner=seed",
+    new="parameters corner={corner}",
+)
 ```
 
-Each helper validates its required arguments through its function signature and
-returns the operation-specific edit object. Edit objects own their operation
-execution through `apply(context)`, and operation implementations should read
-typed attributes rather than a dict-like field bag.
+Different fields have different formatting rules:
 
-Optional `description` should remain optional. The source location is the stable
-locator; the description is human intent.
+- Path-like fields use parameter formatting and environment-variable expansion.
+- Replacement text and patch text use parameter formatting without
+  environment-variable expansion.
+- Descriptions are static text and are not parameter-formatted.
 
 ## Dynamic Generation
 
-The API must keep normal Python generation ergonomic:
+`edits.py` is normal Python. Users can generate edit lists directly.
 
 ```python
 EDITS = [
     edit.replace(
-        path="input.scs",
+        path=f"runs/{corner}/input.scs",
         old="corner=seed",
         new=f"corner={corner}",
     )
@@ -117,35 +86,60 @@ EDITS = [
 ]
 ```
 
-Generated edits may share the same source line. That is acceptable as long as
-the failure also reports `EDITS[index]`, operation details, target paths, and the
-underlying reason.
+Generated edits may share the same source line. Error messages still include the
+`EDITS` index, operation, description when present, target context, and reason so
+the failed generated edit can be identified.
 
-## Maintenance Guidance
+## Error Reporting
 
-Do not add AST parsing as the primary location mechanism. AST parsing is useful
-only while `edits.py` remains mostly literal. This project explicitly wants to
-keep Python generation available, so construction-time tracing is a better fit.
+When an edit fails, the renderer reports the failing entry and the source
+location captured when the edit object was created.
 
-Do not require users to name every edit. Names become another thing to maintain.
-Use the source location, `EDITS[index]`, operation name, and optional
-description.
+Example:
 
-Do not emit large tracebacks for ordinary edit failures. Preserve exception-based
-control flow internally, but format user-facing `EditError` messages around the
-failed edit.
+```text
+error: EDITS[3] replace "select corner netlist" failed
+created at edits.py:18 in <module>
+reason: replace target not found in /tmp/run/input_main.scs
+```
 
-During the prototype phase, it is acceptable to drop raw dictionary support when
-this API lands. Keeping one edit representation will make validation and error
-reporting easier to reason about.
+If an edit is created through a helper function, the renderer may show a short
+call chain:
 
-## Decisions
+```text
+error: EDITS[1] replace failed
+created at helpers/netlist.py:7 in model_include
+called from edits.py:15 in <module>
+reason: replace target not found in /tmp/run/input.scs
+```
 
-- Helper functions should validate required fields through their signatures. They
-  do not need extra unknown-field rejection beyond normal Python call behavior.
-- `source_stack` may store absolute paths internally. User-facing formatting
-  should prefer paths relative to the config file directory when the source file
-  is in the same directory tree.
-- Operation-specific error context should be selected by the renderer. Prefer
-  concrete debugging facts such as target paths, formatted old/new text, command
-  arguments, and the underlying exception reason.
+Paths under the config directory tree are displayed relative to the config
+directory. Paths outside that tree are displayed as absolute paths.
+
+This is not intended to be a full Python traceback. The renderer should show only
+the small amount of source context needed to find the edit.
+
+## Implementation Model
+
+Each edit helper returns a frozen, operation-specific edit object. For example, a
+replace operation has typed attributes such as `path`, `old`, `new`,
+`allow_no_match`, `description`, and `source_stack`.
+
+Edit objects execute through `apply(context)`. The render context provides the
+target run directory, config directory, config path, and current parameters.
+
+Operation implementations should read typed attributes from the edit object. Do
+not use generic dictionary field bags for the public edit model.
+
+## Maintainer Rules
+
+- Keep edit helpers in the `sidecar_edits.edit` namespace.
+- Give each helper a typed keyword-only signature and a concise docstring.
+- Keep `description` optional.
+- Capture source locations when edit objects are created, not when they are
+  applied.
+- Keep ordinary edit failures as `EditError` and let the renderer add the common
+  `EDITS[index]` and source-location envelope.
+- Prefer construction-time tracing over AST parsing. The config file is Python,
+  and dynamic generation is a supported workflow.
+- Do not accept raw dictionary entries in `EDITS`.

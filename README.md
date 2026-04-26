@@ -98,6 +98,34 @@ the intended edit, for example `add run label to notes`, not the command or tool
 used to perform it. Required edits fail by default; set `optional: True` only
 when a skipped edit is acceptable.
 
+Edit operations are created through the `sidecar_edits.edit` namespace:
+
+```python
+from sidecar_edits import edit
+
+EDITS = [
+    edit.extract_subckts(
+        description="split reusable subcircuits from main netlist",
+        input="input.scs",
+        output_main="input_main.scs",
+        output_subckts="subckts.inc",
+    ),
+    edit.copy_file(
+        path="assets/model_override.scs",
+        to="include/model_override.scs",
+    ),
+    edit.replace(
+        path="input_main.scs",
+        old='include "/seed/netlists/rc_filter.scs"',
+        new='include "{netlist_path}"',
+    ),
+]
+```
+
+These helpers are regular typed Python functions with docstrings, so editor
+autocomplete and `help(sidecar_edits.edit.replace)` can show the available
+arguments. Raw dictionary edit entries are not supported by the renderer.
+
 Parameters are defined inside `edits.py`, not assembled on the command line. For
 a single run, use inline common parameters:
 

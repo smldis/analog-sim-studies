@@ -19,6 +19,7 @@ PARAM_MATRIX_EDITS = PARAM_MATRIX_EXAMPLE_DIR / "edits.py"
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 import sidecar_edits  # noqa: E402
+from sidecar_edits import edit  # noqa: E402
 from sidecar_edits.render import (  # noqa: E402
     EditError,
     ParamSet,
@@ -370,6 +371,8 @@ def test_named_param_sets_render_all_by_default(tmp_path: Path) -> None:
     config = tmp_path / "edits.py"
     config.write_text(
         """
+from sidecar_edits import edit
+
 BASE_DIR = "base"
 COMMON_PARAMS = {"vdd": "1.20"}
 PARAM_SETS = [
@@ -377,8 +380,8 @@ PARAM_SETS = [
     {"name": "ss", "targetdir": "custom_ss", "params_file": "ss.json"},
 ]
 EDITS = [
-    {"op": "replace", "path": "input.txt", "old": "corner=seed", "new": "corner={corner}"},
-    {"op": "replace", "path": "input.txt", "old": "vdd=seed", "new": "vdd={vdd}"},
+    edit.replace(path="input.txt", old="corner=seed", new="corner={corner}"),
+    edit.replace(path="input.txt", old="vdd=seed", new="vdd={vdd}"),
 ]
 """,
         encoding="utf-8",
@@ -406,13 +409,15 @@ def test_named_param_sets_run_filter(tmp_path: Path) -> None:
     config = tmp_path / "edits.py"
     config.write_text(
         """
+from sidecar_edits import edit
+
 BASE_DIR = "base"
 PARAM_SETS = [
     {"name": "tt", "params": {"corner": "tt"}},
     {"name": "ff", "params": {"corner": "ff"}},
 ]
 EDITS = [
-    {"op": "replace", "path": "input.txt", "old": "corner=seed", "new": "corner={corner}"},
+    edit.replace(path="input.txt", old="corner=seed", new="corner={corner}"),
 ]
 """,
         encoding="utf-8",
@@ -486,6 +491,8 @@ def test_param_matrix_single_run_renders_under_output_base(tmp_path: Path) -> No
     config = tmp_path / "edits.py"
     config.write_text(
         """
+from sidecar_edits import edit
+
 BASE_DIR = "base"
 COMMON_PARAMS = {"vdd": "from_common"}
 PARAM_MATRIX = {
@@ -493,8 +500,8 @@ PARAM_MATRIX = {
     "temp_c": [27],
 }
 EDITS = [
-    {"op": "replace", "path": "input.txt", "old": "vdd=seed", "new": "vdd={vdd}"},
-    {"op": "replace", "path": "input.txt", "old": "temp=seed", "new": "temp={temp_c}"},
+    edit.replace(path="input.txt", old="vdd=seed", new="vdd={vdd}"),
+    edit.replace(path="input.txt", old="temp=seed", new="temp={temp_c}"),
 ]
 """,
         encoding="utf-8",
@@ -526,6 +533,8 @@ def test_param_matrix_named_sets_use_nested_dirs_and_targetdir(tmp_path: Path) -
     config = tmp_path / "edits.py"
     config.write_text(
         """
+from sidecar_edits import edit
+
 BASE_DIR = "base"
 PARAM_SETS = [
     {"name": "tt", "params": {"corner": "tt"}},
@@ -535,8 +544,8 @@ PARAM_MATRIX = {
     "temp_c": [-40, 125],
 }
 EDITS = [
-    {"op": "replace", "path": "input.txt", "old": "corner=seed", "new": "corner={corner}"},
-    {"op": "replace", "path": "input.txt", "old": "temp=seed", "new": "temp={temp_c}"},
+    edit.replace(path="input.txt", old="corner=seed", new="corner={corner}"),
+    edit.replace(path="input.txt", old="temp=seed", new="temp={temp_c}"),
 ]
 """,
         encoding="utf-8",
@@ -629,12 +638,11 @@ def test_edit_target_path_expands_env_vars(
 
     apply_edit(
         target_dir,
-        {
-            "op": "replace",
-            "path": "$TARGET_FILE",
-            "old": 'include "old.scs"',
-            "new": 'include "new.scs"',
-        },
+        edit.replace(
+            path="$TARGET_FILE",
+            old='include "old.scs"',
+            new='include "new.scs"',
+        ),
         {},
         tmp_path,
     )

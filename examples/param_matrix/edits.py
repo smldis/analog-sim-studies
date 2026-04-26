@@ -1,3 +1,6 @@
+from sidecar_edits import edit
+
+
 BASE_DIR = "base"
 
 COMMON_PARAMS = {
@@ -30,18 +33,16 @@ PARAM_MATRIX = {
 }
 
 EDITS = [
-    {
-        "op": "replace",
-        "description": "select corner netlist",
-        "path": "input.scs",
-        "old": 'include "/seed/netlists/amp.scs"',
-        "new": 'include "{netlist_path}"',
-    },
-    {
-        "op": "replace",
-        "description": "write simulation parameters",
-        "path": "input.scs",
-        "old": "parameters corner=seed vdd=seed temp=seed",
-        "new": "parameters corner={corner} vdd={vdd} temp={temp_c}",
-    },
+    edit.replace(
+        description="select corner netlist",
+        path="input.scs",
+        old='include "/seed/netlists/amp.scs"',
+        new='include "{netlist_path}"',
+    ),
+    edit.replace(
+        description="write simulation parameters",
+        path="input.scs",
+        old="parameters corner=seed vdd=seed temp=seed",
+        new="parameters corner={corner} vdd={vdd} temp={temp_c}",
+    ),
 ]

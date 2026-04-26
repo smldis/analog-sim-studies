@@ -15,7 +15,11 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from sidecar_edits import edit as edit_api
 from sidecar_edits import tool_path
+
+if __name__ == "__main__":
+    sys.modules["sidecar_edits.render"] = sys.modules[__name__]
 
 
 class EditError(RuntimeError):
@@ -35,7 +39,7 @@ class RenderConfig:
     config_path: Path
     base_dir: Path
     copy_ignore: list[str]
-    edits: list[dict]
+    edits: list[edit_api.EditSpec]
     param_sets: list[ParamSet]
     param_matrix: dict[str, list[object]]
 
@@ -50,6 +54,14 @@ class MatrixCase:
     params: dict[str, object]
 
 
+@dataclass(frozen=True)
+class RenderContext:
+    target_dir: Path
+    config_dir: Path
+    config_path: Path
+    params: dict[str, object]
+
+
 PARAM_SET_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
@@ -59,11 +71,28 @@ def load_config(config_path: Path) -> RenderConfig:
     edits = loaded.get("EDITS")
     if edits is None:
         raise EditError(f"{config_path} does not define EDITS")
+    edits = load_edits(config_path, edits)
     common_params = load_common_params(config_path, loaded)
     param_sets = load_param_sets(config_path, loaded, common_params)
     param_matrix = load_param_matrix(config_path, loaded)
     base_dir = resolve_config_path(config_path.parent, str(loaded.get("BASE_DIR", "base")), common_params)
     return RenderConfig(config_path, base_dir, copy_ignore, edits, param_sets, param_matrix)
+
+
+def load_edits(config_path: Path, raw_edits: object) -> list[edit_api.EditSpec]:
+    if not isinstance(raw_edits, list):
+        raise EditError(f"{config_path} EDITS must be a list")
+    edits = []
+    for index, raw_edit in enumerate(raw_edits, start=1):
+        if isinstance(raw_edit, dict):
+            raise EditError(
+                f"{config_path} EDITS[{index}] raw dictionary edits are not supported; "
+                "use sidecar_edits.edit helpers"
+            )
+        if not edit_api.is_edit_spec(raw_edit):
+            raise EditError(f"{config_path} EDITS[{index}] must be a sidecar_edits.edit object")
+        edits.append(raw_edit)
+    return edits
 
 
 def load_common_params(config_path: Path, loaded: dict[str, object]) -> dict[str, object]:
@@ -188,12 +217,18 @@ def resolve_config_path(base_dir: Path, value: str, params: dict[str, object]) -
     return (base_dir / path).resolve()
 
 
-def edit_description(edit: dict) -> str:
-    description = edit.get("description")
+def edit_description(edit: dict | edit_api.EditSpec) -> str:
+    if isinstance(edit, dict):
+        description = edit.get("description")
+        if description:
+            return str(description)
+        op = edit.get("op", "edit")
+        return f"{op} edit"
+
+    description = edit.description
     if description:
         return str(description)
-    op = edit.get("op", "edit")
-    return f"{op} edit"
+    return f"{edit.op} edit"
 
 
 def normalize_copy_ignore(patterns: list[str]) -> list[str]:
@@ -248,9 +283,19 @@ def apply_replace(target: Path, edit: dict, params: dict[str, object]) -> None:
     description = edit_description(edit)
     old = format_text(edit["old"], params)
     new = format_text(edit["new"], params)
+    apply_replace_text(target, old, new, edit.get("allow_no_match", False), description)
+
+
+def apply_replace_text(
+    target: Path,
+    old: str,
+    new: str,
+    allow_no_match: bool,
+    description: str,
+) -> None:
     content = read_text(target)
     if old not in content:
-        if edit.get("allow_no_match", False):
+        if allow_no_match:
             return
         raise EditError(f"{description} failed: replace target not found in {target}")
     write_text(target, content.replace(old, new))
@@ -261,10 +306,28 @@ def apply_regex_replace(target: Path, edit: dict, params: dict[str, object]) -> 
     pattern = edit["pattern"]
     repl = format_text(edit["new"], params)
     count = edit.get("count", 0)
+    apply_regex_replace_text(
+        target,
+        pattern,
+        repl,
+        count,
+        edit.get("allow_no_match", False),
+        description,
+    )
+
+
+def apply_regex_replace_text(
+    target: Path,
+    pattern: str,
+    repl: str,
+    count: int,
+    allow_no_match: bool,
+    description: str,
+) -> None:
     content = read_text(target)
     updated, replacements = re.subn(pattern, repl, content, count=count, flags=re.MULTILINE)
     if replacements == 0:
-        if edit.get("allow_no_match", False):
+        if allow_no_match:
             return
         raise EditError(f"{description} failed: regex pattern not found in {target}: {pattern}")
     write_text(target, updated)
@@ -342,6 +405,26 @@ def apply_extract_subckts(target_dir: Path, edit: dict, params: dict[str, object
 
     output_subckts = format_path_text(str(edit["output_subckts"]), params)
     include_path = format_path_text(str(edit.get("include", output_subckts)), params)
+    run_extract_subckts(
+        target_dir,
+        format_path_text(str(edit["input"]), params),
+        format_path_text(str(edit["output_main"]), params),
+        output_subckts,
+        include_path,
+        optional,
+        description,
+    )
+
+
+def run_extract_subckts(
+    target_dir: Path,
+    input_path: str,
+    output_main: str,
+    output_subckts: str,
+    include_path: str,
+    optional: bool,
+    description: str,
+) -> None:
     try:
         binary = str(tool_path("extract_subckts"))
     except RuntimeError as exc:
@@ -351,8 +434,8 @@ def apply_extract_subckts(target_dir: Path, edit: dict, params: dict[str, object
         raise EditError(f"{description} failed: {exc}") from exc
     command = [
         binary,
-        format_path_text(str(edit["input"]), params),
-        format_path_text(str(edit["output_main"]), params),
+        input_path,
+        output_main,
         output_subckts,
         include_path,
     ]
@@ -382,6 +465,29 @@ def apply_patch_edit(target_dir: Path, edit: dict, params: dict[str, object]) ->
     run_external_patch(target_dir, patch_text, command, optional, description)
 
 
+def apply_patch_text(
+    target_dir: Path,
+    patch_text: str,
+    binary: str | None,
+    command: list[str] | None,
+    optional: bool,
+    description: str,
+) -> None:
+    if command is None:
+        resolved = shutil.which(binary or "apply_patch")
+        if resolved is None:
+            message = (
+                f"apply_patch executable not found for {description}. "
+                "Install apply_patch on PATH or set the edit's binary/command."
+            )
+            if optional:
+                print(f"skip optional {description}: {message}")
+                return
+            raise EditError(message)
+        command = [resolved]
+    run_external_patch(target_dir, patch_text, command, optional, description)
+
+
 def apply_unified_patch(target_dir: Path, edit: dict, params: dict[str, object]) -> None:
     optional = edit.get("optional", False)
     patch_text = format_text(edit["patch"], params)
@@ -397,35 +503,49 @@ def apply_copy(target_dir: Path, edit: dict, params: dict[str, object], config_d
     if not source.is_file():
         raise EditError(f"{description} failed: copy source does not exist: {source}")
     dest_name = format_path_text(str(edit.get("to", source.name)), params)
+    apply_copy_file(target_dir, source, dest_name, description)
+
+
+def apply_copy_file(target_dir: Path, source: Path, dest_name: str, description: str) -> None:
+    if not source.is_file():
+        raise EditError(f"{description} failed: copy source does not exist: {source}")
     destination = target_dir / dest_name
     ensure_parent(destination)
     shutil.copy2(source, destination)
 
 
-def apply_edit(target_dir: Path, edit: dict, params: dict[str, object], config_dir: Path) -> None:
-    op = edit["op"]
-    if op == "run":
-        run_command(target_dir, edit, params)
-        return
-    if op == "extract_subckts":
-        apply_extract_subckts(target_dir, edit, params)
-        return
-    if op == "copy_file":
-        apply_copy(target_dir, edit, params, config_dir)
-        return
-    if op == "replace":
-        apply_replace(target_dir / format_path_text(str(edit["path"]), params), edit, params)
-        return
-    if op == "regex_replace":
-        apply_regex_replace(target_dir / format_path_text(str(edit["path"]), params), edit, params)
-        return
-    if op == "apply_patch":
-        apply_patch_edit(target_dir, edit, params)
-        return
-    if op == "patch":
-        apply_unified_patch(target_dir, edit, params)
-        return
-    raise EditError(f"unsupported op: {op}")
+def apply_edit(
+    target_dir: Path,
+    edit: edit_api.EditSpec,
+    params: dict[str, object],
+    config_dir: Path,
+    config_path: Path | None = None,
+) -> None:
+    if isinstance(edit, dict):
+        raise EditError("raw dictionary edits are not supported; use sidecar_edits.edit helpers")
+    if not edit_api.is_edit_spec(edit):
+        raise EditError("edit must be a sidecar_edits.edit object")
+    context = RenderContext(
+        target_dir=target_dir,
+        config_dir=config_dir,
+        config_path=config_path or config_dir / "<unknown>",
+        params=params,
+    )
+    edit.apply(context)
+
+
+def format_edit_failure(config_path: Path, index: int, edit: edit_api.EditSpec, reason: str) -> str:
+    label = f'EDITS[{index}] {edit.op}'
+    if edit.description:
+        label += f' "{edit.description}"'
+    lines = [f"{label} failed"]
+    if edit.source_stack:
+        first, *rest = edit.source_stack[:3]
+        lines.append(f"created at {first.format(config_path)}")
+        for frame in rest:
+            lines.append(f"called from {frame.format(config_path)}")
+    lines.append(f"reason: {reason}")
+    return "\n".join(lines)
 
 
 def select_param_sets(
@@ -508,8 +628,11 @@ def render_job(config: RenderConfig, params: dict[str, object], output_dir: Path
         raise EditError(f"output directory already exists: {output_dir}")
     output_dir.parent.mkdir(parents=True, exist_ok=True)
     copy_base_tree(config.base_dir, output_dir, config.copy_ignore)
-    for edit in config.edits:
-        apply_edit(output_dir, edit, params, config.config_dir)
+    for index, edit in enumerate(config.edits, start=1):
+        try:
+            apply_edit(output_dir, edit, params, config.config_dir, config.config_path)
+        except EditError as exc:
+            raise EditError(format_edit_failure(config.config_path, index, edit, str(exc))) from exc
     if label:
         print(f"rendered {label}: {output_dir}")
     else:

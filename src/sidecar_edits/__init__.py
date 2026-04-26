@@ -5,6 +5,8 @@ import subprocess
 from importlib.resources import files
 from pathlib import Path
 
+from sidecar_edits import edit as edit
+
 
 def tool_path(name: str) -> Path:
     path = Path(str(files("sidecar_edits").joinpath("bin", executable_name(name))))

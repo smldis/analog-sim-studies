@@ -514,6 +514,12 @@ def apply_copy_file(target_dir: Path, source: Path, dest_name: str, description:
     shutil.copy2(source, destination)
 
 
+def apply_write_file(target_dir: Path, path: str, content: str) -> None:
+    destination = target_dir / path
+    ensure_parent(destination)
+    write_text(destination, content)
+
+
 def apply_edit(
     target_dir: Path,
     edit: edit_api.EditSpec,

@@ -19,6 +19,7 @@ def test_edit_namespace_exposes_typed_documented_helpers() -> None:
 
     assert edit.replace.__doc__
     assert edit.extract_subckts.__doc__
+    assert edit.write_file.__doc__
     assert signature.parameters["path"].kind is inspect.Parameter.KEYWORD_ONLY
     assert signature.parameters["old"].kind is inspect.Parameter.KEYWORD_ONLY
     assert signature.parameters["new"].kind is inspect.Parameter.KEYWORD_ONLY
@@ -64,6 +65,23 @@ def test_extract_subckts_requires_named_outputs_and_defaults_include_to_output_s
 
     with pytest.raises(TypeError):
         edit.extract_subckts(input="input.scs", output="input_main.scs", subckts="subckts.inc")
+
+
+def test_write_file_helper_returns_typed_edit_object() -> None:
+    from sidecar_edits import edit
+
+    spec = edit.write_file(
+        path="generated/pwl_sources.inc",
+        content="Vstim in 0 PWL(0 0 1n {vdd})\n",
+        description="generate PWL source include",
+    )
+
+    assert spec.op == "write_file"
+    assert spec.path == "generated/pwl_sources.inc"
+    assert spec.content == "Vstim in 0 PWL(0 0 1n {vdd})\n"
+    assert spec.description == "generate PWL source include"
+    assert not hasattr(spec, "fields")
+    assert spec.source_stack[0].path == Path(__file__).resolve()
 
 
 def test_helper_signatures_reject_unknown_fields_by_normal_python_call_behavior() -> None:

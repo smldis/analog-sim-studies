@@ -402,6 +402,43 @@ EDITS = [
     assert (tmp_path / "custom_ss" / "input.txt").read_text(encoding="utf-8") == "corner=ss\nvdd=0.90\n"
 
 
+def test_write_file_edit_creates_generated_file_with_params(tmp_path: Path) -> None:
+    base_dir = tmp_path / "base"
+    base_dir.mkdir()
+    config = tmp_path / "edits.py"
+    config.write_text(
+        """
+from sidecar_edits import edit
+
+BASE_DIR = "base"
+COMMON_PARAMS = {"name": "stim1", "vdd": "1.2"}
+EDITS = [
+    edit.write_file(
+        path="generated/{name}.inc",
+        content="V{name} in 0 PWL(0 0 1n {vdd})\\n",
+        description="generate PWL source include",
+    ),
+]
+""",
+        encoding="utf-8",
+    )
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(REPO_ROOT / "src")
+
+    subprocess.run(
+        [sys.executable, "-m", "sidecar_edits.render", str(config), str(tmp_path / "run")],
+        cwd=REPO_ROOT,
+        env=env,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert (tmp_path / "run" / "generated" / "stim1.inc").read_text(encoding="utf-8") == (
+        "Vstim1 in 0 PWL(0 0 1n 1.2)\n"
+    )
+
+
 def test_named_param_sets_run_filter(tmp_path: Path) -> None:
     base_dir = tmp_path / "base"
     base_dir.mkdir()

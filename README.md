@@ -114,6 +114,11 @@ EDITS = [
         path="assets/model_override.scs",
         to="include/model_override.scs",
     ),
+    edit.write_file(
+        path="generated/pwl_sources.inc",
+        content="Vstim in 0 PWL(0 0 1n {vdd})\n",
+        description="generate PWL source include",
+    ),
     edit.replace(
         path="input_main.scs",
         old='include "/seed/netlists/rc_filter.scs"',

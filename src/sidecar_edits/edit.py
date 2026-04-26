@@ -75,6 +75,22 @@ class CopyFileEdit:
 
 
 @dataclass(frozen=True)
+class WriteFileEdit:
+    op: Literal["write_file"]
+    path: str
+    content: str
+    description: str | None
+    source_stack: tuple[SourceFrame, ...]
+
+    def apply(self, context: RenderContext) -> None:
+        from sidecar_edits import render
+
+        path = render.format_path_text(self.path, context.params)
+        content = render.format_text(self.content, context.params)
+        render.apply_write_file(context.target_dir, path, content)
+
+
+@dataclass(frozen=True)
 class ReplaceEdit:
     op: Literal["replace"]
     path: str
@@ -188,6 +204,7 @@ class ApplyPatchEdit:
 EditSpec: TypeAlias = (
     ExtractSubcktsEdit
     | CopyFileEdit
+    | WriteFileEdit
     | ReplaceEdit
     | RegexReplaceEdit
     | RunEdit
@@ -229,6 +246,22 @@ def copy_file(
         op="copy_file",
         path=path,
         to=to,
+        description=description,
+        source_stack=_capture_source_stack(),
+    )
+
+
+def write_file(
+    *,
+    path: str,
+    content: str,
+    description: str | None = None,
+) -> WriteFileEdit:
+    """Write generated text to a file in the rendered run directory."""
+    return WriteFileEdit(
+        op="write_file",
+        path=path,
+        content=content,
         description=description,
         source_stack=_capture_source_stack(),
     )
@@ -336,6 +369,7 @@ def is_edit_spec(value: object) -> bool:
         (
             ExtractSubcktsEdit,
             CopyFileEdit,
+            WriteFileEdit,
             ReplaceEdit,
             RegexReplaceEdit,
             RunEdit,

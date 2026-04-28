@@ -62,6 +62,13 @@ class RenderContext:
     params: dict[str, object]
 
 
+@dataclass(frozen=True)
+class LogicalStatement:
+    start: int
+    end: int
+    text: str
+
+
 PARAM_SET_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
@@ -530,6 +537,129 @@ def apply_append_file(target_dir: Path, path: str, content: str, description: st
     if not destination.is_file():
         raise EditError(f"{description} failed: append target does not exist: {destination}")
     append_text(destination, content)
+
+
+def apply_insert_series_source_at_instance_net(
+    target: Path,
+    instance: str,
+    net: str,
+    internal_net: str,
+    source_line: str,
+    description: str,
+) -> None:
+    content = read_text(target)
+    updated = insert_series_source_at_instance_net_text(
+        content,
+        instance,
+        net,
+        internal_net,
+        source_line,
+        target,
+        description,
+    )
+    write_text(target, updated)
+
+
+def insert_series_source_at_instance_net_text(
+    content: str,
+    instance: str,
+    net: str,
+    internal_net: str,
+    source_line: str,
+    target: Path,
+    description: str,
+) -> str:
+    matches = find_instance_statements(content, instance)
+    if not matches:
+        raise EditError(f"{description} failed: instance not found in {target}: {instance}")
+    if len(matches) > 1:
+        raise EditError(f"{description} failed: instance is ambiguous in {target}: {instance}")
+
+    statement = matches[0]
+    if any(marker in statement.text for marker in ("$", ";", "*")):
+        raise EditError(
+            f"{description} failed: comments are not supported on instance line: {instance}"
+        )
+
+    rewritten_statement = replace_unique_net_token(
+        statement.text,
+        instance,
+        net,
+        internal_net,
+        target,
+        description,
+    )
+    source = source_line if source_line.endswith("\n") else f"{source_line}\n"
+    return content[:statement.start] + source + rewritten_statement + content[statement.end:]
+
+
+def find_instance_statements(content: str, instance: str) -> list[LogicalStatement]:
+    candidates = accepted_instance_names(instance)
+    return [
+        statement
+        for statement in iter_logical_statements(content)
+        if first_token_lower(statement.text) in candidates
+    ]
+
+
+def accepted_instance_names(instance: str) -> set[str]:
+    lowered = instance.lower()
+    names = {lowered}
+    if lowered.startswith("x") and (len(lowered) == 1 or lowered[1] != "x"):
+        names.add(f"x{lowered}")
+    return names
+
+
+def iter_logical_statements(content: str) -> list[LogicalStatement]:
+    lines = content.splitlines(keepends=True)
+    statements = []
+    offset = 0
+    index = 0
+    while index < len(lines):
+        start = offset
+        parts = [lines[index]]
+        offset += len(lines[index])
+        index += 1
+        while index < len(lines) and lines[index].lstrip().startswith("+"):
+            parts.append(lines[index])
+            offset += len(lines[index])
+            index += 1
+        statements.append(LogicalStatement(start=start, end=offset, text="".join(parts)))
+    return statements
+
+
+def first_token_lower(text: str) -> str | None:
+    match = re.match(r"\s*(\S+)", text)
+    if match is None:
+        return None
+    return match.group(1).lower()
+
+
+def replace_unique_net_token(
+    text: str,
+    instance: str,
+    net: str,
+    internal_net: str,
+    target: Path,
+    description: str,
+) -> str:
+    first = re.match(r"\s*\S+", text)
+    if first is None:
+        raise EditError(f"{description} failed: malformed instance text in {target}: {instance}")
+
+    pattern = re.compile(r"(?<!\S)" + re.escape(net) + r"(?!\S)")
+    matches = [match for match in pattern.finditer(text) if match.start() >= first.end()]
+    if not matches:
+        raise EditError(
+            f"{description} failed: net not found on instance {instance} in {target}: {net}"
+        )
+    if len(matches) > 1:
+        raise EditError(
+            f"{description} failed: net appears more than once on instance {instance}: {net}"
+        )
+
+    match = matches[0]
+    return text[:match.start()] + internal_net + text[match.end():]
 
 
 def apply_edit(

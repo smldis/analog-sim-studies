@@ -170,7 +170,7 @@ def test_doubled_x_instance_convention_is_accepted(tmp_path: Path) -> None:
             "X_SIDE_INJECT_001 in out vss vdd amp\nX_SIDE_INJECT_001 in2 out vss vdd amp\n",
             "instance is ambiguous",
         ),
-        ("X_SIDE_INJECT_001 in out vss vdd amp\n", "net not found"),
+        ("X_SIDE_INJECT_001 in out gnd vdd amp\n", "net not found"),
         ("X_SIDE_INJECT_001 in out vss vss amp\n", "net appears more than once"),
         ("X_SIDE_INJECT_001 in out vss vdd amp $ comment\n", "comments are not supported"),
     ],
@@ -213,4 +213,3 @@ def test_non_x_instance_name_is_rejected() -> None:
             internal_net="in__sidecar_inj",
             source_line="Vinj {net} {internal_net} PULSE(0 1.2 0 10p 10p 4n 8n)",
         )
-

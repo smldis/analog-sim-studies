@@ -44,6 +44,14 @@ EDITS = [
         content='include "generated/pwl_sources.inc"\n',
         description="append generated PWL include",
     ),
+    edit.insert_series_source_at_instance_net(
+        path="input_main.scs",
+        instance="X_SIDE_INJECT_001",
+        net="in",
+        internal_net="in__sidecar_inj",
+        source_line="Vinj {net} {internal_net} PULSE(0 1.2 0 10p 10p 4n 8n)",
+        description="inject pulse on unique instance input",
+    ),
     edit.replace(
         path="input_main.scs",
         old='include "/seed/netlists/rc_filter.scs"',
@@ -83,6 +91,12 @@ Different fields have different formatting rules:
 
 `edit.append_file` appends exactly the text passed in `content`; it does not add
 newlines automatically. It fails if the target file does not already exist.
+
+`edit.insert_series_source_at_instance_net` finds one uniquely named X instance,
+inserts `source_line` before it, and rewrites one connected net token in the
+instance text. The source line can reference `{net}` and `{internal_net}` in
+addition to normal render parameters. The first version rejects commented
+instance lines and repeated selected net tokens.
 
 ## Dynamic Generation
 

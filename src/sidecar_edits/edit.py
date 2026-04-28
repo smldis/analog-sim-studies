@@ -107,6 +107,35 @@ class AppendFileEdit:
 
 
 @dataclass(frozen=True)
+class InsertSeriesSourceAtInstanceNetEdit:
+    op: Literal["insert_series_source_at_instance_net"]
+    path: str
+    instance: str
+    net: str
+    internal_net: str
+    source_line: str
+    description: str | None
+    source_stack: tuple[SourceFrame, ...]
+
+    def apply(self, context: RenderContext) -> None:
+        from sidecar_edits import render
+
+        target = context.target_dir / render.format_path_text(self.path, context.params)
+        source_params = context.params | {
+            "net": self.net,
+            "internal_net": self.internal_net,
+        }
+        render.apply_insert_series_source_at_instance_net(
+            target,
+            self.instance,
+            self.net,
+            self.internal_net,
+            render.format_text(self.source_line, source_params),
+            edit_description(self),
+        )
+
+
+@dataclass(frozen=True)
 class ReplaceEdit:
     op: Literal["replace"]
     path: str
@@ -222,6 +251,7 @@ EditSpec: TypeAlias = (
     | CopyFileEdit
     | WriteFileEdit
     | AppendFileEdit
+    | InsertSeriesSourceAtInstanceNetEdit
     | ReplaceEdit
     | RegexReplaceEdit
     | RunEdit
@@ -295,6 +325,30 @@ def append_file(
         op="append_file",
         path=path,
         content=content,
+        description=description,
+        source_stack=_capture_source_stack(),
+    )
+
+
+def insert_series_source_at_instance_net(
+    *,
+    path: str,
+    instance: str,
+    net: str,
+    internal_net: str,
+    source_line: str,
+    description: str | None = None,
+) -> InsertSeriesSourceAtInstanceNetEdit:
+    """Insert a source in series with one net on a uniquely named X instance."""
+    if not instance.lower().startswith("x"):
+        raise ValueError("instance must start with X")
+    return InsertSeriesSourceAtInstanceNetEdit(
+        op="insert_series_source_at_instance_net",
+        path=path,
+        instance=instance,
+        net=net,
+        internal_net=internal_net,
+        source_line=source_line,
         description=description,
         source_stack=_capture_source_stack(),
     )
@@ -404,6 +458,7 @@ def is_edit_spec(value: object) -> bool:
             CopyFileEdit,
             WriteFileEdit,
             AppendFileEdit,
+            InsertSeriesSourceAtInstanceNetEdit,
             ReplaceEdit,
             RegexReplaceEdit,
             RunEdit,

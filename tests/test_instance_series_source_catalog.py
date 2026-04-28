@@ -30,7 +30,7 @@ def test_helper_shape_is_typed_and_traced() -> None:
     - Capture source_stack at construction time.
     - Do not introduce custom edit specs or generic field bags.
     """
-
+#ok but why source line  is not a single string?
 
 def test_simple_instance_line_inserts_source_before_instance() -> None:
     """Happy path for one-line X instance.
@@ -49,7 +49,7 @@ def test_simple_instance_line_inserts_source_before_instance() -> None:
     - Replace only the selected connected net token.
     - Preserve the instance name and original subckt/model token.
     """
-
+#ok
 
 def test_source_line_can_reference_original_net_and_internal_net() -> None:
     """source_line should be a small template evaluated after the instance is found.
@@ -62,7 +62,7 @@ def test_source_line_can_reference_original_net_and_internal_net() -> None:
     - Add {instance} for source naming convenience.
     - Add {source_name} as a separate field instead of making users format it.
     """
-
+#source name is fine and generic
 
 def test_path_and_user_source_line_still_use_render_params() -> None:
     """The edit must compose with existing render params.
@@ -80,7 +80,7 @@ def test_path_and_user_source_line_still_use_render_params() -> None:
     - Reverse formatting order. This is likely worse because render params could
       accidentally consume operation-local names.
     """
-
+#the two proposals are the same aren't they?
 
 def test_continuation_lines_are_treated_as_one_logical_instance() -> None:
     """Support common SPICE continuation syntax.
@@ -104,7 +104,7 @@ def test_continuation_lines_are_treated_as_one_logical_instance() -> None:
     - Start with Option B if preserving layout is too costly, but document it.
     - Prefer Option A only if it stays simple.
     """
-
+#I believe A is easy since after finding instance you extract it with the continuation lines and look for the net in the text and replace it
 
 def test_instance_params_are_preserved_after_subckt_name() -> None:
     """The scanner must distinguish pins from params.
@@ -124,7 +124,7 @@ def test_instance_params_are_preserved_after_subckt_name() -> None:
       the subckt/model name.
     - If no key=value exists, use the last token as the subckt/model name.
     """
-
+# why we just don't keep everything as text and avoid touching or parsing it?
 
 def test_inline_comment_is_preserved() -> None:
     """Inline comments should not become part of pins or params.
@@ -143,7 +143,7 @@ def test_inline_comment_is_preserved() -> None:
     - Decide whether ';' comments or simulator-specific comments matter.
     - Avoid treating comment text as connection tokens.
     """
-
+#avoid comments support and error out if you encounter ; * $ in the instance line
 
 def test_missing_instance_fails_with_actionable_error() -> None:
     """Zero matches should be a hard failure.
@@ -153,7 +153,7 @@ def test_missing_instance_fails_with_actionable_error() -> None:
     - instance name,
     - target file path.
     """
-
+#ok
 
 def test_duplicate_instance_name_fails_with_actionable_error() -> None:
     """More than one matching instance should be a hard failure.
@@ -165,7 +165,7 @@ def test_duplicate_instance_name_fails_with_actionable_error() -> None:
     Alternative to evaluate later:
     - Accept occurrence=... as an escape hatch.
     """
-
+# rationale ok, no occurrence support for now
 
 def test_selected_net_must_exist_on_instance() -> None:
     """If net is absent, fail and show available connection nets.
@@ -175,7 +175,7 @@ def test_selected_net_must_exist_on_instance() -> None:
     - instance name,
     - available nets before replacement.
     """
-
+#ok
 
 def test_selected_net_must_be_unique_on_instance_by_default() -> None:
     """Repeated connected nets are ambiguous.
@@ -190,7 +190,7 @@ def test_selected_net_must_be_unique_on_instance_by_default() -> None:
     - net_occurrence=1 based on connection-token occurrence.
     - pin_name=... if we later add subckt interface lookup.
     """
-
+#test that we error out with proper error message
 
 def test_internal_net_must_not_already_be_connected_to_same_instance() -> None:
     """Avoid generating a no-op or confusing rewrite.
@@ -205,7 +205,7 @@ def test_internal_net_must_not_already_be_connected_to_same_instance() -> None:
     - Allow it because the source may still be meaningful.
     - Safer first version is to reject.
     """
-
+#avoid testing and handling internal name clashes since it would require parsing the subckt, the user should chose the name properly
 
 def test_instance_name_matching_is_token_based_not_substring_based() -> None:
     """Avoid accidental matches.
@@ -218,7 +218,7 @@ def test_instance_name_matching_is_token_based_not_substring_based() -> None:
     Implementation choice:
     - Use a line/logical-statement regex with instance-name token boundary.
     """
-
+#no need for this now we assume the instance name does not appear elsewhere. but please I would also match the instance if the 2nd character is doubled and appears twice, so match both cases silently.
 
 def test_non_x_instance_is_rejected_or_deferred() -> None:
     """First version should target subckt instances only.
@@ -230,7 +230,7 @@ def test_non_x_instance_is_rejected_or_deferred() -> None:
     - Support arbitrary devices later, but then model/name and pin parsing become
       device-class specific.
     """
-
+# ok
 
 def test_missing_or_ambiguous_subckt_model_token_fails() -> None:
     """The scanner must be able to split pins from the referenced subckt/model.
@@ -240,7 +240,7 @@ def test_missing_or_ambiguous_subckt_model_token_fails() -> None:
     - malformed continuation that drops the subckt token
     - params without a clear subckt token
     """
-
+# we should expect errors in the netlist, we can try to handle basic ones like this, but it's out of scope.
 
 def test_renderer_error_wraps_source_location() -> None:
     """Failures should use the existing traced edit envelope.
@@ -251,7 +251,7 @@ def test_renderer_error_wraps_source_location() -> None:
         created at edits.py:...
         reason: instance not found: X_SIDE_INJECT_001
     """
-
+#ok
 
 def test_dynamic_generation_of_many_injections_remains_ergonomic() -> None:
     """The feature should work with generated edit lists.
@@ -271,7 +271,7 @@ def test_dynamic_generation_of_many_injections_remains_ergonomic() -> None:
 
     Error reporting should rely on EDITS[index] plus source_stack, as today.
     """
-
+# do this only if it's not already covered, I think this is out of scope
 
 def test_interaction_with_write_file_and_append_file_for_generated_sources() -> None:
     """Decide whether source_line is enough or source definitions can be external.
@@ -284,7 +284,7 @@ def test_interaction_with_write_file_and_append_file_for_generated_sources() -> 
       instance. That is less direct and may not work because the source must sit
       electrically in series at the same hierarchy level.
     """
-
+# source line is enough, don't add a test for interactions if it's a very unlikely bug.
 
 def test_layout_preservation_policy_is_explicit() -> None:
     """We need to choose how much formatting to preserve.
@@ -300,4 +300,4 @@ def test_layout_preservation_policy_is_explicit() -> None:
     Recommendation:
     - Preserve indentation/comment, allow line normalization in first version.
     """
-
+#i would avoid changing the text, and just replacing net names on the selected text

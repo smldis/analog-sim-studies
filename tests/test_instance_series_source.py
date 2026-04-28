@@ -162,6 +162,28 @@ def test_doubled_x_instance_convention_is_accepted(tmp_path: Path) -> None:
     )
 
 
+def test_doubled_x_and_exact_instance_match_is_ambiguous(tmp_path: Path) -> None:
+    config_path = write_config(
+        tmp_path,
+        """
+    edit.insert_series_source_at_instance_net(
+        path="input.scs",
+        instance="xfoo",
+        net="in",
+        internal_net="in__sidecar_inj",
+        source_line="Vinj {net} {internal_net} PULSE(0 1.2 0 10p 10p 4n 8n)",
+        description="inject pulse on unique instance input",
+    ),
+""",
+        "XFOO in out vss vdd amp\nXXFOO in out vss vdd amp\n",
+    )
+
+    result = run_render(config_path, tmp_path / "run")
+
+    assert result.returncode == 2
+    assert "instance is ambiguous" in result.stderr
+
+
 @pytest.mark.parametrize(
     ("base_text", "expected"),
     [
@@ -173,6 +195,8 @@ def test_doubled_x_instance_convention_is_accepted(tmp_path: Path) -> None:
         ("X_SIDE_INJECT_001 in out gnd vdd amp\n", "net not found"),
         ("X_SIDE_INJECT_001 in out vss vss amp\n", "net appears more than once"),
         ("X_SIDE_INJECT_001 in out vss vdd amp $ comment\n", "comments are not supported"),
+        ("X_SIDE_INJECT_001 in out vss vdd amp ; comment\n", "comments are not supported"),
+        ("X_SIDE_INJECT_001 in out vss vdd amp * comment\n", "comments are not supported"),
     ],
 )
 def test_insert_series_source_reports_actionable_failures(

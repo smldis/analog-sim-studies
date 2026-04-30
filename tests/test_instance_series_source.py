@@ -138,7 +138,7 @@ def test_continuation_lines_and_params_are_preserved_as_text(tmp_path: Path) -> 
     )
 
 
-def test_doubled_x_instance_convention_is_accepted(tmp_path: Path) -> None:
+def test_doubled_second_character_instance_convention_is_accepted(tmp_path: Path) -> None:
     config_path = write_config(
         tmp_path,
         """
@@ -150,7 +150,7 @@ def test_doubled_x_instance_convention_is_accepted(tmp_path: Path) -> None:
         source_line="Vinj {net} {internal_net} PULSE(0 1.2 0 10p 10p 4n 8n)",
     ),
 """,
-        "XXFOO in out vss vdd amp\n",
+        "XFFOO in out vss vdd amp\n",
     )
 
     result = run_render(config_path, tmp_path / "run")
@@ -158,11 +158,11 @@ def test_doubled_x_instance_convention_is_accepted(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     assert (tmp_path / "run" / "input.scs").read_text(encoding="utf-8") == (
         "Vinj in in__sidecar_inj PULSE(0 1.2 0 10p 10p 4n 8n)\n"
-        "XXFOO in__sidecar_inj out vss vdd amp\n"
+        "XFFOO in__sidecar_inj out vss vdd amp\n"
     )
 
 
-def test_doubled_x_and_exact_instance_match_is_ambiguous(tmp_path: Path) -> None:
+def test_doubled_second_character_and_exact_instance_match_is_ambiguous(tmp_path: Path) -> None:
     config_path = write_config(
         tmp_path,
         """
@@ -175,7 +175,7 @@ def test_doubled_x_and_exact_instance_match_is_ambiguous(tmp_path: Path) -> None
         description="inject pulse on unique instance input",
     ),
 """,
-        "XFOO in out vss vdd amp\nXXFOO in out vss vdd amp\n",
+        "XFOO in out vss vdd amp\nXFFOO in out vss vdd amp\n",
     )
 
     result = run_render(config_path, tmp_path / "run")

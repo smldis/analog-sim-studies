@@ -605,8 +605,8 @@ def find_instance_statements(content: str, instance: str) -> list[LogicalStateme
 def accepted_instance_names(instance: str) -> set[str]:
     lowered = instance.lower()
     names = {lowered}
-    if lowered.startswith("x") and (len(lowered) == 1 or lowered[1] != "x"):
-        names.add(f"x{lowered}")
+    if len(lowered) > 1 and lowered.startswith("x"):
+        names.add(f"x{lowered[1]}{lowered[1:]}")
     return names
 
 

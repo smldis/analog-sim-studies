@@ -3,6 +3,13 @@
 Prototype tooling for building repeatable analog simulation runs from a base
 directory and a small Python sidecar.
 
+The renderer copies the base tree, applies typed edit operations, and writes one
+or more concrete run directories. The interface is intentionally plain Python so
+studies can generate edits dynamically while still getting source-location error
+reports.
+
+## Minimal Example
+
 ```python
 from sidecar_edits import edit
 
@@ -17,68 +24,34 @@ EDITS = [
 ]
 ```
 
-The renderer copies the base tree, applies typed edit operations, and writes one
-or more concrete run directories.
-
-<div class="grid cards" markdown>
-
--   :material-pencil-ruler:{ .lg .middle } **Author Edits**
-
-    ---
-
-    Write normal Python in `edits.py`. Use typed helpers under
-    `sidecar_edits.edit` for discoverable operations and better errors.
-
-    [:octicons-arrow-right-24: User guide](user-guide.md)
-
--   :material-source-branch:{ .lg .middle } **Generate Runs**
-
-    ---
-
-    Combine common parameters, named parameter sets, and parameter matrices to
-    render multiple simulation directories from one base.
-
-    [:octicons-arrow-right-24: User guide](user-guide.md#parameter-formatting)
-
--   :material-flash-outline:{ .lg .middle } **Inject Sources**
-
-    ---
-
-    Insert a series source at a uniquely named instance net without introducing
-    a wrapper subckt or parsing the full netlist.
-
-    [:octicons-arrow-right-24: Series source injection](user-guide.md#series-source-injection)
-
--   :material-code-json:{ .lg .middle } **API Reference**
-
-    ---
-
-    Browse generated documentation for every edit helper, including signatures,
-    formatting behavior, and failure modes.
-
-    [:octicons-arrow-right-24: API reference](api/edit.md)
-
-</div>
-
 ## Quick Start
 
-=== "Install"
+Install the package in editable mode:
 
-    ```bash
-    python -m pip install -e .
-    ```
+```bash
+python -m pip install -e .
+```
 
-=== "Render"
+Render the basic example:
 
-    ```bash
-    sidecar-render examples/basic/edits.py /tmp/sidecar_example_run
-    ```
+```bash
+sidecar-render examples/basic/edits.py /tmp/sidecar_example_run
+```
 
-=== "Docs"
+Serve these docs locally:
 
-    ```bash
-    python -m mkdocs serve
-    ```
+```bash
+python -m mkdocs serve
+```
+
+## Main Sections
+
+- [User Guide](user-guide.md): how to author `edits.py`, format parameters,
+  inject generated sources, and read errors.
+- [API Reference](api/edit.md): generated signatures and docstrings for every
+  helper in `sidecar_edits.edit`.
+- [Design Notes](design/traced-edit-api.md): implementation model and maintainer
+  constraints for the traced edit API.
 
 !!! note "Prototype status"
     This project is intentionally small and text-first. It favors explicit,

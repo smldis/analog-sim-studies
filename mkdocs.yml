@@ -2,33 +2,7 @@ site_name: Analog Sim Studies
 site_description: Prototype sidecar edit pipeline for text-first simulation studies.
 
 theme:
-  name: material
-  language: en
-  palette:
-    - scheme: default
-      primary: teal
-      accent: amber
-      toggle:
-        icon: material/weather-night
-        name: Switch to dark mode
-    - scheme: slate
-      primary: teal
-      accent: amber
-      toggle:
-        icon: material/weather-sunny
-        name: Switch to light mode
-  font:
-    text: Roboto Slab
-    code: JetBrains Mono
-  features:
-    - navigation.instant
-    - navigation.tabs
-    - navigation.sections
-    - navigation.top
-    - navigation.indexes
-    - search.highlight
-    - search.suggest
-    - content.code.copy
+  name: readthedocs
 
 nav:
   - Home: index.md
@@ -55,12 +29,9 @@ plugins:
 markdown_extensions:
   - admonition
   - attr_list
-  - md_in_html
   - pymdownx.highlight
   - pymdownx.superfences
   - pymdownx.inlinehilite
-  - pymdownx.tabbed:
-      alternate_style: true
   - pymdownx.snippets:
       base_path: .
   - toc:

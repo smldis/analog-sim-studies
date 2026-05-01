@@ -1,0 +1,1 @@
+--8<-- "design/manifesto.md"

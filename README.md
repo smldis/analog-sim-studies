@@ -216,6 +216,18 @@ python -m pip install pytest
 python -m pytest -q
 ```
 
+## Local Documentation
+
+Install the documentation extras, then build or serve the MkDocs site:
+
+```bash
+python -m pip install -e ".[docs]"
+python -m mkdocs build
+python -m mkdocs serve
+```
+
+The generated site is written to `site/` and is intentionally ignored by git.
+
 ## Manual Build Flow
 
 For a build without installing into the environment:

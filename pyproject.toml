@@ -11,6 +11,13 @@ requires-python = ">=3.10"
 [project.scripts]
 sidecar-render = "sidecar_edits.render:main"
 
+[project.optional-dependencies]
+docs = [
+    "mkdocs",
+    "mkdocs-material",
+    "mkdocstrings-python",
+]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

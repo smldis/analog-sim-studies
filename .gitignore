@@ -4,3 +4,5 @@ src/sidecar_edits/bin/
 *.egg-info/
 prototype/sidecar_edits/out/
 __pycache__/
+site/
+sidecar_edits.edit.html

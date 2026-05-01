@@ -1,1 +1,2 @@
---8<-- "design/manifesto.md"
+```{include} ../../design/manifesto.md
+```

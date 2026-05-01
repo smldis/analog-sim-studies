@@ -13,9 +13,10 @@ sidecar-render = "sidecar_edits.render:main"
 
 [project.optional-dependencies]
 docs = [
-    "mkdocs",
-    "mkdocs-material",
-    "mkdocstrings-python",
+    "furo",
+    "myst-parser",
+    "sphinx",
+    "sphinx-autodoc-typehints",
 ]
 
 [tool.setuptools.packages.find]

@@ -1,1 +1,2 @@
---8<-- "design/traced-edit-api.md"
+```{include} ../../design/traced-edit-api.md
+```

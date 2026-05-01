@@ -218,15 +218,21 @@ python -m pytest -q
 
 ## Local Documentation
 
-Install the documentation extras, then build or serve the MkDocs site:
+Install the documentation extras, then build the Sphinx site:
 
 ```bash
 python -m pip install -e ".[docs]"
-python -m mkdocs build
-python -m mkdocs serve
+python -m sphinx -b html docs docs/_build/html
 ```
 
-The generated site is written to `site/` and is intentionally ignored by git.
+Preview the generated HTML with:
+
+```bash
+python -m http.server --directory docs/_build/html 8000
+```
+
+The generated site is written to `docs/_build/html/` and is intentionally
+ignored by git.
 
 ## Manual Build Flow
 

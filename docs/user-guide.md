@@ -118,11 +118,11 @@ call chain.
 Build this documentation locally with:
 
 ```bash
-python -m mkdocs build
+python -m sphinx -b html docs docs/_build/html
 ```
 
 Preview it with:
 
 ```bash
-python -m mkdocs serve
+python -m http.server --directory docs/_build/html 8000
 ```

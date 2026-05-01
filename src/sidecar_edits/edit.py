@@ -281,7 +281,8 @@ def extract_subckts(
     Set ``optional=True`` only when it is acceptable to skip extraction if the
     helper cannot run.
 
-    Example:
+    Example::
+
         edit.extract_subckts(
             input="input.scs",
             output_main="input_main.scs",
@@ -315,7 +316,8 @@ def copy_file(
     Source and destination paths are formatted with render parameters and
     environment variables. The edit fails if the source file does not exist.
 
-    Example:
+    Example::
+
         edit.copy_file(
             path="assets/model_override.scs",
             to="include/model_override.scs",
@@ -345,7 +347,8 @@ def write_file(
     ``content`` is formatted with render parameters but does not expand
     environment variables.
 
-    Example:
+    Example::
+
         edit.write_file(
             path="generated/pwl_sources.inc",
             content="Vstim in 0 PWL(0 0 1n {vdd})\\n",
@@ -375,7 +378,8 @@ def append_file(
     ``content`` is formatted with render parameters but does not expand
     environment variables.
 
-    Example:
+    Example::
+
         edit.append_file(
             path="input_main.scs",
             content='include "generated/pwl_sources.inc"\\n',
@@ -415,7 +419,8 @@ def insert_series_source_at_instance_net(
     character in instance names, a request for ``XFOO`` may also match
     ``XFFOO``. If both forms are present, the edit fails as ambiguous.
 
-    Example:
+    Example::
+
         edit.insert_series_source_at_instance_net(
             path="input.scs",
             instance="X_SIDE_INJECT_001",
@@ -458,7 +463,8 @@ def replace(
     The edit fails if ``old`` is not found. Set ``allow_no_match=True`` when an
     absent target is acceptable.
 
-    Example:
+    Example::
+
         edit.replace(
             path="input.scs",
             old="parameters corner=seed",
@@ -494,7 +500,8 @@ def regex_replace(
     The edit fails if the pattern does not match. Set ``allow_no_match=True``
     when an absent match is acceptable.
 
-    Example:
+    Example::
+
         edit.regex_replace(
             path="input.scs",
             pattern=r"^parameters .*",
@@ -528,7 +535,8 @@ def run(
     Set ``optional=True`` only when it is acceptable to skip the command if it is
     missing or exits unsuccessfully.
 
-    Example:
+    Example::
+
         edit.run(
             command=["./run_sim.sh", "{corner}"],
             description="run simulator setup script",
@@ -559,7 +567,8 @@ def patch(
     Set ``optional=True`` only when it is acceptable to skip the patch if the
     command is missing or the patch fails.
 
-    Example:
+    Example::
+
         edit.patch(
             patch="*** unified diff text ***",
             strip=0,
@@ -594,7 +603,8 @@ def apply_patch(
     Set ``optional=True`` only when it is acceptable to skip the patch if the
     command is missing or the patch fails.
 
-    Example:
+    Example::
+
         edit.apply_patch(
             patch="*** Begin Patch\\n*** Add File: note.txt\\n+hello\\n*** End Patch\\n",
         )

@@ -8,6 +8,16 @@ or more concrete run directories. The interface is intentionally plain Python so
 studies can generate edits dynamically while still getting source-location error
 reports.
 
+```{toctree}
+:maxdepth: 2
+:caption: Contents
+
+user-guide
+api
+design/traced-edit-api
+design/manifesto
+```
+
 ## Minimal Example
 
 ```python
@@ -38,21 +48,22 @@ Render the basic example:
 sidecar-render examples/basic/edits.py /tmp/sidecar_example_run
 ```
 
-Serve these docs locally:
+Build these docs locally:
 
 ```bash
-python -m mkdocs serve
+python -m sphinx -b html docs docs/_build/html
 ```
 
 ## Main Sections
 
 - [User Guide](user-guide.md): how to author `edits.py`, format parameters,
   inject generated sources, and read errors.
-- [API Reference](api/edit.md): generated signatures and docstrings for every
+- [API Reference](api): generated signatures and docstrings for every
   helper in `sidecar_edits.edit`.
 - [Design Notes](design/traced-edit-api.md): implementation model and maintainer
   constraints for the traced edit API.
 
-!!! note "Prototype status"
-    This project is intentionally small and text-first. It favors explicit,
-    reviewable edits over a full simulator netlist model.
+```{note}
+This project is intentionally small and text-first. It favors explicit,
+reviewable edits over a full simulator netlist model.
+```

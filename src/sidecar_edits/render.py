@@ -35,8 +35,8 @@ class ParamSet:
 
 
 @dataclass(frozen=True)
-class RenderConfig:
-    config_path: Path
+class RenderPlan:
+    editfile_path: Path
     base_dir: Path
     copy_ignore: list[str]
     edits: list[edit_api.EditSpec]
@@ -44,8 +44,8 @@ class RenderConfig:
     param_matrix: dict[str, list[object]]
 
     @property
-    def config_dir(self) -> Path:
-        return self.config_path.parent
+    def editfile_dir(self) -> Path:
+        return self.editfile_path.parent
 
 
 @dataclass(frozen=True)
@@ -57,8 +57,8 @@ class MatrixCase:
 @dataclass(frozen=True)
 class RenderContext:
     target_dir: Path
-    config_dir: Path
-    config_path: Path
+    editfile_dir: Path
+    editfile_path: Path
     params: dict[str, object]
 
 
@@ -72,55 +72,55 @@ class LogicalStatement:
 PARAM_SET_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
-def load_config(config_path: Path) -> RenderConfig:
-    loaded = runpy.run_path(str(config_path))
+def load_editfile(editfile_path: Path) -> RenderPlan:
+    loaded = runpy.run_path(str(editfile_path))
     copy_ignore = loaded.get("COPY_IGNORE", [])
     edits = loaded.get("EDITS")
     if edits is None:
-        raise EditError(f"{config_path} does not define EDITS")
-    edits = load_edits(config_path, edits)
-    common_params = load_common_params(config_path, loaded)
-    param_sets = load_param_sets(config_path, loaded, common_params)
-    param_matrix = load_param_matrix(config_path, loaded)
-    base_dir = resolve_config_path(config_path.parent, str(loaded.get("BASE_DIR", "base")), common_params)
-    return RenderConfig(config_path, base_dir, copy_ignore, edits, param_sets, param_matrix)
+        raise EditError(f"{editfile_path} does not define EDITS")
+    edits = load_edits(editfile_path, edits)
+    common_params = load_common_params(editfile_path, loaded)
+    param_sets = load_param_sets(editfile_path, loaded, common_params)
+    param_matrix = load_param_matrix(editfile_path, loaded)
+    base_dir = resolve_editfile_path(editfile_path.parent, str(loaded.get("BASE_DIR", "base")), common_params)
+    return RenderPlan(editfile_path, base_dir, copy_ignore, edits, param_sets, param_matrix)
 
 
-def load_edits(config_path: Path, raw_edits: object) -> list[edit_api.EditSpec]:
+def load_edits(editfile_path: Path, raw_edits: object) -> list[edit_api.EditSpec]:
     if not isinstance(raw_edits, list):
-        raise EditError(f"{config_path} EDITS must be a list")
+        raise EditError(f"{editfile_path} EDITS must be a list")
     edits = []
     for index, raw_edit in enumerate(raw_edits, start=1):
         if isinstance(raw_edit, dict):
             raise EditError(
-                f"{config_path} EDITS[{index}] raw dictionary edits are not supported; "
+                f"{editfile_path} EDITS[{index}] raw dictionary edits are not supported; "
                 "use sidecar_edits.edit helpers"
             )
         if not edit_api.is_edit_spec(raw_edit):
-            raise EditError(f"{config_path} EDITS[{index}] must be a sidecar_edits.edit object")
+            raise EditError(f"{editfile_path} EDITS[{index}] must be a sidecar_edits.edit object")
         edits.append(raw_edit)
     return edits
 
 
-def load_common_params(config_path: Path, loaded: dict[str, object]) -> dict[str, object]:
+def load_common_params(editfile_path: Path, loaded: dict[str, object]) -> dict[str, object]:
     inline_params = loaded.get("COMMON_PARAMS")
     params_file = loaded.get("COMMON_PARAMS_FILE")
     if inline_params is not None and params_file is not None:
-        raise EditError(f"{config_path} defines both COMMON_PARAMS and COMMON_PARAMS_FILE")
+        raise EditError(f"{editfile_path} defines both COMMON_PARAMS and COMMON_PARAMS_FILE")
     if inline_params is not None:
         params = inline_params
     elif params_file is not None:
-        params_path = resolve_config_path(config_path.parent, str(params_file), {})
+        params_path = resolve_editfile_path(editfile_path.parent, str(params_file), {})
         params = json.loads(params_path.read_text(encoding="utf-8"))
     else:
         params = {}
     if not isinstance(params, dict):
-        raise EditError(f"{config_path} COMMON_PARAMS must be a dict")
+        raise EditError(f"{editfile_path} COMMON_PARAMS must be a dict")
     return params
 
 
 def load_param_sets(
-    config_path: Path,
+    editfile_path: Path,
     loaded: dict[str, object],
     common_params: dict[str, object],
 ) -> list[ParamSet]:
@@ -128,41 +128,41 @@ def load_param_sets(
     if raw_param_sets is None:
         return [ParamSet(name=None, params=common_params)]
     if not isinstance(raw_param_sets, list):
-        raise EditError(f"{config_path} PARAM_SETS must be a list")
+        raise EditError(f"{editfile_path} PARAM_SETS must be a list")
 
     param_sets = []
     seen_names = set()
     for index, raw_param_set in enumerate(raw_param_sets, start=1):
         if not isinstance(raw_param_set, dict):
-            raise EditError(f"{config_path} PARAM_SETS entry {index} must be a dict")
+            raise EditError(f"{editfile_path} PARAM_SETS entry {index} must be a dict")
         name = raw_param_set.get("name")
         if not isinstance(name, str) or not PARAM_SET_NAME_RE.match(name):
             raise EditError(
-                f"{config_path} PARAM_SETS entry {index} needs a valid identifier name"
+                f"{editfile_path} PARAM_SETS entry {index} needs a valid identifier name"
             )
         if name in seen_names:
-            raise EditError(f"{config_path} defines duplicate PARAM_SETS name: {name}")
+            raise EditError(f"{editfile_path} defines duplicate PARAM_SETS name: {name}")
         seen_names.add(name)
 
         inline_params = raw_param_set.get("params")
         params_file = raw_param_set.get("params_file")
         if inline_params is not None and params_file is not None:
-            raise EditError(f"{config_path} PARAM_SETS entry {name} defines both params and params_file")
+            raise EditError(f"{editfile_path} PARAM_SETS entry {name} defines both params and params_file")
         if inline_params is not None:
             params = inline_params
         elif params_file is not None:
-            params_path = resolve_config_path(config_path.parent, str(params_file), common_params)
+            params_path = resolve_editfile_path(editfile_path.parent, str(params_file), common_params)
             params = json.loads(params_path.read_text(encoding="utf-8"))
         else:
             params = {}
         if not isinstance(params, dict):
-            raise EditError(f"{config_path} PARAM_SETS entry {name} params must be a dict")
+            raise EditError(f"{editfile_path} PARAM_SETS entry {name} params must be a dict")
         description = raw_param_set.get("description")
         if description is not None and not isinstance(description, str):
-            raise EditError(f"{config_path} PARAM_SETS entry {name} description must be a string")
+            raise EditError(f"{editfile_path} PARAM_SETS entry {name} description must be a string")
         targetdir = raw_param_set.get("targetdir")
         if targetdir is not None and not isinstance(targetdir, str):
-            raise EditError(f"{config_path} PARAM_SETS entry {name} targetdir must be a string")
+            raise EditError(f"{editfile_path} PARAM_SETS entry {name} targetdir must be a string")
         param_sets.append(
             ParamSet(
                 name=name,
@@ -172,23 +172,23 @@ def load_param_sets(
             )
         )
     if not param_sets:
-        raise EditError(f"{config_path} PARAM_SETS must not be empty")
+        raise EditError(f"{editfile_path} PARAM_SETS must not be empty")
     return param_sets
 
 
-def load_param_matrix(config_path: Path, loaded: dict[str, object]) -> dict[str, list[object]]:
+def load_param_matrix(editfile_path: Path, loaded: dict[str, object]) -> dict[str, list[object]]:
     raw_matrix = loaded.get("PARAM_MATRIX", {})
     if not isinstance(raw_matrix, dict):
-        raise EditError(f"{config_path} PARAM_MATRIX must be a dict")
+        raise EditError(f"{editfile_path} PARAM_MATRIX must be a dict")
 
     matrix = {}
     for key, values in raw_matrix.items():
         if not isinstance(key, str) or not PARAM_SET_NAME_RE.match(key):
-            raise EditError(f"{config_path} PARAM_MATRIX key must be a valid identifier: {key}")
+            raise EditError(f"{editfile_path} PARAM_MATRIX key must be a valid identifier: {key}")
         if not isinstance(values, list):
-            raise EditError(f"{config_path} PARAM_MATRIX entry {key} must be a list")
+            raise EditError(f"{editfile_path} PARAM_MATRIX entry {key} must be a list")
         if not values:
-            raise EditError(f"{config_path} PARAM_MATRIX entry {key} must not be empty")
+            raise EditError(f"{editfile_path} PARAM_MATRIX entry {key} must not be empty")
         matrix[key] = values
     return matrix
 
@@ -217,7 +217,7 @@ def ensure_parent(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
 
 
-def resolve_config_path(base_dir: Path, value: str, params: dict[str, object]) -> Path:
+def resolve_editfile_path(base_dir: Path, value: str, params: dict[str, object]) -> Path:
     path = Path(format_path_text(value, params))
     if path.is_absolute():
         return path
@@ -282,8 +282,8 @@ def copy_base_tree(base_dir: Path, output_dir: Path, copy_ignore: list[str]) -> 
     shutil.copytree(base_dir, output_dir, ignore=build_copy_ignore(base_dir, copy_ignore))
 
 
-def resolve_source_path(edit: dict, params: dict[str, object], config_dir: Path) -> Path:
-    return resolve_config_path(config_dir, str(edit["path"]), params)
+def resolve_source_path(edit: dict, params: dict[str, object], editfile_dir: Path) -> Path:
+    return resolve_editfile_path(editfile_dir, str(edit["path"]), params)
 
 
 def apply_replace(target: Path, edit: dict, params: dict[str, object]) -> None:
@@ -504,9 +504,9 @@ def apply_unified_patch(target_dir: Path, edit: dict, params: dict[str, object])
     run_external_patch(target_dir, patch_text, command, optional, description)
 
 
-def apply_copy(target_dir: Path, edit: dict, params: dict[str, object], config_dir: Path) -> None:
+def apply_copy(target_dir: Path, edit: dict, params: dict[str, object], editfile_dir: Path) -> None:
     description = edit_description(edit)
-    source = resolve_source_path(edit, params, config_dir)
+    source = resolve_source_path(edit, params, editfile_dir)
     if not source.is_file():
         raise EditError(f"{description} failed: copy source does not exist: {source}")
     dest_name = format_path_text(str(edit.get("to", source.name)), params)
@@ -666,8 +666,8 @@ def apply_edit(
     target_dir: Path,
     edit: edit_api.EditSpec,
     params: dict[str, object],
-    config_dir: Path,
-    config_path: Path | None = None,
+    editfile_dir: Path,
+    editfile_path: Path | None = None,
 ) -> None:
     if isinstance(edit, dict):
         raise EditError("raw dictionary edits are not supported; use sidecar_edits.edit helpers")
@@ -675,23 +675,23 @@ def apply_edit(
         raise EditError("edit must be a sidecar_edits.edit object")
     context = RenderContext(
         target_dir=target_dir,
-        config_dir=config_dir,
-        config_path=config_path or config_dir / "<unknown>",
+        editfile_dir=editfile_dir,
+        editfile_path=editfile_path or editfile_dir / "<unknown>",
         params=params,
     )
     edit.apply(context)
 
 
-def format_edit_failure(config_path: Path, index: int, edit: edit_api.EditSpec, reason: str) -> str:
+def format_edit_failure(editfile_path: Path, index: int, edit: edit_api.EditSpec, reason: str) -> str:
     label = f'EDITS[{index}] {edit.op}'
     if edit.description:
         label += f' "{edit.description}"'
     lines = [f"{label} failed"]
     if edit.source_stack:
         first, *rest = edit.source_stack[:3]
-        lines.append(f"created at {first.format(config_path)}")
+        lines.append(f"created at {first.format(editfile_path)}")
         for frame in rest:
-            lines.append(f"called from {frame.format(config_path)}")
+            lines.append(f"called from {frame.format(editfile_path)}")
     lines.append(f"reason: {reason}")
     return "\n".join(lines)
 
@@ -704,7 +704,7 @@ def select_param_sets(
     named_sets = {param_set.name: param_set for param_set in param_sets if param_set.name is not None}
     if not named_sets:
         if run_names:
-            raise EditError("config does not define PARAM_SETS")
+            raise EditError("edit file does not define PARAM_SETS")
         return param_sets
 
     if run_names and all_runs:
@@ -771,16 +771,16 @@ def output_dir_for_job(output_base: Path, param_set: ParamSet, matrix_case: Matr
     return base_dir / matrix_case.suffix
 
 
-def render_job(config: RenderConfig, params: dict[str, object], output_dir: Path, label: str | None) -> None:
+def render_job(render_plan: RenderPlan, params: dict[str, object], output_dir: Path, label: str | None) -> None:
     if output_dir.exists():
         raise EditError(f"output directory already exists: {output_dir}")
     output_dir.parent.mkdir(parents=True, exist_ok=True)
-    copy_base_tree(config.base_dir, output_dir, config.copy_ignore)
-    for index, edit in enumerate(config.edits, start=1):
+    copy_base_tree(render_plan.base_dir, output_dir, render_plan.copy_ignore)
+    for index, edit in enumerate(render_plan.edits, start=1):
         try:
-            apply_edit(output_dir, edit, params, config.config_dir, config.config_path)
+            apply_edit(output_dir, edit, params, render_plan.editfile_dir, render_plan.editfile_path)
         except EditError as exc:
-            raise EditError(format_edit_failure(config.config_path, index, edit, str(exc))) from exc
+            raise EditError(format_edit_failure(render_plan.editfile_path, index, edit, str(exc))) from exc
     if label:
         print(f"rendered {label}: {output_dir}")
     else:
@@ -789,7 +789,7 @@ def render_job(config: RenderConfig, params: dict[str, object], output_dir: Path
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Render a run directory from a base tree and sidecar edits.")
-    parser.add_argument("config", type=Path, help="Path to the edit file, typically edit.py")
+    parser.add_argument("editfile", type=Path, help="Path to the edit file, typically edit.py")
     parser.add_argument("output", type=Path, help="Output run directory")
     parser.add_argument(
         "--run",
@@ -800,7 +800,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--all",
         action="store_true",
-        help="Render all named PARAM_SETS entries. This is already the default for named configs.",
+        help="Render all named PARAM_SETS entries. This is already the default for named edit files.",
     )
     return parser.parse_args()
 
@@ -808,15 +808,15 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     try:
         args = parse_args()
-        config = load_config(args.config)
+        render_plan = load_editfile(args.editfile)
         output_base = Path(os.path.expandvars(str(args.output))).resolve()
-        matrix_cases = expand_param_matrix(config.param_matrix)
-        for param_set in select_param_sets(config.param_sets, args.run_names, args.all):
+        matrix_cases = expand_param_matrix(render_plan.param_matrix)
+        for param_set in select_param_sets(render_plan.param_sets, args.run_names, args.all):
             for matrix_case in matrix_cases:
                 params = param_set.params | matrix_case.params
                 output_dir = output_dir_for_job(output_base, param_set, matrix_case)
                 label_parts = [part for part in [param_set.name, matrix_case.suffix] if part]
-                render_job(config, params, output_dir, "_".join(label_parts) or None)
+                render_job(render_plan, params, output_dir, "_".join(label_parts) or None)
         return 0
     except EditError as exc:
         print(f"error: {exc}", file=sys.stderr)

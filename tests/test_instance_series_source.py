@@ -11,9 +11,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 
-def run_render(config_path: Path, output_dir: Path) -> subprocess.CompletedProcess[str]:
+def run_render(editfile_path: Path, output_dir: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, "-m", "sidecar_edits.render", str(config_path), str(output_dir)],
+        [sys.executable, "-m", "sidecar_edits.render", str(editfile_path), str(output_dir)],
         cwd=REPO_ROOT,
         env={"PYTHONPATH": str(REPO_ROOT / "src")},
         capture_output=True,
@@ -21,12 +21,12 @@ def run_render(config_path: Path, output_dir: Path) -> subprocess.CompletedProce
     )
 
 
-def write_config(tmp_path: Path, edits: str, base_text: str) -> Path:
+def write_editfile(tmp_path: Path, edits: str, base_text: str) -> Path:
     base_dir = tmp_path / "base"
     base_dir.mkdir()
     (base_dir / "input.scs").write_text(base_text, encoding="utf-8")
-    config_path = tmp_path / "edit.py"
-    config_path.write_text(
+    editfile_path = tmp_path / "edit.py"
+    editfile_path.write_text(
         f"""
 from sidecar_edits import edit
 
@@ -38,7 +38,7 @@ EDITS = [
 """,
         encoding="utf-8",
     )
-    return config_path
+    return editfile_path
 
 
 def test_insert_series_source_helper_returns_typed_edit_object() -> None:
@@ -65,7 +65,7 @@ def test_insert_series_source_helper_returns_typed_edit_object() -> None:
 
 
 def test_insert_series_source_rewrites_unique_instance_net(tmp_path: Path) -> None:
-    config_path = write_config(
+    editfile_path = write_editfile(
         tmp_path,
         """
     edit.insert_series_source_at_instance_net(
@@ -79,7 +79,7 @@ def test_insert_series_source_rewrites_unique_instance_net(tmp_path: Path) -> No
         "simulator lang=spectre\nX_SIDE_INJECT_001 in out vss vdd amp\n",
     )
 
-    result = run_render(config_path, tmp_path / "run")
+    result = run_render(editfile_path, tmp_path / "run")
 
     assert result.returncode == 0, result.stderr
     assert (tmp_path / "run" / "input.scs").read_text(encoding="utf-8") == (
@@ -90,7 +90,7 @@ def test_insert_series_source_rewrites_unique_instance_net(tmp_path: Path) -> No
 
 
 def test_source_line_uses_render_params_and_operation_values(tmp_path: Path) -> None:
-    config_path = write_config(
+    editfile_path = write_editfile(
         tmp_path,
         """
     edit.insert_series_source_at_instance_net(
@@ -104,7 +104,7 @@ def test_source_line_uses_render_params_and_operation_values(tmp_path: Path) -> 
         "X_SIDE_INJECT_001 in out vss vdd amp\n",
     )
 
-    result = run_render(config_path, tmp_path / "run")
+    result = run_render(editfile_path, tmp_path / "run")
 
     assert result.returncode == 0, result.stderr
     assert (tmp_path / "run" / "input.scs").read_text(encoding="utf-8") == (
@@ -114,7 +114,7 @@ def test_source_line_uses_render_params_and_operation_values(tmp_path: Path) -> 
 
 
 def test_continuation_lines_and_params_are_preserved_as_text(tmp_path: Path) -> None:
-    config_path = write_config(
+    editfile_path = write_editfile(
         tmp_path,
         """
     edit.insert_series_source_at_instance_net(
@@ -128,7 +128,7 @@ def test_continuation_lines_and_params_are_preserved_as_text(tmp_path: Path) -> 
         "X_SIDE_INJECT_001 in out\n+ vss vdd amp gain=10 m=2\n",
     )
 
-    result = run_render(config_path, tmp_path / "run")
+    result = run_render(editfile_path, tmp_path / "run")
 
     assert result.returncode == 0, result.stderr
     assert (tmp_path / "run" / "input.scs").read_text(encoding="utf-8") == (
@@ -139,7 +139,7 @@ def test_continuation_lines_and_params_are_preserved_as_text(tmp_path: Path) -> 
 
 
 def test_doubled_second_character_instance_convention_is_accepted(tmp_path: Path) -> None:
-    config_path = write_config(
+    editfile_path = write_editfile(
         tmp_path,
         """
     edit.insert_series_source_at_instance_net(
@@ -153,7 +153,7 @@ def test_doubled_second_character_instance_convention_is_accepted(tmp_path: Path
         "XFFOO in out vss vdd amp\n",
     )
 
-    result = run_render(config_path, tmp_path / "run")
+    result = run_render(editfile_path, tmp_path / "run")
 
     assert result.returncode == 0, result.stderr
     assert (tmp_path / "run" / "input.scs").read_text(encoding="utf-8") == (
@@ -163,7 +163,7 @@ def test_doubled_second_character_instance_convention_is_accepted(tmp_path: Path
 
 
 def test_doubled_second_character_and_exact_instance_match_is_ambiguous(tmp_path: Path) -> None:
-    config_path = write_config(
+    editfile_path = write_editfile(
         tmp_path,
         """
     edit.insert_series_source_at_instance_net(
@@ -178,7 +178,7 @@ def test_doubled_second_character_and_exact_instance_match_is_ambiguous(tmp_path
         "XFOO in out vss vdd amp\nXFFOO in out vss vdd amp\n",
     )
 
-    result = run_render(config_path, tmp_path / "run")
+    result = run_render(editfile_path, tmp_path / "run")
 
     assert result.returncode == 2
     assert "instance is ambiguous" in result.stderr
@@ -204,7 +204,7 @@ def test_insert_series_source_reports_actionable_failures(
     base_text: str,
     expected: str,
 ) -> None:
-    config_path = write_config(
+    editfile_path = write_editfile(
         tmp_path,
         """
     edit.insert_series_source_at_instance_net(
@@ -219,7 +219,7 @@ def test_insert_series_source_reports_actionable_failures(
         base_text,
     )
 
-    result = run_render(config_path, tmp_path / "run")
+    result = run_render(editfile_path, tmp_path / "run")
 
     assert result.returncode == 2
     assert 'EDITS[1] insert_series_source_at_instance_net "inject pulse on unique instance input" failed' in result.stderr

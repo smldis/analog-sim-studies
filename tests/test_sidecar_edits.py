@@ -30,7 +30,7 @@ from sidecar_edits.render import (  # noqa: E402
     apply_regex_replace,
     apply_replace,
     copy_base_tree,
-    load_config,
+    load_editfile,
     run_command,
     select_param_sets,
 )
@@ -302,11 +302,11 @@ def test_replace_failure_uses_edit_description(tmp_path: Path) -> None:
         )
 
 
-def test_config_can_load_params_from_file(tmp_path: Path) -> None:
+def test_editfile_can_load_params_from_file(tmp_path: Path) -> None:
     (tmp_path / "base").mkdir()
     (tmp_path / "params.json").write_text('{"run_label": "file"}\n', encoding="utf-8")
-    config = tmp_path / "edit.py"
-    config.write_text(
+    editfile = tmp_path / "edit.py"
+    editfile.write_text(
         """
 BASE_DIR = "base"
 COMMON_PARAMS_FILE = "params.json"
@@ -315,13 +315,13 @@ EDITS = []
         encoding="utf-8",
     )
 
-    render_config = load_config(config)
-    params = render_config.param_sets[0].params
+    render_plan = load_editfile(editfile)
+    params = render_plan.param_sets[0].params
 
     assert params["run_label"] == "file"
 
 
-def test_config_expands_env_vars_in_base_dir_and_params_file(
+def test_editfile_expands_env_vars_in_base_dir_and_params_file(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -329,8 +329,8 @@ def test_config_expands_env_vars_in_base_dir_and_params_file(
     (env_root / "base").mkdir(parents=True)
     (env_root / "params.json").write_text('{"run_label": "env-file"}\n', encoding="utf-8")
     monkeypatch.setenv("SIDECAR_TEST_ROOT", str(env_root))
-    config = tmp_path / "edit.py"
-    config.write_text(
+    editfile = tmp_path / "edit.py"
+    editfile.write_text(
         """
 BASE_DIR = "$SIDECAR_TEST_ROOT/base"
 COMMON_PARAMS_FILE = "$SIDECAR_TEST_ROOT/params.json"
@@ -339,17 +339,17 @@ EDITS = []
         encoding="utf-8",
     )
 
-    render_config = load_config(config)
-    params = render_config.param_sets[0].params
+    render_plan = load_editfile(editfile)
+    params = render_plan.param_sets[0].params
 
-    assert render_config.base_dir == env_root / "base"
+    assert render_plan.base_dir == env_root / "base"
     assert params["run_label"] == "env-file"
 
 
-def test_config_can_define_params_inline(tmp_path: Path) -> None:
+def test_editfile_can_define_params_inline(tmp_path: Path) -> None:
     (tmp_path / "base").mkdir()
-    config = tmp_path / "edit.py"
-    config.write_text(
+    editfile = tmp_path / "edit.py"
+    editfile.write_text(
         """
 BASE_DIR = "base"
 COMMON_PARAMS = {"simulator_cmd": "aps", "run_label": "inline"}
@@ -358,7 +358,7 @@ EDITS = []
         encoding="utf-8",
     )
 
-    params = load_config(config).param_sets[0].params
+    params = load_editfile(editfile).param_sets[0].params
 
     assert params == {"simulator_cmd": "aps", "run_label": "inline"}
 
@@ -368,8 +368,8 @@ def test_named_param_sets_render_all_by_default(tmp_path: Path) -> None:
     base_dir.mkdir()
     (base_dir / "input.txt").write_text("corner=seed\nvdd=seed\n", encoding="utf-8")
     (tmp_path / "ss.json").write_text('{"corner": "ss", "vdd": "0.90"}\n', encoding="utf-8")
-    config = tmp_path / "edit.py"
-    config.write_text(
+    editfile = tmp_path / "edit.py"
+    editfile.write_text(
         """
 from sidecar_edits import edit
 
@@ -390,7 +390,7 @@ EDITS = [
     env["PYTHONPATH"] = str(REPO_ROOT / "src")
 
     subprocess.run(
-        [sys.executable, "-m", "sidecar_edits.render", str(config), str(tmp_path / "run")],
+        [sys.executable, "-m", "sidecar_edits.render", str(editfile), str(tmp_path / "run")],
         cwd=REPO_ROOT,
         env=env,
         check=True,
@@ -405,8 +405,8 @@ EDITS = [
 def test_write_file_edit_creates_generated_file_with_params(tmp_path: Path) -> None:
     base_dir = tmp_path / "base"
     base_dir.mkdir()
-    config = tmp_path / "edit.py"
-    config.write_text(
+    editfile = tmp_path / "edit.py"
+    editfile.write_text(
         """
 from sidecar_edits import edit
 
@@ -426,7 +426,7 @@ EDITS = [
     env["PYTHONPATH"] = str(REPO_ROOT / "src")
 
     subprocess.run(
-        [sys.executable, "-m", "sidecar_edits.render", str(config), str(tmp_path / "run")],
+        [sys.executable, "-m", "sidecar_edits.render", str(editfile), str(tmp_path / "run")],
         cwd=REPO_ROOT,
         env=env,
         check=True,
@@ -443,8 +443,8 @@ def test_append_file_edit_appends_generated_text_with_params(tmp_path: Path) -> 
     base_dir = tmp_path / "base"
     base_dir.mkdir()
     (base_dir / "input.scs").write_text("simulator lang=spectre\n", encoding="utf-8")
-    config = tmp_path / "edit.py"
-    config.write_text(
+    editfile = tmp_path / "edit.py"
+    editfile.write_text(
         """
 from sidecar_edits import edit
 
@@ -464,7 +464,7 @@ EDITS = [
     env["PYTHONPATH"] = str(REPO_ROOT / "src")
 
     subprocess.run(
-        [sys.executable, "-m", "sidecar_edits.render", str(config), str(tmp_path / "run")],
+        [sys.executable, "-m", "sidecar_edits.render", str(editfile), str(tmp_path / "run")],
         cwd=REPO_ROOT,
         env=env,
         check=True,
@@ -481,8 +481,8 @@ EDITS = [
 def test_append_file_edit_fails_when_target_is_missing(tmp_path: Path) -> None:
     base_dir = tmp_path / "base"
     base_dir.mkdir()
-    config = tmp_path / "edit.py"
-    config.write_text(
+    editfile = tmp_path / "edit.py"
+    editfile.write_text(
         """
 from sidecar_edits import edit
 
@@ -501,7 +501,7 @@ EDITS = [
     env["PYTHONPATH"] = str(REPO_ROOT / "src")
 
     result = subprocess.run(
-        [sys.executable, "-m", "sidecar_edits.render", str(config), str(tmp_path / "run")],
+        [sys.executable, "-m", "sidecar_edits.render", str(editfile), str(tmp_path / "run")],
         cwd=REPO_ROOT,
         env=env,
         capture_output=True,
@@ -517,8 +517,8 @@ def test_named_param_sets_run_filter(tmp_path: Path) -> None:
     base_dir = tmp_path / "base"
     base_dir.mkdir()
     (base_dir / "input.txt").write_text("corner=seed\n", encoding="utf-8")
-    config = tmp_path / "edit.py"
-    config.write_text(
+    editfile = tmp_path / "edit.py"
+    editfile.write_text(
         """
 from sidecar_edits import edit
 
@@ -541,7 +541,7 @@ EDITS = [
             sys.executable,
             "-m",
             "sidecar_edits.render",
-            str(config),
+            str(editfile),
             str(tmp_path / "run"),
             "--run",
             "ff",
@@ -561,8 +561,8 @@ def test_named_param_sets_unknown_run_fails(tmp_path: Path) -> None:
     base_dir = tmp_path / "base"
     base_dir.mkdir()
     (base_dir / "input.txt").write_text("corner=seed\n", encoding="utf-8")
-    config = tmp_path / "edit.py"
-    config.write_text(
+    editfile = tmp_path / "edit.py"
+    editfile.write_text(
         """
 BASE_DIR = "base"
 PARAM_SETS = [
@@ -580,7 +580,7 @@ EDITS = []
             sys.executable,
             "-m",
             "sidecar_edits.render",
-            str(config),
+            str(editfile),
             str(tmp_path / "run"),
             "--run",
             "missing",
@@ -599,8 +599,8 @@ def test_param_matrix_single_run_renders_under_output_base(tmp_path: Path) -> No
     base_dir = tmp_path / "base"
     base_dir.mkdir()
     (base_dir / "input.txt").write_text("vdd=seed\ntemp=seed\n", encoding="utf-8")
-    config = tmp_path / "edit.py"
-    config.write_text(
+    editfile = tmp_path / "edit.py"
+    editfile.write_text(
         """
 from sidecar_edits import edit
 
@@ -621,7 +621,7 @@ EDITS = [
     env["PYTHONPATH"] = str(REPO_ROOT / "src")
 
     subprocess.run(
-        [sys.executable, "-m", "sidecar_edits.render", str(config), str(tmp_path / "run")],
+        [sys.executable, "-m", "sidecar_edits.render", str(editfile), str(tmp_path / "run")],
         cwd=REPO_ROOT,
         env=env,
         check=True,
@@ -641,8 +641,8 @@ def test_param_matrix_named_sets_use_nested_dirs_and_targetdir(tmp_path: Path) -
     base_dir = tmp_path / "base"
     base_dir.mkdir()
     (base_dir / "input.txt").write_text("corner=seed\ntemp=seed\n", encoding="utf-8")
-    config = tmp_path / "edit.py"
-    config.write_text(
+    editfile = tmp_path / "edit.py"
+    editfile.write_text(
         """
 from sidecar_edits import edit
 
@@ -669,7 +669,7 @@ EDITS = [
             sys.executable,
             "-m",
             "sidecar_edits.render",
-            str(config),
+            str(editfile),
             str(tmp_path / "run"),
             "--run",
             "ss",
@@ -692,8 +692,8 @@ EDITS = [
 
 def test_param_matrix_rejects_empty_axis(tmp_path: Path) -> None:
     (tmp_path / "base").mkdir()
-    config = tmp_path / "edit.py"
-    config.write_text(
+    editfile = tmp_path / "edit.py"
+    editfile.write_text(
         """
 BASE_DIR = "base"
 PARAM_MATRIX = {"vdd": []}
@@ -703,10 +703,10 @@ EDITS = []
     )
 
     with pytest.raises(EditError, match="PARAM_MATRIX entry vdd must not be empty"):
-        load_config(config)
+        load_editfile(editfile)
 
 
-def test_all_is_allowed_for_single_run_config() -> None:
+def test_all_is_allowed_for_single_run_editfile() -> None:
     param_set = ParamSet(name=None, params={"corner": "tt"})
 
     assert select_param_sets([param_set], run_names=None, all_runs=True) == [param_set]
@@ -882,10 +882,10 @@ def test_run_command_expands_env_vars_in_arguments(
     assert captured["command"] == ["/opt/tools/bin/tool", "--input", "netlists/input.scs"]
 
 
-def test_config_rejects_ambiguous_param_sources(tmp_path: Path) -> None:
+def test_editfile_rejects_ambiguous_param_sources(tmp_path: Path) -> None:
     (tmp_path / "base").mkdir()
-    config = tmp_path / "edit.py"
-    config.write_text(
+    editfile = tmp_path / "edit.py"
+    editfile.write_text(
         """
 BASE_DIR = "base"
 COMMON_PARAMS = {"run_label": "inline"}
@@ -896,7 +896,7 @@ EDITS = []
     )
 
     with pytest.raises(EditError, match="defines both COMMON_PARAMS and COMMON_PARAMS_FILE"):
-        load_config(config)
+        load_editfile(editfile)
 
 
 def test_copy_base_tree_ignores_directories_basenames_and_relative_paths(tmp_path: Path) -> None:

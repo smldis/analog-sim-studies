@@ -9,8 +9,8 @@ from typing import Literal, Protocol, TypeAlias
 
 class RenderContext(Protocol):
     target_dir: Path
-    config_dir: Path
-    config_path: Path
+    editfile_dir: Path
+    editfile_path: Path
     params: dict[str, object]
 
 
@@ -20,12 +20,12 @@ class SourceFrame:
     line: int
     function: str
 
-    def format(self, config_path: Path | None = None) -> str:
+    def format(self, editfile_path: Path | None = None) -> str:
         display_path = self.path
-        if config_path is not None:
-            config_dir = config_path.parent.resolve()
+        if editfile_path is not None:
+            editfile_dir = editfile_path.parent.resolve()
             try:
-                display_path = self.path.resolve().relative_to(config_dir)
+                display_path = self.path.resolve().relative_to(editfile_dir)
             except ValueError:
                 display_path = self.path
         return f"{display_path}:{self.line} in {self.function}"
@@ -69,7 +69,7 @@ class CopyFileEdit:
     def apply(self, context: RenderContext) -> None:
         from sidecar_edits import render
 
-        source = render.resolve_config_path(context.config_dir, self.path, context.params)
+        source = render.resolve_editfile_path(context.editfile_dir, self.path, context.params)
         dest_name = render.format_path_text(self.to or source.name, context.params)
         render.apply_copy_file(context.target_dir, source, dest_name, edit_description(self))
 
@@ -307,7 +307,7 @@ def copy_file(
     to: str | None = None,
     description: str | None = None,
 ) -> CopyFileEdit:
-    """Copy a file from the config directory into the rendered run directory.
+    """Copy a file from the edit file directory into the rendered run directory.
 
     ``path`` is resolved relative to the directory containing the edit file unless
     it is absolute. ``to`` is the destination path inside the rendered run

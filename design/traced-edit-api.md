@@ -130,7 +130,7 @@ called from edit.py:15 in <module>
 reason: replace target not found in /tmp/run/input.scs
 ```
 
-Paths under the config directory tree are displayed relative to the config
+Paths under the edit file directory tree are displayed relative to that
 directory. Paths outside that tree are displayed as absolute paths.
 
 This is not intended to be a full Python traceback. The renderer should show only
@@ -143,7 +143,8 @@ replace operation has typed attributes such as `path`, `old`, `new`,
 `allow_no_match`, `description`, and `source_stack`.
 
 Edit objects execute through `apply(context)`. The render context provides the
-target run directory, config directory, config path, and current parameters.
+target run directory, edit file directory, edit file path, and current
+parameters.
 
 Operation implementations should read typed attributes from the edit object. Do
 not use generic dictionary field bags for the public edit model.

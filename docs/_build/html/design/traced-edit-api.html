@@ -351,7 +351,7 @@ called from edit.py:15 in &lt;module&gt;
 reason: replace target not found in /tmp/run/input.scs
 </pre></div>
 </div>
-<p>Paths under the config directory tree are displayed relative to the config
+<p>Paths under the edit file directory tree are displayed relative to that
 directory. Paths outside that tree are displayed as absolute paths.</p>
 <p>This is not intended to be a full Python traceback. The renderer should show only
 the small amount of source context needed to find the edit.</p>
@@ -362,7 +362,8 @@ the small amount of source context needed to find the edit.</p>
 replace operation has typed attributes such as <code class="docutils literal notranslate"><span class="pre">path</span></code>, <code class="docutils literal notranslate"><span class="pre">old</span></code>, <code class="docutils literal notranslate"><span class="pre">new</span></code>,
 <code class="docutils literal notranslate"><span class="pre">allow_no_match</span></code>, <code class="docutils literal notranslate"><span class="pre">description</span></code>, and <code class="docutils literal notranslate"><span class="pre">source_stack</span></code>.</p>
 <p>Edit objects execute through <code class="docutils literal notranslate"><span class="pre">apply(context)</span></code>. The render context provides the
-target run directory, config directory, config path, and current parameters.</p>
+target run directory, edit file directory, edit file path, and current
+parameters.</p>
 <p>Operation implementations should read typed attributes from the edit object. Do
 not use generic dictionary field bags for the public edit model.</p>
 </section>

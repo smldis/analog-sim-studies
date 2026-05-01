@@ -112,22 +112,22 @@ def test_helper_signatures_reject_unknown_fields_by_normal_python_call_behavior(
 def test_source_frames_format_paths_relative_to_config_tree(tmp_path: Path) -> None:
     from sidecar_edits import edit
 
-    config_path = tmp_path / "study" / "edit.py"
+    editfile_path = tmp_path / "study" / "edit.py"
     in_tree = tmp_path / "study" / "helpers" / "factory.py"
     outside_tree = tmp_path / "shared" / "factory.py"
 
-    assert edit.SourceFrame(in_tree, 12, "make_edit").format(config_path) == (
+    assert edit.SourceFrame(in_tree, 12, "make_edit").format(editfile_path) == (
         "helpers/factory.py:12 in make_edit"
     )
-    assert edit.SourceFrame(outside_tree, 7, "make_edit").format(config_path) == (
+    assert edit.SourceFrame(outside_tree, 7, "make_edit").format(editfile_path) == (
         f"{outside_tree}:7 in make_edit"
     )
 
 
 def test_wrapped_edit_captures_creation_and_caller_locations(tmp_path: Path) -> None:
-    config_path = tmp_path / "study" / "edit.py"
-    config_path.parent.mkdir()
-    config_path.write_text(
+    editfile_path = tmp_path / "study" / "edit.py"
+    editfile_path.parent.mkdir()
+    editfile_path.write_text(
         """
 from sidecar_edits import edit
 
@@ -145,17 +145,17 @@ EDITS = [
         encoding="utf-8",
     )
 
-    loaded = runpy.run_path(str(config_path))
+    loaded = runpy.run_path(str(editfile_path))
     spec = loaded["EDITS"][0]
 
-    assert spec.source_stack[0].format(config_path) == "edit.py:5 in model_include"
-    assert spec.source_stack[1].format(config_path) == "edit.py:12 in <module>"
+    assert spec.source_stack[0].format(editfile_path) == "edit.py:5 in model_include"
+    assert spec.source_stack[1].format(editfile_path) == "edit.py:12 in <module>"
 
 
-def test_config_executes_before_edit_operations(tmp_path: Path) -> None:
-    config_path = tmp_path / "study" / "edit.py"
-    config_path.parent.mkdir()
-    config_path.write_text(
+def test_editfile_executes_before_edit_operations(tmp_path: Path) -> None:
+    editfile_path = tmp_path / "study" / "edit.py"
+    editfile_path.parent.mkdir()
+    editfile_path.write_text(
         """
 from sidecar_edits import edit
 
@@ -172,18 +172,18 @@ EDITS = [
         encoding="utf-8",
     )
 
-    loaded = runpy.run_path(str(config_path))
+    loaded = runpy.run_path(str(editfile_path))
     spec = loaded["EDITS"][0]
 
     assert spec.new == "corner=tt"
-    assert spec.source_stack[0].format(config_path) == "edit.py:7 in <module>"
+    assert spec.source_stack[0].format(editfile_path) == "edit.py:7 in <module>"
 
 
 def test_renderer_rejects_raw_dictionary_edits(tmp_path: Path) -> None:
-    config_path = tmp_path / "edit.py"
+    editfile_path = tmp_path / "edit.py"
     output_dir = tmp_path / "run"
     (tmp_path / "base").mkdir()
-    config_path.write_text(
+    editfile_path.write_text(
         """
 BASE_DIR = "base"
 EDITS = [
@@ -194,7 +194,7 @@ EDITS = [
     )
 
     result = subprocess.run(
-        [sys.executable, "-m", "sidecar_edits.render", str(config_path), str(output_dir)],
+        [sys.executable, "-m", "sidecar_edits.render", str(editfile_path), str(output_dir)],
         cwd=REPO_ROOT,
         env={"PYTHONPATH": str(REPO_ROOT / "src")},
         capture_output=True,
@@ -206,12 +206,12 @@ EDITS = [
 
 
 def test_renderer_reports_failing_traced_edit_source_location(tmp_path: Path) -> None:
-    config_path = tmp_path / "edit.py"
+    editfile_path = tmp_path / "edit.py"
     output_dir = tmp_path / "run"
     base_dir = tmp_path / "base"
     base_dir.mkdir()
     (base_dir / "input.scs").write_text("corner=tt\n", encoding="utf-8")
-    config_path.write_text(
+    editfile_path.write_text(
         """
 from sidecar_edits import edit
 
@@ -229,7 +229,7 @@ EDITS = [
     )
 
     result = subprocess.run(
-        [sys.executable, "-m", "sidecar_edits.render", str(config_path), str(output_dir)],
+        [sys.executable, "-m", "sidecar_edits.render", str(editfile_path), str(output_dir)],
         cwd=REPO_ROOT,
         env={"PYTHONPATH": str(REPO_ROOT / "src")},
         capture_output=True,

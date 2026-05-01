@@ -115,14 +115,9 @@ call chain.
 
 ## Local Documentation
 
-The repository includes prebuilt HTML documentation under `docs/_build/html/`.
-Open `docs/_build/html/index.html` directly to read it without installing the
-documentation toolchain.
-
-Regenerating the HTML is an optional maintainer step:
+Build this documentation locally with:
 
 ```bash
-python -m pip install -e ".[docs]"
 python -m sphinx -b html docs docs/_build/html
 ```
 

@@ -218,7 +218,12 @@ python -m pytest -q
 
 ## Local Documentation
 
-Install the documentation extras, then build the Sphinx site:
+The repository includes prebuilt static HTML documentation under
+`docs/_build/html/`. Open `docs/_build/html/index.html` directly to read it
+without installing documentation dependencies.
+
+Regenerating the documentation is an optional maintainer step. Install the
+documentation extras only when you need to rebuild the generated HTML:
 
 ```bash
 python -m pip install -e ".[docs]"
@@ -231,8 +236,9 @@ Preview the generated HTML with:
 python -m http.server --directory docs/_build/html 8000
 ```
 
-The generated site is written to `docs/_build/html/` and is intentionally
-ignored by git.
+The Sphinx build imports project modules for API reference generation, so only
+run it from a trusted checkout. Normal package installation and test runs do not
+need the documentation extras.
 
 ## Manual Build Flow
 

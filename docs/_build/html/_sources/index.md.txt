@@ -48,11 +48,9 @@ Render the basic example:
 sidecar-render examples/basic/edits.py /tmp/sidecar_example_run
 ```
 
-This repository includes prebuilt HTML documentation under `docs/_build/html/`.
-Regenerate it only when updating the documentation:
+Build these docs locally:
 
 ```bash
-python -m pip install -e ".[docs]"
 python -m sphinx -b html docs docs/_build/html
 ```
 

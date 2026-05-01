@@ -4,5 +4,9 @@ src/sidecar_edits/bin/
 *.egg-info/
 prototype/sidecar_edits/out/
 __pycache__/
-docs/_build/
+docs/_build/*
+!docs/_build/html/
+!docs/_build/html/**
+docs/_build/html/.doctrees/
+docs/_build/html/_static/**/*.map
 sidecar_edits.edit.html

@@ -269,7 +269,25 @@ def extract_subckts(
     description: str | None = None,
     optional: bool = False,
 ) -> ExtractSubcktsEdit:
-    """Extract subcircuit definitions from a netlist into a side include file."""
+    """Extract subcircuit definitions from a netlist into a side include file.
+
+    The renderer runs the packaged ``extract_subckts`` helper in the rendered
+    run directory. ``input`` is read, ``output_main`` receives the main netlist
+    with subckt bodies removed, and ``output_subckts`` receives the extracted
+    subckt definitions. If ``include`` is omitted, it defaults to
+    ``output_subckts``.
+
+    Path fields are formatted with render parameters and environment variables.
+    Set ``optional=True`` only when it is acceptable to skip extraction if the
+    helper cannot run.
+
+    Example:
+        edit.extract_subckts(
+            input="input.scs",
+            output_main="input_main.scs",
+            output_subckts="subckts.inc",
+        )
+    """
     return ExtractSubcktsEdit(
         op="extract_subckts",
         input=input,
@@ -288,7 +306,21 @@ def copy_file(
     to: str | None = None,
     description: str | None = None,
 ) -> CopyFileEdit:
-    """Copy a file from the config directory into the rendered run directory."""
+    """Copy a file from the config directory into the rendered run directory.
+
+    ``path`` is resolved relative to the directory containing ``edits.py`` unless
+    it is absolute. ``to`` is the destination path inside the rendered run
+    directory; if omitted, the copied file keeps its source filename.
+
+    Source and destination paths are formatted with render parameters and
+    environment variables. The edit fails if the source file does not exist.
+
+    Example:
+        edit.copy_file(
+            path="assets/model_override.scs",
+            to="include/model_override.scs",
+        )
+    """
     return CopyFileEdit(
         op="copy_file",
         path=path,
@@ -304,7 +336,21 @@ def write_file(
     content: str,
     description: str | None = None,
 ) -> WriteFileEdit:
-    """Write generated text to a file in the rendered run directory."""
+    """Write generated text to a file in the rendered run directory.
+
+    The destination ``path`` is inside the rendered run directory. Parent
+    directories are created automatically, and existing files are overwritten.
+
+    ``path`` is formatted with render parameters and environment variables.
+    ``content`` is formatted with render parameters but does not expand
+    environment variables.
+
+    Example:
+        edit.write_file(
+            path="generated/pwl_sources.inc",
+            content="Vstim in 0 PWL(0 0 1n {vdd})\\n",
+        )
+    """
     return WriteFileEdit(
         op="write_file",
         path=path,
@@ -320,7 +366,21 @@ def append_file(
     content: str,
     description: str | None = None,
 ) -> AppendFileEdit:
-    """Append generated text to an existing file in the rendered run directory."""
+    """Append generated text to an existing file in the rendered run directory.
+
+    The target ``path`` must already exist in the rendered run directory. The
+    renderer appends exactly ``content``; it does not add a newline for you.
+
+    ``path`` is formatted with render parameters and environment variables.
+    ``content`` is formatted with render parameters but does not expand
+    environment variables.
+
+    Example:
+        edit.append_file(
+            path="input_main.scs",
+            content='include "generated/pwl_sources.inc"\\n',
+        )
+    """
     return AppendFileEdit(
         op="append_file",
         path=path,
@@ -339,7 +399,34 @@ def insert_series_source_at_instance_net(
     source_line: str,
     description: str | None = None,
 ) -> InsertSeriesSourceAtInstanceNetEdit:
-    """Insert a source in series with one net on a uniquely named X instance."""
+    """Insert a source in series with one net on a uniquely named X instance.
+
+    The renderer finds exactly one matching logical instance statement in the
+    rendered file, inserts ``source_line`` before it, and replaces one occurrence
+    of ``net`` in that instance text with ``internal_net``. Continuation lines
+    are kept with the selected instance text.
+
+    ``source_line`` is formatted with normal render parameters plus ``net`` and
+    ``internal_net``. The first version rejects commented instance statements
+    containing ``$``, ``;``, or ``*``. It also fails if the instance is missing
+    or ambiguous, or if the selected net is missing or repeated on that instance.
+
+    Instance names must start with ``X``. For netlists that duplicate the second
+    character in instance names, a request for ``XFOO`` may also match
+    ``XFFOO``. If both forms are present, the edit fails as ambiguous.
+
+    Example:
+        edit.insert_series_source_at_instance_net(
+            path="input.scs",
+            instance="X_SIDE_INJECT_001",
+            net="in",
+            internal_net="in__sidecar_inj",
+            source_line=(
+                "Vinj {net} {internal_net} "
+                "PULSE(0 1.2 0 10p 10p 4n 8n)"
+            ),
+        )
+    """
     if not instance.lower().startswith("x"):
         raise ValueError("instance must start with X")
     return InsertSeriesSourceAtInstanceNetEdit(
@@ -362,7 +449,22 @@ def replace(
     description: str | None = None,
     allow_no_match: bool = False,
 ) -> ReplaceEdit:
-    """Replace all occurrences of literal text in a rendered file."""
+    """Replace all occurrences of literal text in a rendered file.
+
+    ``path`` is inside the rendered run directory. ``old`` and ``new`` are
+    formatted with render parameters before replacement. Environment variables
+    are expanded in ``path`` only, not in replacement text.
+
+    The edit fails if ``old`` is not found. Set ``allow_no_match=True`` when an
+    absent target is acceptable.
+
+    Example:
+        edit.replace(
+            path="input.scs",
+            old="parameters corner=seed",
+            new="parameters corner={corner}",
+        )
+    """
     return ReplaceEdit(
         op="replace",
         path=path,
@@ -383,7 +485,22 @@ def regex_replace(
     description: str | None = None,
     allow_no_match: bool = False,
 ) -> RegexReplaceEdit:
-    """Replace text in a rendered file using a regular expression."""
+    """Replace text in a rendered file using a regular expression.
+
+    ``pattern`` is passed to Python ``re.subn`` with ``re.MULTILINE``. ``new`` is
+    formatted with render parameters before replacement. ``count=0`` means
+    replace all matches.
+
+    The edit fails if the pattern does not match. Set ``allow_no_match=True``
+    when an absent match is acceptable.
+
+    Example:
+        edit.regex_replace(
+            path="input.scs",
+            pattern=r"^parameters .*",
+            new="parameters vdd={vdd}",
+        )
+    """
     return RegexReplaceEdit(
         op="regex_replace",
         path=path,
@@ -402,7 +519,21 @@ def run(
     description: str | None = None,
     optional: bool = False,
 ) -> RunEdit:
-    """Run an external command in the rendered run directory."""
+    """Run an external command in the rendered run directory.
+
+    Each command argument is converted to text, formatted with render
+    parameters, and expanded for environment variables. The command runs with
+    the rendered run directory as the current working directory.
+
+    Set ``optional=True`` only when it is acceptable to skip the command if it is
+    missing or exits unsuccessfully.
+
+    Example:
+        edit.run(
+            command=["./run_sim.sh", "{corner}"],
+            description="run simulator setup script",
+        )
+    """
     return RunEdit(
         op="run",
         command=command,
@@ -419,7 +550,21 @@ def patch(
     description: str | None = None,
     optional: bool = False,
 ) -> PatchEdit:
-    """Apply a unified diff with the system patch command."""
+    """Apply a unified diff with the system patch command.
+
+    ``patch`` is formatted with render parameters and sent to ``patch -p{strip}``
+    in the rendered run directory. Use this for normal unified diffs when the
+    system ``patch`` command is available.
+
+    Set ``optional=True`` only when it is acceptable to skip the patch if the
+    command is missing or the patch fails.
+
+    Example:
+        edit.patch(
+            patch="*** unified diff text ***",
+            strip=0,
+        )
+    """
     return PatchEdit(
         op="patch",
         patch=patch,
@@ -438,7 +583,22 @@ def apply_patch(
     description: str | None = None,
     optional: bool = False,
 ) -> ApplyPatchEdit:
-    """Apply an apply_patch patch in the rendered run directory."""
+    """Apply an apply_patch patch in the rendered run directory.
+
+    ``patch`` is formatted with render parameters and sent to the configured
+    ``apply_patch`` command in the rendered run directory. By default the
+    renderer looks for an ``apply_patch`` executable on ``PATH``. Pass
+    ``binary=...`` to choose another executable, or ``command=[...]`` to provide
+    the full command.
+
+    Set ``optional=True`` only when it is acceptable to skip the patch if the
+    command is missing or the patch fails.
+
+    Example:
+        edit.apply_patch(
+            patch="*** Begin Patch\\n*** Add File: note.txt\\n+hello\\n*** End Patch\\n",
+        )
+    """
     return ApplyPatchEdit(
         op="apply_patch",
         patch=patch,

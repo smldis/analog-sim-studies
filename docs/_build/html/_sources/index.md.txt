@@ -3,10 +3,9 @@
 Prototype tooling for building repeatable analog simulation runs from a base
 directory and a small Python sidecar.
 
-The renderer copies the base tree, applies typed edit operations, and writes one
-or more concrete run directories. The interface is intentionally plain Python so
-studies can generate edits dynamically while still getting source-location error
-reports.
+The renderer executes `edits.py`, copies the base tree, applies typed edit
+operations, and writes one or more concrete run directories. The interface is
+plain Python while still providing source-location error reports.
 
 ```{toctree}
 :maxdepth: 2
@@ -48,9 +47,11 @@ Render the basic example:
 sidecar-render examples/basic/edits.py /tmp/sidecar_example_run
 ```
 
-Build these docs locally:
+This repository includes prebuilt HTML documentation under `docs/_build/html/`.
+Regenerate it only when updating the documentation:
 
 ```bash
+python -m pip install -e ".[docs]"
 python -m sphinx -b html docs docs/_build/html
 ```
 

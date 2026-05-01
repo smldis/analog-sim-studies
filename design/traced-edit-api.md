@@ -98,24 +98,14 @@ instance text. The source line can reference `{net}` and `{internal_net}` in
 addition to normal render parameters. The first version rejects commented
 instance lines and repeated selected net tokens.
 
-## Dynamic Generation
+## Config Execution
 
-`edits.py` is normal Python. Users can generate edit lists directly.
+`edits.py` is a Python config file. The renderer executes it first, reads the
+resulting `BASE_DIR`, parameter definitions, and `EDITS`, and only then applies
+the edit operations for each selected run.
 
-```python
-EDITS = [
-    edit.replace(
-        path=f"runs/{corner}/input.scs",
-        old="corner=seed",
-        new=f"corner={corner}",
-    )
-    for corner in ["tt", "ss", "ff"]
-]
-```
-
-Generated edits may share the same source line. Error messages still include the
-`EDITS` index, operation, description when present, target context, and reason so
-the failed generated edit can be identified.
+This keeps setup code, imports, local helper functions, and data loading in the
+normal Python execution model without introducing a separate compilation step.
 
 ## Error Reporting
 
@@ -167,6 +157,6 @@ not use generic dictionary field bags for the public edit model.
   applied.
 - Keep ordinary edit failures as `EditError` and let the renderer add the common
   `EDITS[index]` and source-location envelope.
-- Prefer construction-time tracing over AST parsing. The config file is Python,
-  and dynamic generation is a supported workflow.
+- Prefer construction-time tracing over AST parsing. The renderer executes the
+  config file before applying edit operations.
 - Do not accept raw dictionary entries in `EDITS`.

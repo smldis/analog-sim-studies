@@ -325,22 +325,13 @@ instance text. The source line can reference <code class="docutils literal notra
 addition to normal render parameters. The first version rejects commented
 instance lines and repeated selected net tokens.</p>
 </section>
-<section id="dynamic-generation">
-<h2>Dynamic Generation<a class="headerlink" href="#dynamic-generation" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">edits.py</span></code> is normal Python. Users can generate edit lists directly.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">EDITS</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="n">edit</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
-        <span class="n">path</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;runs/</span><span class="si">{</span><span class="n">corner</span><span class="si">}</span><span class="s2">/input.scs&quot;</span><span class="p">,</span>
-        <span class="n">old</span><span class="o">=</span><span class="s2">&quot;corner=seed&quot;</span><span class="p">,</span>
-        <span class="n">new</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;corner=</span><span class="si">{</span><span class="n">corner</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="k">for</span> <span class="n">corner</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;tt&quot;</span><span class="p">,</span> <span class="s2">&quot;ss&quot;</span><span class="p">,</span> <span class="s2">&quot;ff&quot;</span><span class="p">]</span>
-<span class="p">]</span>
-</pre></div>
-</div>
-<p>Generated edits may share the same source line. Error messages still include the
-<code class="docutils literal notranslate"><span class="pre">EDITS</span></code> index, operation, description when present, target context, and reason so
-the failed generated edit can be identified.</p>
+<section id="config-execution">
+<h2>Config Execution<a class="headerlink" href="#config-execution" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">edits.py</span></code> is a Python config file. The renderer executes it first, reads the
+resulting <code class="docutils literal notranslate"><span class="pre">BASE_DIR</span></code>, parameter definitions, and <code class="docutils literal notranslate"><span class="pre">EDITS</span></code>, and only then applies
+the edit operations for each selected run.</p>
+<p>This keeps setup code, imports, local helper functions, and data loading in the
+normal Python execution model without introducing a separate compilation step.</p>
 </section>
 <section id="error-reporting">
 <h2>Error Reporting<a class="headerlink" href="#error-reporting" title="Link to this heading">¶</a></h2>
@@ -385,8 +376,8 @@ not use generic dictionary field bags for the public edit model.</p>
 applied.</p></li>
 <li><p>Keep ordinary edit failures as <code class="docutils literal notranslate"><span class="pre">EditError</span></code> and let the renderer add the common
 <code class="docutils literal notranslate"><span class="pre">EDITS[index]</span></code> and source-location envelope.</p></li>
-<li><p>Prefer construction-time tracing over AST parsing. The config file is Python,
-and dynamic generation is a supported workflow.</p></li>
+<li><p>Prefer construction-time tracing over AST parsing. The renderer executes the
+config file before applying edit operations.</p></li>
 <li><p>Do not accept raw dictionary entries in <code class="docutils literal notranslate"><span class="pre">EDITS</span></code>.</p></li>
 </ul>
 </section>
@@ -450,7 +441,7 @@ and dynamic generation is a supported workflow.</p></li>
 <li><a class="reference internal" href="#">Traced Edit API</a><ul>
 <li><a class="reference internal" href="#authoring-edits">Authoring Edits</a></li>
 <li><a class="reference internal" href="#parameter-formatting">Parameter Formatting</a></li>
-<li><a class="reference internal" href="#dynamic-generation">Dynamic Generation</a></li>
+<li><a class="reference internal" href="#config-execution">Config Execution</a></li>
 <li><a class="reference internal" href="#error-reporting">Error Reporting</a></li>
 <li><a class="reference internal" href="#implementation-model">Implementation Model</a></li>
 <li><a class="reference internal" href="#maintainer-rules">Maintainer Rules</a></li>

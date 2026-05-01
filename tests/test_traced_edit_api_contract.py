@@ -152,32 +152,31 @@ EDITS = [
     assert spec.source_stack[1].format(config_path) == "edits.py:12 in <module>"
 
 
-def test_generated_edits_keep_python_generation_ergonomic(tmp_path: Path) -> None:
+def test_config_executes_before_edit_operations(tmp_path: Path) -> None:
     config_path = tmp_path / "study" / "edits.py"
     config_path.parent.mkdir()
     config_path.write_text(
         """
 from sidecar_edits import edit
 
+corner = "tt"
+
 EDITS = [
     edit.replace(
-        path=f"runs/{corner}/input.scs",
+        path="input.scs",
         old="corner=seed",
         new=f"corner={corner}",
     )
-    for corner in ["tt", "ss", "ff"]
 ]
 """,
         encoding="utf-8",
     )
 
     loaded = runpy.run_path(str(config_path))
-    edits = loaded["EDITS"]
+    spec = loaded["EDITS"][0]
 
-    assert [spec.new for spec in edits] == ["corner=tt", "corner=ss", "corner=ff"]
-    assert {spec.source_stack[0].format(config_path) for spec in edits} == {
-        "edits.py:5 in <module>"
-    }
+    assert spec.new == "corner=tt"
+    assert spec.source_stack[0].format(config_path) == "edits.py:7 in <module>"
 
 
 def test_renderer_rejects_raw_dictionary_edits(tmp_path: Path) -> None:

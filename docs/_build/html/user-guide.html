@@ -339,8 +339,12 @@ call chain.</p>
 </section>
 <section id="local-documentation">
 <h2>Local Documentation<a class="headerlink" href="#local-documentation" title="Link to this heading">¶</a></h2>
-<p>Build this documentation locally with:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>sphinx<span class="w"> </span>-b<span class="w"> </span>html<span class="w"> </span>docs<span class="w"> </span>docs/_build/html
+<p>The repository includes prebuilt HTML documentation under <code class="docutils literal notranslate"><span class="pre">docs/_build/html/</span></code>.
+Open <code class="docutils literal notranslate"><span class="pre">docs/_build/html/index.html</span></code> directly to read it without installing the
+documentation toolchain.</p>
+<p>Regenerating the HTML is an optional maintainer step:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[docs]&quot;</span>
+python<span class="w"> </span>-m<span class="w"> </span>sphinx<span class="w"> </span>-b<span class="w"> </span>html<span class="w"> </span>docs<span class="w"> </span>docs/_build/html
 </pre></div>
 </div>
 <p>Preview it with:</p>

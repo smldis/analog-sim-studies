@@ -237,12 +237,12 @@
           <section id="traced-edit-api">
 <h1>Traced Edit API<a class="headerlink" href="#traced-edit-api" title="Link to this heading">¶</a></h1>
 <p>Status: Implemented in the prototype.</p>
-<p><code class="docutils literal notranslate"><span class="pre">edits.py</span></code> defines how a base simulation directory is turned into one or more
-rendered run directories. Edit operations are written as Python helper calls
-under the <code class="docutils literal notranslate"><span class="pre">sidecar_edits.edit</span></code> namespace.</p>
+<p>An edit file defines how a base simulation directory is turned into one or more
+rendered run directories. The suggested filename is <code class="docutils literal notranslate"><span class="pre">edit.py</span></code>. Edit operations
+are written as Python helper calls under the <code class="docutils literal notranslate"><span class="pre">sidecar_edits.edit</span></code> namespace.</p>
 <p>The helpers return typed edit objects. Each object records the source location
 where it was created, so renderer errors can point users back to the relevant
-line in <code class="docutils literal notranslate"><span class="pre">edits.py</span></code> or in a helper module.</p>
+line in the edit file or in a helper module.</p>
 <section id="authoring-edits">
 <h2>Authoring Edits<a class="headerlink" href="#authoring-edits" title="Link to this heading">¶</a></h2>
 <p>Use <code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">sidecar_edits</span> <span class="pre">import</span> <span class="pre">edit</span></code> and place edit objects in <code class="docutils literal notranslate"><span class="pre">EDITS</span></code>.</p>
@@ -327,7 +327,7 @@ instance lines and repeated selected net tokens.</p>
 </section>
 <section id="config-execution">
 <h2>Config Execution<a class="headerlink" href="#config-execution" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">edits.py</span></code> is a Python config file. The renderer executes it first, reads the
+<p>The edit file is a Python file. The renderer executes it first, reads the
 resulting <code class="docutils literal notranslate"><span class="pre">BASE_DIR</span></code>, parameter definitions, and <code class="docutils literal notranslate"><span class="pre">EDITS</span></code>, and only then applies
 the edit operations for each selected run.</p>
 <p>This keeps setup code, imports, local helper functions, and data loading in the
@@ -339,7 +339,7 @@ normal Python execution model without introducing a separate compilation step.</
 location captured when the edit object was created.</p>
 <p>Example:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>error: EDITS[3] replace &quot;select corner netlist&quot; failed
-created at edits.py:18 in &lt;module&gt;
+created at edit.py:18 in &lt;module&gt;
 reason: replace target not found in /tmp/run/input_main.scs
 </pre></div>
 </div>
@@ -347,7 +347,7 @@ reason: replace target not found in /tmp/run/input_main.scs
 call chain:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>error: EDITS[1] replace failed
 created at helpers/netlist.py:7 in model_include
-called from edits.py:15 in &lt;module&gt;
+called from edit.py:15 in &lt;module&gt;
 reason: replace target not found in /tmp/run/input.scs
 </pre></div>
 </div>
@@ -377,7 +377,7 @@ applied.</p></li>
 <li><p>Keep ordinary edit failures as <code class="docutils literal notranslate"><span class="pre">EditError</span></code> and let the renderer add the common
 <code class="docutils literal notranslate"><span class="pre">EDITS[index]</span></code> and source-location envelope.</p></li>
 <li><p>Prefer construction-time tracing over AST parsing. The renderer executes the
-config file before applying edit operations.</p></li>
+edit file before applying edit operations.</p></li>
 <li><p>Do not accept raw dictionary entries in <code class="docutils literal notranslate"><span class="pre">EDITS</span></code>.</p></li>
 </ul>
 </section>

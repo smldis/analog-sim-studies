@@ -1,7 +1,7 @@
 # User Guide
 
-`edits.py` defines how a base simulation directory is transformed into rendered
-run directories.
+An edit file defines how a base simulation directory is transformed into rendered
+run directories. The suggested filename is `edit.py`.
 
 ## Authoring Edits
 
@@ -106,7 +106,7 @@ source location captured when the edit object was created.
 
 ```text
 error: EDITS[3] replace "select corner netlist" failed
-created at edits.py:18 in <module>
+created at edit.py:18 in <module>
 reason: replace target not found in /tmp/run/input_main.scs
 ```
 

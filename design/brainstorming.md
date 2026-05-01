@@ -4,7 +4,7 @@
 
 Status: Done.
 
-The prototype supports multiple named parameter configurations in one `edits.py`,
+The prototype supports multiple named parameter configurations in one edit file,
 then lets the CLI select one or more runs to prepare.
 
 Current prototype shape:
@@ -53,10 +53,10 @@ common and set-specific values for the same key.
 CLI:
 
 ```bash
-sidecar-render examples/basic/edits.py /tmp/run
-sidecar-render examples/basic/edits.py /tmp/run --run tt_1v2
-sidecar-render examples/basic/edits.py /tmp/run --run tt_1v2 --run ss_0v9
-sidecar-render examples/basic/edits.py /tmp/run --all
+sidecar-render examples/basic/edit.py /tmp/run
+sidecar-render examples/basic/edit.py /tmp/run --run tt_1v2
+sidecar-render examples/basic/edit.py /tmp/run --run tt_1v2 --run ss_0v9
+sidecar-render examples/basic/edit.py /tmp/run --all
 ```
 
 Default output layout:
@@ -75,7 +75,7 @@ readability; `--run` selects one or more groups before matrix expansion.
 
 Implementation notes:
 
-- Done: `edits.py` remains the study definition.
+- Done: the edit file remains the study definition.
 - Done: the CLI selects named parameter sets with `--run`; no selection renders all named sets.
 - Done: single-run examples use `COMMON_PARAMS` without requiring `PARAM_SETS`.
 - Done: named parameter sets treat the output argument as a base output path.
@@ -83,7 +83,7 @@ Implementation notes:
 - Done: `PARAM_MATRIX` applies after parameter-set selection and renders matrix cases one level deeper.
 - Done: matrix values are explicit lists only; users can generate those lists in Python if they want sweep syntax.
 - Done: tests cover selected runs, all runs by default, explicit target directories, matrix expansion, and unknown run names.
-- Open: avoid putting loops or orchestration logic inside `edits.py` until a concrete use case requires it.
+- Open: avoid putting loops or orchestration logic inside the edit file until a concrete use case requires it.
 
 This adds multi-run preparation without turning the prototype into a full
 scheduler or dependency graph yet.

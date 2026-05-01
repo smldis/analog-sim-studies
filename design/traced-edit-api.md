@@ -2,13 +2,13 @@
 
 Status: Implemented in the prototype.
 
-`edits.py` defines how a base simulation directory is turned into one or more
-rendered run directories. Edit operations are written as Python helper calls
-under the `sidecar_edits.edit` namespace.
+An edit file defines how a base simulation directory is turned into one or more
+rendered run directories. The suggested filename is `edit.py`. Edit operations
+are written as Python helper calls under the `sidecar_edits.edit` namespace.
 
 The helpers return typed edit objects. Each object records the source location
 where it was created, so renderer errors can point users back to the relevant
-line in `edits.py` or in a helper module.
+line in the edit file or in a helper module.
 
 ## Authoring Edits
 
@@ -100,7 +100,7 @@ instance lines and repeated selected net tokens.
 
 ## Config Execution
 
-`edits.py` is a Python config file. The renderer executes it first, reads the
+The edit file is a Python file. The renderer executes it first, reads the
 resulting `BASE_DIR`, parameter definitions, and `EDITS`, and only then applies
 the edit operations for each selected run.
 
@@ -116,7 +116,7 @@ Example:
 
 ```text
 error: EDITS[3] replace "select corner netlist" failed
-created at edits.py:18 in <module>
+created at edit.py:18 in <module>
 reason: replace target not found in /tmp/run/input_main.scs
 ```
 
@@ -126,7 +126,7 @@ call chain:
 ```text
 error: EDITS[1] replace failed
 created at helpers/netlist.py:7 in model_include
-called from edits.py:15 in <module>
+called from edit.py:15 in <module>
 reason: replace target not found in /tmp/run/input.scs
 ```
 
@@ -158,5 +158,5 @@ not use generic dictionary field bags for the public edit model.
 - Keep ordinary edit failures as `EditError` and let the renderer add the common
   `EDITS[index]` and source-location envelope.
 - Prefer construction-time tracing over AST parsing. The renderer executes the
-  config file before applying edit operations.
+  edit file before applying edit operations.
 - Do not accept raw dictionary entries in `EDITS`.

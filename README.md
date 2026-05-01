@@ -51,20 +51,20 @@ With the virtual environment activated:
 
 ```bash
 sidecar-render \
-  examples/basic/edits.py \
+  examples/basic/edit.py \
   /tmp/sidecar_example_run
 ```
 
 The basic example copies `examples/basic/base/` into the output directory, then applies
 the configured edit steps. It uses `extract_subckts`, `copy_file`, and
-`replace`; other operations are listed as a comment in `examples/basic/edits.py`.
+`replace`; other operations are listed as a comment in `examples/basic/edit.py`.
 
 The fuller example also exercises `extract_subckts`, `regex_replace`, `patch`,
 and `apply_patch`:
 
 ```bash
 sidecar-render \
-  examples/apply_patch/edits.py \
+  examples/apply_patch/edit.py \
   /tmp/sidecar_apply_patch_run
 ```
 
@@ -76,7 +76,7 @@ explicit voltage/temperature combinations:
 
 ```bash
 sidecar-render \
-  examples/param_matrix/edits.py \
+  examples/param_matrix/edit.py \
   /tmp/sidecar_matrix_run
 ```
 
@@ -144,8 +144,9 @@ These helpers are regular typed Python functions with docstrings, so editor
 autocomplete and `help(sidecar_edits.edit.replace)` can show the available
 arguments. Raw dictionary edit entries are not supported by the renderer.
 
-Parameters are defined inside `edits.py`, not assembled on the command line. For
-a single run, use inline common parameters:
+Parameters are defined inside the edit file, not assembled on the command line.
+The suggested filename is `edit.py`. For a single run, use inline common
+parameters:
 
 ```python
 COMMON_PARAMS = {
@@ -155,7 +156,7 @@ COMMON_PARAMS = {
 
 For multiple configurations, add `PARAM_SETS`. Rendering all named groups is the
 default; use `--run <name>` one or more times to render a subset. By default,
-`sidecar-render edits.py /tmp/run` writes named groups next to the requested path
+`sidecar-render edit.py /tmp/run` writes named groups next to the requested path
 as `/tmp/run_<name>`. A group can override that with `targetdir`.
 
 ```python
@@ -189,7 +190,7 @@ PARAM_MATRIX = {
 }
 ```
 
-For `sidecar-render edits.py /tmp/run --run tt_1v2`, the output layout is:
+For `sidecar-render edit.py /tmp/run --run tt_1v2`, the output layout is:
 
 ```text
 /tmp/run_tt_1v2/vdd_0p90_temp_c_27/
@@ -247,6 +248,6 @@ For a build without installing into the environment:
 ```bash
 python setup.py build_py
 PYTHONPATH=build/lib python -m sidecar_edits.render \
-  examples/basic/edits.py \
+  examples/basic/edit.py \
   /tmp/sidecar_example_run_manual
 ```

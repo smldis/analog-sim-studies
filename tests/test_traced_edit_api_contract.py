@@ -112,7 +112,7 @@ def test_helper_signatures_reject_unknown_fields_by_normal_python_call_behavior(
 def test_source_frames_format_paths_relative_to_config_tree(tmp_path: Path) -> None:
     from sidecar_edits import edit
 
-    config_path = tmp_path / "study" / "edits.py"
+    config_path = tmp_path / "study" / "edit.py"
     in_tree = tmp_path / "study" / "helpers" / "factory.py"
     outside_tree = tmp_path / "shared" / "factory.py"
 
@@ -125,7 +125,7 @@ def test_source_frames_format_paths_relative_to_config_tree(tmp_path: Path) -> N
 
 
 def test_wrapped_edit_captures_creation_and_caller_locations(tmp_path: Path) -> None:
-    config_path = tmp_path / "study" / "edits.py"
+    config_path = tmp_path / "study" / "edit.py"
     config_path.parent.mkdir()
     config_path.write_text(
         """
@@ -148,12 +148,12 @@ EDITS = [
     loaded = runpy.run_path(str(config_path))
     spec = loaded["EDITS"][0]
 
-    assert spec.source_stack[0].format(config_path) == "edits.py:5 in model_include"
-    assert spec.source_stack[1].format(config_path) == "edits.py:12 in <module>"
+    assert spec.source_stack[0].format(config_path) == "edit.py:5 in model_include"
+    assert spec.source_stack[1].format(config_path) == "edit.py:12 in <module>"
 
 
 def test_config_executes_before_edit_operations(tmp_path: Path) -> None:
-    config_path = tmp_path / "study" / "edits.py"
+    config_path = tmp_path / "study" / "edit.py"
     config_path.parent.mkdir()
     config_path.write_text(
         """
@@ -176,11 +176,11 @@ EDITS = [
     spec = loaded["EDITS"][0]
 
     assert spec.new == "corner=tt"
-    assert spec.source_stack[0].format(config_path) == "edits.py:7 in <module>"
+    assert spec.source_stack[0].format(config_path) == "edit.py:7 in <module>"
 
 
 def test_renderer_rejects_raw_dictionary_edits(tmp_path: Path) -> None:
-    config_path = tmp_path / "edits.py"
+    config_path = tmp_path / "edit.py"
     output_dir = tmp_path / "run"
     (tmp_path / "base").mkdir()
     config_path.write_text(
@@ -206,7 +206,7 @@ EDITS = [
 
 
 def test_renderer_reports_failing_traced_edit_source_location(tmp_path: Path) -> None:
-    config_path = tmp_path / "edits.py"
+    config_path = tmp_path / "edit.py"
     output_dir = tmp_path / "run"
     base_dir = tmp_path / "base"
     base_dir.mkdir()
@@ -238,5 +238,5 @@ EDITS = [
 
     assert result.returncode == 2
     assert 'EDITS[1] replace "select corner" failed' in result.stderr
-    assert "created at edits.py:6" in result.stderr
+    assert "created at edit.py:6" in result.stderr
     assert "replace target not found" in result.stderr

@@ -309,7 +309,7 @@ def copy_file(
 ) -> CopyFileEdit:
     """Copy a file from the config directory into the rendered run directory.
 
-    ``path`` is resolved relative to the directory containing ``edits.py`` unless
+    ``path`` is resolved relative to the directory containing the edit file unless
     it is absolute. ``to`` is the destination path inside the rendered run
     directory; if omitted, the copied file keeps its source filename.
 

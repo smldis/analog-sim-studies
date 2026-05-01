@@ -10,11 +10,11 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BASIC_EXAMPLE_DIR = REPO_ROOT / "examples" / "basic"
-BASIC_EDITS = BASIC_EXAMPLE_DIR / "edits.py"
+BASIC_EDITS = BASIC_EXAMPLE_DIR / "edit.py"
 APPLY_PATCH_EXAMPLE_DIR = REPO_ROOT / "examples" / "apply_patch"
-APPLY_PATCH_EDITS = APPLY_PATCH_EXAMPLE_DIR / "edits.py"
+APPLY_PATCH_EDITS = APPLY_PATCH_EXAMPLE_DIR / "edit.py"
 PARAM_MATRIX_EXAMPLE_DIR = REPO_ROOT / "examples" / "param_matrix"
-PARAM_MATRIX_EDITS = PARAM_MATRIX_EXAMPLE_DIR / "edits.py"
+PARAM_MATRIX_EDITS = PARAM_MATRIX_EXAMPLE_DIR / "edit.py"
 
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
@@ -305,7 +305,7 @@ def test_replace_failure_uses_edit_description(tmp_path: Path) -> None:
 def test_config_can_load_params_from_file(tmp_path: Path) -> None:
     (tmp_path / "base").mkdir()
     (tmp_path / "params.json").write_text('{"run_label": "file"}\n', encoding="utf-8")
-    config = tmp_path / "edits.py"
+    config = tmp_path / "edit.py"
     config.write_text(
         """
 BASE_DIR = "base"
@@ -329,7 +329,7 @@ def test_config_expands_env_vars_in_base_dir_and_params_file(
     (env_root / "base").mkdir(parents=True)
     (env_root / "params.json").write_text('{"run_label": "env-file"}\n', encoding="utf-8")
     monkeypatch.setenv("SIDECAR_TEST_ROOT", str(env_root))
-    config = tmp_path / "edits.py"
+    config = tmp_path / "edit.py"
     config.write_text(
         """
 BASE_DIR = "$SIDECAR_TEST_ROOT/base"
@@ -348,7 +348,7 @@ EDITS = []
 
 def test_config_can_define_params_inline(tmp_path: Path) -> None:
     (tmp_path / "base").mkdir()
-    config = tmp_path / "edits.py"
+    config = tmp_path / "edit.py"
     config.write_text(
         """
 BASE_DIR = "base"
@@ -368,7 +368,7 @@ def test_named_param_sets_render_all_by_default(tmp_path: Path) -> None:
     base_dir.mkdir()
     (base_dir / "input.txt").write_text("corner=seed\nvdd=seed\n", encoding="utf-8")
     (tmp_path / "ss.json").write_text('{"corner": "ss", "vdd": "0.90"}\n', encoding="utf-8")
-    config = tmp_path / "edits.py"
+    config = tmp_path / "edit.py"
     config.write_text(
         """
 from sidecar_edits import edit
@@ -405,7 +405,7 @@ EDITS = [
 def test_write_file_edit_creates_generated_file_with_params(tmp_path: Path) -> None:
     base_dir = tmp_path / "base"
     base_dir.mkdir()
-    config = tmp_path / "edits.py"
+    config = tmp_path / "edit.py"
     config.write_text(
         """
 from sidecar_edits import edit
@@ -443,7 +443,7 @@ def test_append_file_edit_appends_generated_text_with_params(tmp_path: Path) -> 
     base_dir = tmp_path / "base"
     base_dir.mkdir()
     (base_dir / "input.scs").write_text("simulator lang=spectre\n", encoding="utf-8")
-    config = tmp_path / "edits.py"
+    config = tmp_path / "edit.py"
     config.write_text(
         """
 from sidecar_edits import edit
@@ -481,7 +481,7 @@ EDITS = [
 def test_append_file_edit_fails_when_target_is_missing(tmp_path: Path) -> None:
     base_dir = tmp_path / "base"
     base_dir.mkdir()
-    config = tmp_path / "edits.py"
+    config = tmp_path / "edit.py"
     config.write_text(
         """
 from sidecar_edits import edit
@@ -517,7 +517,7 @@ def test_named_param_sets_run_filter(tmp_path: Path) -> None:
     base_dir = tmp_path / "base"
     base_dir.mkdir()
     (base_dir / "input.txt").write_text("corner=seed\n", encoding="utf-8")
-    config = tmp_path / "edits.py"
+    config = tmp_path / "edit.py"
     config.write_text(
         """
 from sidecar_edits import edit
@@ -561,7 +561,7 @@ def test_named_param_sets_unknown_run_fails(tmp_path: Path) -> None:
     base_dir = tmp_path / "base"
     base_dir.mkdir()
     (base_dir / "input.txt").write_text("corner=seed\n", encoding="utf-8")
-    config = tmp_path / "edits.py"
+    config = tmp_path / "edit.py"
     config.write_text(
         """
 BASE_DIR = "base"
@@ -599,7 +599,7 @@ def test_param_matrix_single_run_renders_under_output_base(tmp_path: Path) -> No
     base_dir = tmp_path / "base"
     base_dir.mkdir()
     (base_dir / "input.txt").write_text("vdd=seed\ntemp=seed\n", encoding="utf-8")
-    config = tmp_path / "edits.py"
+    config = tmp_path / "edit.py"
     config.write_text(
         """
 from sidecar_edits import edit
@@ -641,7 +641,7 @@ def test_param_matrix_named_sets_use_nested_dirs_and_targetdir(tmp_path: Path) -
     base_dir = tmp_path / "base"
     base_dir.mkdir()
     (base_dir / "input.txt").write_text("corner=seed\ntemp=seed\n", encoding="utf-8")
-    config = tmp_path / "edits.py"
+    config = tmp_path / "edit.py"
     config.write_text(
         """
 from sidecar_edits import edit
@@ -692,7 +692,7 @@ EDITS = [
 
 def test_param_matrix_rejects_empty_axis(tmp_path: Path) -> None:
     (tmp_path / "base").mkdir()
-    config = tmp_path / "edits.py"
+    config = tmp_path / "edit.py"
     config.write_text(
         """
 BASE_DIR = "base"
@@ -884,7 +884,7 @@ def test_run_command_expands_env_vars_in_arguments(
 
 def test_config_rejects_ambiguous_param_sources(tmp_path: Path) -> None:
     (tmp_path / "base").mkdir()
-    config = tmp_path / "edits.py"
+    config = tmp_path / "edit.py"
     config.write_text(
         """
 BASE_DIR = "base"

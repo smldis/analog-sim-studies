@@ -238,9 +238,10 @@
 <h1>Analog Sim Studies<a class="headerlink" href="#analog-sim-studies" title="Link to this heading">¶</a></h1>
 <p>Prototype tooling for building repeatable analog simulation runs from a base
 directory and a small Python sidecar.</p>
-<p>The renderer executes <code class="docutils literal notranslate"><span class="pre">edits.py</span></code>, copies the base tree, applies typed edit
-operations, and writes one or more concrete run directories. The interface is
-plain Python while still providing source-location error reports.</p>
+<p>The renderer executes an edit file, copies the base tree, applies typed edit
+operations, and writes one or more concrete run directories. The suggested edit
+file name is <code class="docutils literal notranslate"><span class="pre">edit.py</span></code>, and the interface is plain Python while still providing
+source-location error reports.</p>
 <div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul>
@@ -311,7 +312,7 @@ plain Python while still providing source-location error reports.</p>
 </pre></div>
 </div>
 <p>Render the basic example:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sidecar-render<span class="w"> </span>examples/basic/edits.py<span class="w"> </span>/tmp/sidecar_example_run
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sidecar-render<span class="w"> </span>examples/basic/edit.py<span class="w"> </span>/tmp/sidecar_example_run
 </pre></div>
 </div>
 <p>This repository includes prebuilt HTML documentation under <code class="docutils literal notranslate"><span class="pre">docs/_build/html/</span></code>.
@@ -324,7 +325,7 @@ python<span class="w"> </span>-m<span class="w"> </span>sphinx<span class="w"> <
 <section id="main-sections">
 <h2>Main Sections<a class="headerlink" href="#main-sections" title="Link to this heading">¶</a></h2>
 <ul class="simple">
-<li><p><a class="reference internal" href="user-guide.html"><span class="std std-doc">User Guide</span></a>: how to author <code class="docutils literal notranslate"><span class="pre">edits.py</span></code>, format parameters,
+<li><p><a class="reference internal" href="user-guide.html"><span class="std std-doc">User Guide</span></a>: how to author an edit file, format parameters,
 inject generated sources, and read errors.</p></li>
 <li><p><a class="reference internal" href="api.html"><span class="doc std std-doc">API Reference</span></a>: generated signatures and docstrings for every
 helper in <code class="docutils literal notranslate"><span class="pre">sidecar_edits.edit</span></code>.</p></li>

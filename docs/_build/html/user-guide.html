@@ -236,8 +236,8 @@
         <article role="main" id="furo-main-content">
           <section id="user-guide">
 <h1>User Guide<a class="headerlink" href="#user-guide" title="Link to this heading">¶</a></h1>
-<p><code class="docutils literal notranslate"><span class="pre">edits.py</span></code> defines how a base simulation directory is transformed into rendered
-run directories.</p>
+<p>An edit file defines how a base simulation directory is transformed into rendered
+run directories. The suggested filename is <code class="docutils literal notranslate"><span class="pre">edit.py</span></code>.</p>
 <section id="authoring-edits">
 <h2>Authoring Edits<a class="headerlink" href="#authoring-edits" title="Link to this heading">¶</a></h2>
 <p>Use <code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">sidecar_edits</span> <span class="pre">import</span> <span class="pre">edit</span></code> and place edit objects in <code class="docutils literal notranslate"><span class="pre">EDITS</span></code>.</p>
@@ -330,7 +330,7 @@ selected net is missing or appears more than once on that instance.</p>
 <p>When an edit fails, the renderer reports the failing <code class="docutils literal notranslate"><span class="pre">EDITS</span></code> entry and the
 source location captured when the edit object was created.</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>error: EDITS[3] replace &quot;select corner netlist&quot; failed
-created at edits.py:18 in &lt;module&gt;
+created at edit.py:18 in &lt;module&gt;
 reason: replace target not found in /tmp/run/input_main.scs
 </pre></div>
 </div>

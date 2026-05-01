@@ -25,7 +25,7 @@ def write_config(tmp_path: Path, edits: str, base_text: str) -> Path:
     base_dir = tmp_path / "base"
     base_dir.mkdir()
     (base_dir / "input.scs").write_text(base_text, encoding="utf-8")
-    config_path = tmp_path / "edits.py"
+    config_path = tmp_path / "edit.py"
     config_path.write_text(
         f"""
 from sidecar_edits import edit

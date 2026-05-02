@@ -17,6 +17,12 @@ def rendered(waveforms: dict[str, pwl.PwlWaveform]) -> dict[str, str]:
     return {name: waveform.render_pwl(wrap=False) for name, waveform in waveforms.items()}
 
 
+def write_workbook(path: Path, sheets: dict[str, pd.DataFrame]) -> None:
+    with pd.ExcelWriter(path, engine="openpyxl") as writer:
+        for sheet_name, frame in sheets.items():
+            frame.to_excel(writer, sheet_name=sheet_name, index=False)
+
+
 def test_parse_csv_with_missing_cells() -> None:
     waveforms = pwl.waveforms_from_text(
         "#time,vin,vclk,ireset\n"
@@ -128,26 +134,14 @@ def test_file_loader_dispatches_csv_and_tsv(tmp_path: Path) -> None:
 
 def test_workbook_with_one_sheet_uses_it_by_default(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     xlsx_path = tmp_path / "startup.xlsx"
-    xlsx_path.write_bytes(b"not a real workbook")
-
-    class FakeExcelFile:
-        sheet_names = ["startup"]
-
-        def __init__(self, path: Path) -> None:
-            assert path == xlsx_path
-
-    def fake_read_excel(path: Path, *, sheet_name: str, dtype: object, keep_default_na: bool) -> pd.DataFrame:
-        assert path == xlsx_path
-        assert sheet_name == "startup"
-        assert dtype is str
-        assert keep_default_na is False
-        return pd.DataFrame({"#time": ["0", "1n"], "vin": ["0", "1.2"]})
-
-    monkeypatch.setattr(pd, "ExcelFile", FakeExcelFile)
-    monkeypatch.setattr(pd, "read_excel", fake_read_excel)
+    write_workbook(
+        xlsx_path,
+        {
+            "startup": pd.DataFrame({"#time": ["0", "1n"], "vin": ["0", "1.2"]}),
+        },
+    )
 
     assert rendered(pwl.waveforms_from_file(xlsx_path)) == {
         "vin": "PWL(0 0 1n 1.2)",
@@ -156,18 +150,15 @@ def test_workbook_with_one_sheet_uses_it_by_default(
 
 def test_workbook_with_multiple_sheets_requires_sheet(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     xlsx_path = tmp_path / "startup.xlsx"
-    xlsx_path.write_bytes(b"not a real workbook")
-
-    class FakeExcelFile:
-        sheet_names = ["fast", "slow"]
-
-        def __init__(self, path: Path) -> None:
-            assert path == xlsx_path
-
-    monkeypatch.setattr(pd, "ExcelFile", FakeExcelFile)
+    write_workbook(
+        xlsx_path,
+        {
+            "fast": pd.DataFrame({"#time": ["0"], "vin": ["0"]}),
+            "slow": pd.DataFrame({"#time": ["0"], "vin": ["1"]}),
+        },
+    )
 
     with pytest.raises(pwl.PwlTableError, match="sheet=.*fast.*slow"):
         pwl.waveforms_from_file(xlsx_path)
@@ -175,18 +166,15 @@ def test_workbook_with_multiple_sheets_requires_sheet(
 
 def test_requested_sheet_missing_reports_available_sheets(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     xlsx_path = tmp_path / "startup.xlsx"
-    xlsx_path.write_bytes(b"not a real workbook")
-
-    class FakeExcelFile:
-        sheet_names = ["fast", "slow"]
-
-        def __init__(self, path: Path) -> None:
-            assert path == xlsx_path
-
-    monkeypatch.setattr(pd, "ExcelFile", FakeExcelFile)
+    write_workbook(
+        xlsx_path,
+        {
+            "fast": pd.DataFrame({"#time": ["0"], "vin": ["0"]}),
+            "slow": pd.DataFrame({"#time": ["0"], "vin": ["1"]}),
+        },
+    )
 
     with pytest.raises(pwl.PwlTableError, match="missing.*fast.*slow"):
         pwl.waveforms_from_file(xlsx_path, sheet="missing")

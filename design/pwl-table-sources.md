@@ -52,18 +52,16 @@ as `1.2`, `vdd`, `VDD/2`, `1m`, or `{vdd}`.
 
 The table content should be accepted from multiple common spreadsheet workflows.
 
-Core support should include plain text inputs that do not require optional
-dependencies:
+Support should include the common formats users already get from spreadsheet
+tools:
 
 - CSV files.
 - TSV files.
 - Delimited text strings copied from Excel, LibreOffice, or similar tools.
-
-Spreadsheet-file support should be a design goal too:
-
 - `.xlsx` with sheet selection by name.
-- `.ods` if the dependency story is reasonable.
-- Other formats that pandas can read without making the core package heavy.
+- `.ods` with sheet selection by name.
+- Other tabular formats that pandas can read with a reasonable dependency
+  story.
 
 The API should make the source explicit enough that users do not have to learn a
 conversion pipeline before using the feature. A user who has data open in a
@@ -114,13 +112,11 @@ waveforms = pwl.waveforms_from_text(
     2n		0	1m
     5n	1.2		0
     """,
-    delimiter="tab",
 )
 ```
 
-The library can also expose explicit helpers such as `waveforms_from_csv`,
-`waveforms_from_tsv`, or `waveforms_from_excel` if that reads better than one
-generic `waveforms_from_file`.
+The text loader should detect common delimited input automatically. An explicit
+delimiter override can still be added if automatic detection proves ambiguous.
 
 The minimal object model could be:
 
@@ -162,12 +158,11 @@ for name, waveform in waveforms.items():
 source_block = "\n".join(lines) + "\n"
 ```
 
-Open choice: line wrapping.
-
-The first version can emit one `PWL(...)` expression per waveform. If long PWL
-entries become unreadable or simulator line limits matter, add a wrapping option
-that emits continuation lines or returns a sequence of line fragments for the
-user to assemble.
+`render_pwl()` should wrap long expressions by default using the SPICE `+`
+continuation token. A default target line length around 88 characters is a
+reasonable starting point: it is short enough to review and long enough to avoid
+excessive wrapping. The renderer should also allow wrapping to be disabled for
+users or simulators that prefer a single-line `PWL(...)` expression.
 
 ## Edit File Usage
 
@@ -187,24 +182,20 @@ spreadsheet range before declaring `EDITS`.
 
 ## Feasibility
 
-This is feasible, but the dependency boundary matters.
+This is feasible with pandas as a normal dependency for the PWL table helper.
+Common data-science packages are acceptable here because the feature is about
+consuming user-authored tabular data, including workbooks.
 
-CSV, TSV, and copied text ranges can use the standard library. That should be
-the always-available core.
+Pandas gives one familiar implementation path for CSV, TSV, copied delimited
+text, `.xlsx`, `.ods`, and sheet selection. The reader should be hidden behind
+domain-specific functions: `waveforms_from_file(...)` and
+`waveforms_from_text(...)`. Workbook support may still require the normal pandas
+reader engines for specific formats, such as `openpyxl` for `.xlsx` or `odfpy`
+for `.ods`; missing engines should produce clear install errors.
 
-Workbook formats are feasible through existing Python readers, probably via
-pandas for a broad and familiar interface. The tradeoff is dependency weight:
-pandas plus the relevant engines can be large, and support depends on optional
-packages such as `openpyxl` for `.xlsx` or `odfpy` for `.ods`. A practical shape
-is:
-
-- Keep core text parsing dependency-free.
-- Add spreadsheet support behind an optional dependency extra, for example
-  `sidecar-edits-prototype[pwl-spreadsheet]`.
-- Raise a clear error when a workbook format is requested without the optional
-  dependency installed.
-- Support `sheet="name"` for workbook readers from the first spreadsheet-capable
-  version.
+If a workbook has exactly one sheet, `waveforms_from_file(...)` should use that
+sheet by default. If a workbook has multiple sheets, the user should provide
+`sheet="..."`; otherwise the error should mention the available sheet names.
 
 The library does not need to hide pandas if pandas is the right implementation
 choice internally, but the user-facing API should stay domain-specific:
@@ -217,13 +208,18 @@ The implementation risk is mostly validation, not parsing:
 - Reject duplicate source column names.
 - Reject rows with values but empty time.
 - Report workbook sheet names clearly when the requested sheet is missing.
-- Decide whether to allow sources with fewer than two points.
-- Decide whether to preserve row order exactly or validate monotonic time.
+- Allow sources with fewer than two points. Some users may intentionally use
+  single-point expressions or intermediate generated data.
+- Discard source columns with no emitted points.
+- Preserve row order exactly. Do not validate monotonic time in the first
+  version because time values may contain simulator parameters or expressions.
 - Report row/column locations clearly when the table is malformed.
+- Reject surrounding whitespace around headers, times, or values instead of
+  silently rewriting user-authored SPICE text.
 
-The first version should probably preserve row order and not parse time units.
-If users need monotonic validation later, add an optional validator rather than
-guessing simulator unit semantics.
+The first version should not parse time units. If users need monotonic
+validation later, add an optional validator rather than guessing simulator unit
+semantics.
 
 ## Usability
 
@@ -240,18 +236,10 @@ The missing-cell rule is useful because different sources often change at
 different times. Requiring every source to have a value at every global time
 would make exported tables noisy and harder to review.
 
-The main usability risk is source-to-netlist mapping. A column named `vin` may
-mean:
-
-- an instance name suffix,
-- a positive node,
-- a logical signal name that must map to a net,
-- or all of the above.
-
 The library should not guess this. It should preserve the column name and
-generate only the `PWL(...)` expression. The edit file remains the right place
-to map names onto actual SPICE source lines because that is where the user's
-netlist conventions are visible.
+generate only the `PWL(...)` expression. Users will have their own conventions
+for mapping table names onto actual SPICE source lines, and the edit file is the
+right place to express those conventions.
 
 ## Fit With The Manifesto
 

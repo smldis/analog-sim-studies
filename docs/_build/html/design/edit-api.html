@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Should We Build a Text-First Analog Simulation Package?" href="manifesto.html"><link rel="prev" title="Edit API Reference" href="../api.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>Traced Edit API - Analog Sim Studies documentation</title>
+        <title>Edit API - Analog Sim Studies documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -194,7 +194,7 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../user-guide.html">User Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api.html">Edit API Reference</a></li>
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Traced Edit API</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Edit API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="manifesto.html">Should We Build a Text-First Analog Simulation Package?</a></li>
 </ul>
 
@@ -216,7 +216,7 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="../_sources/design/traced-edit-api.md.txt" title="View this page">
+  <a class="muted-link" href="../_sources/design/edit-api.md.txt" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
@@ -234,8 +234,8 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="traced-edit-api">
-<h1>Traced Edit API<a class="headerlink" href="#traced-edit-api" title="Link to this heading">¶</a></h1>
+          <section id="edit-api">
+<h1>Edit API<a class="headerlink" href="#edit-api" title="Link to this heading">¶</a></h1>
 <p>Status: Implemented in the prototype.</p>
 <p>An edit file defines how a base simulation directory is turned into one or more
 rendered run directories. The suggested filename is <code class="docutils literal notranslate"><span class="pre">edit.py</span></code>. Edit operations
@@ -325,8 +325,8 @@ instance text. The source line can reference <code class="docutils literal notra
 addition to normal render parameters. The first version rejects commented
 instance lines and repeated selected net tokens.</p>
 </section>
-<section id="config-execution">
-<h2>Config Execution<a class="headerlink" href="#config-execution" title="Link to this heading">¶</a></h2>
+<section id="edit-file-execution">
+<h2>Edit File Execution<a class="headerlink" href="#edit-file-execution" title="Link to this heading">¶</a></h2>
 <p>The edit file is a Python file. The renderer executes it first, reads the
 resulting <code class="docutils literal notranslate"><span class="pre">BASE_DIR</span></code>, parameter definitions, and <code class="docutils literal notranslate"><span class="pre">EDITS</span></code>, and only then applies
 the edit operations for each selected run.</p>
@@ -439,10 +439,10 @@ edit file before applying edit operations.</p></li>
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">Traced Edit API</a><ul>
+<li><a class="reference internal" href="#">Edit API</a><ul>
 <li><a class="reference internal" href="#authoring-edits">Authoring Edits</a></li>
 <li><a class="reference internal" href="#parameter-formatting">Parameter Formatting</a></li>
-<li><a class="reference internal" href="#config-execution">Config Execution</a></li>
+<li><a class="reference internal" href="#edit-file-execution">Edit File Execution</a></li>
 <li><a class="reference internal" href="#error-reporting">Error Reporting</a></li>
 <li><a class="reference internal" href="#implementation-model">Implementation Model</a></li>
 <li><a class="reference internal" href="#maintainer-rules">Maintainer Rules</a></li>

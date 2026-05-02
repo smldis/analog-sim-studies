@@ -1,4 +1,4 @@
-# Traced Edit API
+# Edit API
 
 Status: Implemented in the prototype.
 
@@ -98,7 +98,7 @@ instance text. The source line can reference `{net}` and `{internal_net}` in
 addition to normal render parameters. The first version rejects commented
 instance lines and repeated selected net tokens.
 
-## Config Execution
+## Edit File Execution
 
 The edit file is a Python file. The renderer executes it first, reads the
 resulting `BASE_DIR`, parameter definitions, and `EDITS`, and only then applies

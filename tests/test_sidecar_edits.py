@@ -91,7 +91,7 @@ def test_tool_path_reports_missing_native_source_for_unbuilt_tool(
         sidecar_edits.tool_path("extract_subckts")
 
 
-def test_basic_example_render_applies_configured_edits(tmp_path: Path) -> None:
+def test_basic_example_render_applies_declared_edits(tmp_path: Path) -> None:
     build_lib = build_package(tmp_path)
     output_dir = tmp_path / "example_run"
     env = os.environ.copy()

@@ -788,7 +788,7 @@ def render_job(render_plan: RenderPlan, params: dict[str, object], output_dir: P
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Render a run directory from a base tree and sidecar edits.")
+    parser = argparse.ArgumentParser(description="Render a run directory from a base tree and edit operations.")
     parser.add_argument("editfile", type=Path, help="Path to the edit file, typically edit.py")
     parser.add_argument("output", type=Path, help="Output run directory")
     parser.add_argument(

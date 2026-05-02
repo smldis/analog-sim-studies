@@ -5,7 +5,7 @@ The design note for this package lives in [design/manifesto.md](design/manifesto
 ## Layout
 
 - `src/sidecar_edits/` contains the package implementation
-- `examples/basic/` contains a small runnable sidecar-edit example
+- `examples/basic/` contains a small runnable edit-file example
 - `examples/apply_patch/` contains the fuller example with `apply_patch`
 - `examples/param_matrix/` contains a named parameter-set plus matrix example
 - `tests/` contains the pytest coverage for the current behavior
@@ -56,7 +56,7 @@ sidecar-render \
 ```
 
 The basic example copies `examples/basic/base/` into the output directory, then applies
-the configured edit steps. It uses `extract_subckts`, `copy_file`, and
+the declared edit steps. It uses `extract_subckts`, `copy_file`, and
 `replace`; other operations are listed as a comment in `examples/basic/edit.py`.
 
 The fuller example also exercises `extract_subckts`, `regex_replace`, `patch`,
@@ -90,7 +90,7 @@ That creates paths such as:
 
 The `apply_patch` operation uses the installed `apply_patch` executable from
 `PATH` by default. If it is missing, the renderer raises a package-level
-`EditError` with an installation/configuration hint; the example does not call
+`EditError` with an installation hint; the example does not call
 `cargo` or define tool-specific environment variables.
 
 Every edit operation may include an optional `description`. It should describe
@@ -154,7 +154,7 @@ COMMON_PARAMS = {
 }
 ```
 
-For multiple configurations, add `PARAM_SETS`. Rendering all named groups is the
+For multiple named runs, add `PARAM_SETS`. Rendering all named groups is the
 default; use `--run <name>` one or more times to render a subset. By default,
 `sidecar-render edit.py /tmp/run` writes named groups next to the requested path
 as `/tmp/run_<name>`. A group can override that with `targetdir`.

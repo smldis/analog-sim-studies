@@ -4,7 +4,7 @@
 
 Status: Done.
 
-The prototype supports multiple named parameter configurations in one edit file,
+The prototype supports multiple named parameter sets in one edit file,
 then lets the CLI select one or more runs to prepare.
 
 Current prototype shape:

@@ -14,7 +14,7 @@ source-location error reports.
 
 user-guide
 api
-design/traced-edit-api
+design/edit-api
 design/manifesto
 ```
 
@@ -62,8 +62,8 @@ python -m sphinx -b html docs docs/_build/html
   inject generated sources, and read errors.
 - [API Reference](api): generated signatures and docstrings for every
   helper in `sidecar_edits.edit`.
-- [Design Notes](design/traced-edit-api.md): implementation model and maintainer
-  constraints for the traced edit API.
+- [Design Notes](design/edit-api.md): implementation model and maintainer
+  constraints for the edit API.
 
 ```{note}
 This project is intentionally small and text-first. It favors explicit,

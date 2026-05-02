@@ -205,7 +205,7 @@ EDITS = [
     assert "raw dictionary edits are not supported" in result.stderr
 
 
-def test_renderer_reports_failing_traced_edit_source_location(tmp_path: Path) -> None:
+def test_renderer_reports_failing_edit_source_location(tmp_path: Path) -> None:
     editfile_path = tmp_path / "edit.py"
     output_dir = tmp_path / "run"
     base_dir = tmp_path / "base"

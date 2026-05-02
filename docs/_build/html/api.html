@@ -334,8 +334,8 @@ environment variables.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="sidecar_edits.edit.append_file">
-<span class="sig-prename descclassname"><span class="pre">sidecar_edits.edit.</span></span><span class="sig-name descname"><span class="pre">append_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">content</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.edit.append_file" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="sidecar_edits.edit.append_to_file">
+<span class="sig-prename descclassname"><span class="pre">sidecar_edits.edit.</span></span><span class="sig-name descname"><span class="pre">append_to_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">content</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.edit.append_to_file" title="Link to this definition">¶</a></dt>
 <dd><p>Append generated text to an existing file in the rendered run directory.</p>
 <p>The target <code class="docutils literal notranslate"><span class="pre">path</span></code> must already exist in the rendered run directory. The
 renderer appends exactly <code class="docutils literal notranslate"><span class="pre">content</span></code>; it does not add a newline for you.</p>
@@ -343,7 +343,7 @@ renderer appends exactly <code class="docutils literal notranslate"><span class=
 <code class="docutils literal notranslate"><span class="pre">content</span></code> is formatted with render parameters but does not expand
 environment variables.</p>
 <p>Example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edit</span><span class="o">.</span><span class="n">append_file</span><span class="p">(</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edit</span><span class="o">.</span><span class="n">append_to_file</span><span class="p">(</span>
     <span class="n">path</span><span class="o">=</span><span class="s2">&quot;input_main.scs&quot;</span><span class="p">,</span>
     <span class="n">content</span><span class="o">=</span><span class="s1">&#39;include &quot;generated/pwl_sources.inc&quot;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span>
 <span class="p">)</span>
@@ -351,7 +351,7 @@ environment variables.</p>
 </div>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">AppendFileEdit</span></code></span></p>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">AppendToFileEdit</span></code></span></p>
 </dd>
 <dt class="field-even">Parameters<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
@@ -630,7 +630,7 @@ command is missing or the patch fails.</p>
 <li><a class="reference internal" href="#sidecar_edits.edit.extract_subckts"><code class="docutils literal notranslate"><span class="pre">extract_subckts()</span></code></a></li>
 <li><a class="reference internal" href="#sidecar_edits.edit.copy_file"><code class="docutils literal notranslate"><span class="pre">copy_file()</span></code></a></li>
 <li><a class="reference internal" href="#sidecar_edits.edit.write_file"><code class="docutils literal notranslate"><span class="pre">write_file()</span></code></a></li>
-<li><a class="reference internal" href="#sidecar_edits.edit.append_file"><code class="docutils literal notranslate"><span class="pre">append_file()</span></code></a></li>
+<li><a class="reference internal" href="#sidecar_edits.edit.append_to_file"><code class="docutils literal notranslate"><span class="pre">append_to_file()</span></code></a></li>
 <li><a class="reference internal" href="#sidecar_edits.edit.insert_series_source_at_instance_net"><code class="docutils literal notranslate"><span class="pre">insert_series_source_at_instance_net()</span></code></a></li>
 <li><a class="reference internal" href="#sidecar_edits.edit.replace"><code class="docutils literal notranslate"><span class="pre">replace()</span></code></a></li>
 <li><a class="reference internal" href="#sidecar_edits.edit.regex_replace"><code class="docutils literal notranslate"><span class="pre">regex_replace()</span></code></a></li>

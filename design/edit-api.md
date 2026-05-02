@@ -39,7 +39,7 @@ EDITS = [
         content="Vstim in 0 PWL(0 0 1n {vdd})\n",
         description="generate PWL source include",
     ),
-    edit.append_file(
+    edit.append_to_file(
         path="input_main.scs",
         content='include "generated/pwl_sources.inc"\n',
         description="append generated PWL include",
@@ -89,7 +89,7 @@ Different fields have different formatting rules:
   environment-variable expansion.
 - Descriptions are static text and are not parameter-formatted.
 
-`edit.append_file` appends exactly the text passed in `content`; it does not add
+`edit.append_to_file` appends exactly the text passed in `content`; it does not add
 newlines automatically. It fails if the target file does not already exist.
 
 `edit.insert_series_source_at_instance_net` finds one uniquely named X instance,

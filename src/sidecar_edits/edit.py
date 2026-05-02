@@ -91,8 +91,8 @@ class WriteFileEdit:
 
 
 @dataclass(frozen=True)
-class AppendFileEdit:
-    op: Literal["append_file"]
+class AppendToFileEdit:
+    op: Literal["append_to_file"]
     path: str
     content: str
     description: str | None
@@ -103,7 +103,7 @@ class AppendFileEdit:
 
         path = render.format_path_text(self.path, context.params)
         content = render.format_text(self.content, context.params)
-        render.apply_append_file(context.target_dir, path, content, edit_description(self))
+        render.apply_append_to_file(context.target_dir, path, content, edit_description(self))
 
 
 @dataclass(frozen=True)
@@ -250,7 +250,7 @@ EditSpec: TypeAlias = (
     ExtractSubcktsEdit
     | CopyFileEdit
     | WriteFileEdit
-    | AppendFileEdit
+    | AppendToFileEdit
     | InsertSeriesSourceAtInstanceNetEdit
     | ReplaceEdit
     | RegexReplaceEdit
@@ -363,12 +363,12 @@ def write_file(
     )
 
 
-def append_file(
+def append_to_file(
     *,
     path: str,
     content: str,
     description: str | None = None,
-) -> AppendFileEdit:
+) -> AppendToFileEdit:
     """Append generated text to an existing file in the rendered run directory.
 
     The target ``path`` must already exist in the rendered run directory. The
@@ -380,13 +380,13 @@ def append_file(
 
     Example::
 
-        edit.append_file(
+        edit.append_to_file(
             path="input_main.scs",
             content='include "generated/pwl_sources.inc"\\n',
         )
     """
-    return AppendFileEdit(
-        op="append_file",
+    return AppendToFileEdit(
+        op="append_to_file",
         path=path,
         content=content,
         description=description,
@@ -627,7 +627,7 @@ def is_edit_spec(value: object) -> bool:
             ExtractSubcktsEdit,
             CopyFileEdit,
             WriteFileEdit,
-            AppendFileEdit,
+            AppendToFileEdit,
             InsertSeriesSourceAtInstanceNetEdit,
             ReplaceEdit,
             RegexReplaceEdit,

@@ -20,7 +20,7 @@ def test_edit_namespace_exposes_typed_documented_helpers() -> None:
     assert edit.replace.__doc__
     assert edit.extract_subckts.__doc__
     assert edit.write_file.__doc__
-    assert edit.append_file.__doc__
+    assert edit.append_to_file.__doc__
     assert signature.parameters["path"].kind is inspect.Parameter.KEYWORD_ONLY
     assert signature.parameters["old"].kind is inspect.Parameter.KEYWORD_ONLY
     assert signature.parameters["new"].kind is inspect.Parameter.KEYWORD_ONLY
@@ -85,16 +85,16 @@ def test_write_file_helper_returns_typed_edit_object() -> None:
     assert spec.source_stack[0].path == Path(__file__).resolve()
 
 
-def test_append_file_helper_returns_typed_edit_object() -> None:
+def test_append_to_file_helper_returns_typed_edit_object() -> None:
     from sidecar_edits import edit
 
-    spec = edit.append_file(
+    spec = edit.append_to_file(
         path="input_main.scs",
         content='\ninclude "generated/pwl_sources.inc"\n',
         description="append generated PWL include",
     )
 
-    assert spec.op == "append_file"
+    assert spec.op == "append_to_file"
     assert spec.path == "input_main.scs"
     assert spec.content == '\ninclude "generated/pwl_sources.inc"\n'
     assert spec.description == "append generated PWL include"

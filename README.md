@@ -119,7 +119,7 @@ EDITS = [
         content="Vstim in 0 PWL(0 0 1n {vdd})\n",
         description="generate PWL source include",
     ),
-    edit.append_file(
+    edit.append_to_file(
         path="input_main.scs",
         content='include "generated/pwl_sources.inc"\n',
         description="append generated PWL include",

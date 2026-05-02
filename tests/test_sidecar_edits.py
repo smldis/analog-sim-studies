@@ -439,7 +439,7 @@ EDITS = [
     )
 
 
-def test_append_file_edit_appends_generated_text_with_params(tmp_path: Path) -> None:
+def test_append_to_file_edit_appends_generated_text_with_params(tmp_path: Path) -> None:
     base_dir = tmp_path / "base"
     base_dir.mkdir()
     (base_dir / "input.scs").write_text("simulator lang=spectre\n", encoding="utf-8")
@@ -451,7 +451,7 @@ from sidecar_edits import edit
 BASE_DIR = "base"
 COMMON_PARAMS = {"include_path": "generated/pwl_sources.inc"}
 EDITS = [
-    edit.append_file(
+    edit.append_to_file(
         path="input.scs",
         content='include "{include_path}"\\n',
         description="append generated PWL include",
@@ -478,7 +478,7 @@ EDITS = [
     )
 
 
-def test_append_file_edit_fails_when_target_is_missing(tmp_path: Path) -> None:
+def test_append_to_file_edit_fails_when_target_is_missing(tmp_path: Path) -> None:
     base_dir = tmp_path / "base"
     base_dir.mkdir()
     editfile = tmp_path / "edit.py"
@@ -488,7 +488,7 @@ from sidecar_edits import edit
 
 BASE_DIR = "base"
 EDITS = [
-    edit.append_file(
+    edit.append_to_file(
         path="missing.scs",
         content="include generated/pwl_sources.inc\\n",
         description="append generated PWL include",
@@ -509,8 +509,8 @@ EDITS = [
     )
 
     assert result.returncode == 2
-    assert 'EDITS[1] append_file "append generated PWL include" failed' in result.stderr
-    assert "append target does not exist" in result.stderr
+    assert 'EDITS[1] append_to_file "append generated PWL include" failed' in result.stderr
+    assert "target file does not exist" in result.stderr
 
 
 def test_named_param_sets_run_filter(tmp_path: Path) -> None:

@@ -532,10 +532,10 @@ def append_text(path: Path, content: str) -> None:
         file.write(content)
 
 
-def apply_append_file(target_dir: Path, path: str, content: str, description: str) -> None:
+def apply_append_to_file(target_dir: Path, path: str, content: str, description: str) -> None:
     destination = target_dir / path
     if not destination.is_file():
-        raise EditError(f"{description} failed: append target does not exist: {destination}")
+        raise EditError(f"{description} failed: target file does not exist: {destination}")
     append_text(destination, content)
 
 

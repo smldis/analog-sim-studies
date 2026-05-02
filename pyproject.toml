@@ -7,6 +7,9 @@ name = "sidecar-edits-prototype"
 version = "0.1.0"
 description = "Prototype sidecar edit pipeline for text-first simulation studies."
 requires-python = ">=3.10"
+dependencies = [
+    "pandas",
+]
 
 [project.scripts]
 sidecar-render = "sidecar_edits.render:main"

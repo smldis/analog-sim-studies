@@ -145,7 +145,7 @@ autocomplete and `help(sidecar_edits.edit.replace)` can show the available
 arguments. Raw dictionary edit entries are not supported by the renderer.
 
 Parameters are defined inside the edit file, not assembled on the command line.
-The suggested filename is `edit.py`. For a single run, use inline common
+The suggested filename is `edits.py`. For a single run, use inline common
 parameters:
 
 ```python
@@ -156,7 +156,7 @@ COMMON_PARAMS = {
 
 For multiple named runs, add `PARAM_SETS`. Rendering all named groups is the
 default; use `--run <name>` one or more times to render a subset. By default,
-`sidecar-render edit.py /tmp/run` writes named groups next to the requested path
+`sidecar-render edits.py /tmp/run` writes named groups next to the requested path
 as `/tmp/run_<name>`. A group can override that with `targetdir`.
 
 ```python
@@ -190,7 +190,7 @@ PARAM_MATRIX = {
 }
 ```
 
-For `sidecar-render edit.py /tmp/run --run tt_1v2`, the output layout is:
+For `sidecar-render edits.py /tmp/run --run tt_1v2`, the output layout is:
 
 ```text
 /tmp/run_tt_1v2/vdd_0p90_temp_c_27/

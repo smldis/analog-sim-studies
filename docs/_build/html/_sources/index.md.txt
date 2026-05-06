@@ -5,7 +5,7 @@ directory and a small Python sidecar.
 
 The renderer executes an edit file, copies the base tree, applies typed edit
 operations, and writes one or more concrete run directories. The suggested edit
-file name is `edit.py`, and the interface is plain Python while still providing
+file name is `edits.py`, and the interface is plain Python while still providing
 source-location error reports.
 
 ```{toctree}

@@ -3,7 +3,7 @@
 Status: Implemented in the prototype.
 
 An edit file defines how a base simulation directory is turned into one or more
-rendered run directories. The suggested filename is `edit.py`. Edit operations
+rendered run directories. The suggested filename is `edits.py`. Edit operations
 are written as Python helper calls under the `sidecar_edits.edit` namespace.
 
 The helpers return typed edit objects. Each object records the source location

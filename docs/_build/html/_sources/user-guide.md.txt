@@ -1,7 +1,7 @@
 # User Guide
 
 An edit file defines how a base simulation directory is transformed into rendered
-run directories. The suggested filename is `edit.py`.
+run directories. The suggested filename is `edits.py`.
 
 ## Authoring Edits
 

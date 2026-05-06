@@ -1,4 +1,4 @@
-from sidecar_edits import edit
+from sidecar_edits import edits
 
 
 BASE_DIR = "base"
@@ -21,32 +21,32 @@ PARAM_SETS = [
 ]
 
 EDITS = [
-    edit.extract_subckts(
+    edits.extract_subckts(
         description="split reusable subcircuits from main netlist",
         input="input.scs",
         output_main="input_main.scs",
         output_subckts="subckts.inc",
     ),
-    edit.copy_file(
+    edits.copy_file(
         path="assets/model_override.scs",
         to="include/model_override.scs",
     ),
-    edit.replace(
+    edits.replace(
         path="input_main.scs",
         old='include "/seed/netlists/rc_filter.scs"',
         new='include "{netlist_path}"',
     ),
-    edit.regex_replace(
+    edits.regex_replace(
         path="input_main.scs",
         pattern=r"parameters vdd=\S+ temp=\S+",
         new="parameters vdd={vdd} temp={temp_c}",
     ),
-    edit.replace(
+    edits.replace(
         path="run_sim.sh",
         old="spectre input_main.scs -format psfxl -raw ./psf",
         new="{simulator_cmd} input_main.scs -format psfxl -raw ./psf",
     ),
-    edit.patch(
+    edits.patch(
         description="add run label to notes",
         optional=True,
         strip=0,
@@ -57,7 +57,7 @@ EDITS = [
 +run_label={run_label}
 """,
     ),
-    edit.apply_patch(
+    edits.apply_patch(
         description="add apply_patch proof file",
         patch="""*** Begin Patch
 *** Add File: APPLY_PATCH_PROOF.txt

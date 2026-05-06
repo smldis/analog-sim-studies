@@ -3,10 +3,10 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Should We Build a Text-First Analog Simulation Package?" href="manifesto.html"><link rel="prev" title="Edit API Reference" href="../api.html">
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Should We Build a Text-First Analog Simulation Package?" href="manifesto.html"><link rel="prev" title="Edits API Reference" href="../api.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>Edit API - Analog Sim Studies documentation</title>
+        <title>Edits API - Analog Sim Studies documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -193,8 +193,8 @@
   <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../user-guide.html">User Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api.html">Edit API Reference</a></li>
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Edit API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">Edits API Reference</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Edits API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="manifesto.html">Should We Build a Text-First Analog Simulation Package?</a></li>
 </ul>
 
@@ -216,7 +216,7 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="../_sources/design/edit-api.md.txt" title="View this page">
+  <a class="muted-link" href="../_sources/design/edits-api.md.txt" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
@@ -234,19 +234,19 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="edit-api">
-<h1>Edit API<a class="headerlink" href="#edit-api" title="Link to this heading">¶</a></h1>
+          <section id="edits-api">
+<h1>Edits API<a class="headerlink" href="#edits-api" title="Link to this heading">¶</a></h1>
 <p>Status: Implemented in the prototype.</p>
 <p>An edit file defines how a base simulation directory is turned into one or more
 rendered run directories. The suggested filename is <code class="docutils literal notranslate"><span class="pre">edits.py</span></code>. Edit operations
-are written as Python helper calls under the <code class="docutils literal notranslate"><span class="pre">sidecar_edits.edit</span></code> namespace.</p>
+are written as Python helper calls under the <code class="docutils literal notranslate"><span class="pre">sidecar_edits.edits</span></code> namespace.</p>
 <p>The helpers return typed edit objects. Each object records the source location
 where it was created, so renderer errors can point users back to the relevant
 line in the edit file or in a helper module.</p>
 <section id="authoring-edits">
 <h2>Authoring Edits<a class="headerlink" href="#authoring-edits" title="Link to this heading">¶</a></h2>
-<p>Use <code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">sidecar_edits</span> <span class="pre">import</span> <span class="pre">edit</span></code> and place edit objects in <code class="docutils literal notranslate"><span class="pre">EDITS</span></code>.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sidecar_edits</span><span class="w"> </span><span class="kn">import</span> <span class="n">edit</span>
+<p>Use <code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">sidecar_edits</span> <span class="pre">import</span> <span class="pre">edits</span></code> and place edit objects in <code class="docutils literal notranslate"><span class="pre">EDITS</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sidecar_edits</span><span class="w"> </span><span class="kn">import</span> <span class="n">edits</span>
 
 <span class="n">BASE_DIR</span> <span class="o">=</span> <span class="s2">&quot;base&quot;</span>
 
@@ -255,27 +255,27 @@ line in the edit file or in a helper module.</p>
 <span class="p">}</span>
 
 <span class="n">EDITS</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="n">edit</span><span class="o">.</span><span class="n">extract_subckts</span><span class="p">(</span>
+    <span class="n">edits</span><span class="o">.</span><span class="n">extract_subckts</span><span class="p">(</span>
         <span class="n">description</span><span class="o">=</span><span class="s2">&quot;split reusable subcircuits from main netlist&quot;</span><span class="p">,</span>
         <span class="nb">input</span><span class="o">=</span><span class="s2">&quot;input.scs&quot;</span><span class="p">,</span>
         <span class="n">output_main</span><span class="o">=</span><span class="s2">&quot;input_main.scs&quot;</span><span class="p">,</span>
         <span class="n">output_subckts</span><span class="o">=</span><span class="s2">&quot;subckts.inc&quot;</span><span class="p">,</span>
     <span class="p">),</span>
-    <span class="n">edit</span><span class="o">.</span><span class="n">copy_file</span><span class="p">(</span>
+    <span class="n">edits</span><span class="o">.</span><span class="n">copy_file</span><span class="p">(</span>
         <span class="n">path</span><span class="o">=</span><span class="s2">&quot;assets/model_override.scs&quot;</span><span class="p">,</span>
         <span class="n">to</span><span class="o">=</span><span class="s2">&quot;include/model_override.scs&quot;</span><span class="p">,</span>
     <span class="p">),</span>
-    <span class="n">edit</span><span class="o">.</span><span class="n">write_file</span><span class="p">(</span>
+    <span class="n">edits</span><span class="o">.</span><span class="n">write_file</span><span class="p">(</span>
         <span class="n">path</span><span class="o">=</span><span class="s2">&quot;generated/pwl_sources.inc&quot;</span><span class="p">,</span>
         <span class="n">content</span><span class="o">=</span><span class="s2">&quot;Vstim in 0 PWL(0 0 1n </span><span class="si">{vdd}</span><span class="s2">)</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span>
         <span class="n">description</span><span class="o">=</span><span class="s2">&quot;generate PWL source include&quot;</span><span class="p">,</span>
     <span class="p">),</span>
-    <span class="n">edit</span><span class="o">.</span><span class="n">append_to_file</span><span class="p">(</span>
+    <span class="n">edits</span><span class="o">.</span><span class="n">append_to_file</span><span class="p">(</span>
         <span class="n">path</span><span class="o">=</span><span class="s2">&quot;input_main.scs&quot;</span><span class="p">,</span>
         <span class="n">content</span><span class="o">=</span><span class="s1">&#39;include &quot;generated/pwl_sources.inc&quot;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span>
         <span class="n">description</span><span class="o">=</span><span class="s2">&quot;append generated PWL include&quot;</span><span class="p">,</span>
     <span class="p">),</span>
-    <span class="n">edit</span><span class="o">.</span><span class="n">insert_series_source_at_instance_net</span><span class="p">(</span>
+    <span class="n">edits</span><span class="o">.</span><span class="n">insert_series_source_at_instance_net</span><span class="p">(</span>
         <span class="n">path</span><span class="o">=</span><span class="s2">&quot;input_main.scs&quot;</span><span class="p">,</span>
         <span class="n">instance</span><span class="o">=</span><span class="s2">&quot;X_SIDE_INJECT_001&quot;</span><span class="p">,</span>
         <span class="n">net</span><span class="o">=</span><span class="s2">&quot;in&quot;</span><span class="p">,</span>
@@ -283,7 +283,7 @@ line in the edit file or in a helper module.</p>
         <span class="n">source_line</span><span class="o">=</span><span class="s2">&quot;Vinj </span><span class="si">{net}</span><span class="s2"> </span><span class="si">{internal_net}</span><span class="s2"> PULSE(0 1.2 0 10p 10p 4n 8n)&quot;</span><span class="p">,</span>
         <span class="n">description</span><span class="o">=</span><span class="s2">&quot;inject pulse on unique instance input&quot;</span><span class="p">,</span>
     <span class="p">),</span>
-    <span class="n">edit</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+    <span class="n">edits</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
         <span class="n">path</span><span class="o">=</span><span class="s2">&quot;input_main.scs&quot;</span><span class="p">,</span>
         <span class="n">old</span><span class="o">=</span><span class="s1">&#39;include &quot;/seed/netlists/rc_filter.scs&quot;&#39;</span><span class="p">,</span>
         <span class="n">new</span><span class="o">=</span><span class="s1">&#39;include &quot;</span><span class="si">{netlist_path}</span><span class="s1">&quot;&#39;</span><span class="p">,</span>
@@ -303,7 +303,7 @@ than <code class="docutils literal notranslate"><span class="pre">description=&q
 <h2>Parameter Formatting<a class="headerlink" href="#parameter-formatting" title="Link to this heading">¶</a></h2>
 <p>Edit fields are templates. They are formatted for each selected parameter set and
 matrix case when the edit is applied.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">edit</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">edits</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
     <span class="n">path</span><span class="o">=</span><span class="s2">&quot;input.scs&quot;</span><span class="p">,</span>
     <span class="n">old</span><span class="o">=</span><span class="s2">&quot;parameters corner=seed&quot;</span><span class="p">,</span>
     <span class="n">new</span><span class="o">=</span><span class="s2">&quot;parameters corner=</span><span class="si">{corner}</span><span class="s2">&quot;</span><span class="p">,</span>
@@ -317,9 +317,9 @@ matrix case when the edit is applied.</p>
 environment-variable expansion.</p></li>
 <li><p>Descriptions are static text and are not parameter-formatted.</p></li>
 </ul>
-<p><code class="docutils literal notranslate"><span class="pre">edit.append_to_file</span></code> appends exactly the text passed in <code class="docutils literal notranslate"><span class="pre">content</span></code>; it does not add
+<p><code class="docutils literal notranslate"><span class="pre">edits.append_to_file</span></code> appends exactly the text passed in <code class="docutils literal notranslate"><span class="pre">content</span></code>; it does not add
 newlines automatically. It fails if the target file does not already exist.</p>
-<p><code class="docutils literal notranslate"><span class="pre">edit.insert_series_source_at_instance_net</span></code> finds one uniquely named X instance,
+<p><code class="docutils literal notranslate"><span class="pre">edits.insert_series_source_at_instance_net</span></code> finds one uniquely named X instance,
 inserts <code class="docutils literal notranslate"><span class="pre">source_line</span></code> before it, and rewrites one connected net token in the
 instance text. The source line can reference <code class="docutils literal notranslate"><span class="pre">{net}</span></code> and <code class="docutils literal notranslate"><span class="pre">{internal_net}</span></code> in
 addition to normal render parameters. The first version rejects commented
@@ -339,7 +339,7 @@ normal Python execution model without introducing a separate compilation step.</
 location captured when the edit object was created.</p>
 <p>Example:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>error: EDITS[3] replace &quot;select corner netlist&quot; failed
-created at edit.py:18 in &lt;module&gt;
+created at edits.py:18 in &lt;module&gt;
 reason: replace target not found in /tmp/run/input_main.scs
 </pre></div>
 </div>
@@ -347,14 +347,14 @@ reason: replace target not found in /tmp/run/input_main.scs
 call chain:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>error: EDITS[1] replace failed
 created at helpers/netlist.py:7 in model_include
-called from edit.py:15 in &lt;module&gt;
+called from edits.py:15 in &lt;module&gt;
 reason: replace target not found in /tmp/run/input.scs
 </pre></div>
 </div>
 <p>Paths under the edit file directory tree are displayed relative to that
 directory. Paths outside that tree are displayed as absolute paths.</p>
 <p>This is not intended to be a full Python traceback. The renderer should show only
-the small amount of source context needed to find the edit.</p>
+the small amount of source context needed to find the edits.</p>
 </section>
 <section id="implementation-model">
 <h2>Implementation Model<a class="headerlink" href="#implementation-model" title="Link to this heading">¶</a></h2>
@@ -370,7 +370,7 @@ not use generic dictionary field bags for the public edit model.</p>
 <section id="maintainer-rules">
 <h2>Maintainer Rules<a class="headerlink" href="#maintainer-rules" title="Link to this heading">¶</a></h2>
 <ul class="simple">
-<li><p>Keep edit helpers in the <code class="docutils literal notranslate"><span class="pre">sidecar_edits.edit</span></code> namespace.</p></li>
+<li><p>Keep edit helpers in the <code class="docutils literal notranslate"><span class="pre">sidecar_edits.edits</span></code> namespace.</p></li>
 <li><p>Give each helper a typed keyword-only signature and a concise docstring.</p></li>
 <li><p>Keep <code class="docutils literal notranslate"><span class="pre">description</span></code> optional.</p></li>
 <li><p>Capture source locations when edit objects are created, not when they are
@@ -405,7 +405,7 @@ edit file before applying edit operations.</p></li>
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Edit API Reference</div>
+                <div class="title">Edits API Reference</div>
                 
               </div>
             </a>
@@ -439,7 +439,7 @@ edit file before applying edit operations.</p></li>
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">Edit API</a><ul>
+<li><a class="reference internal" href="#">Edits API</a><ul>
 <li><a class="reference internal" href="#authoring-edits">Authoring Edits</a></li>
 <li><a class="reference internal" href="#parameter-formatting">Parameter Formatting</a></li>
 <li><a class="reference internal" href="#edit-file-execution">Edit File Execution</a></li>

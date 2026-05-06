@@ -14,19 +14,19 @@ source-location error reports.
 
 user-guide
 api
-design/edit-api
+design/edits-api
 design/manifesto
 ```
 
 ## Minimal Example
 
 ```python
-from sidecar_edits import edit
+from sidecar_edits import edits
 
 BASE_DIR = "base"
 
 EDITS = [
-    edit.replace(
+    edits.replace(
         path="input.scs",
         old="parameters corner=seed",
         new="parameters corner=tt",
@@ -45,7 +45,7 @@ python -m pip install -e .
 Render the basic example:
 
 ```bash
-sidecar-render examples/basic/edit.py /tmp/sidecar_example_run
+sidecar-render examples/basic/edits.py /tmp/sidecar_example_run
 ```
 
 This repository includes prebuilt HTML documentation under `docs/_build/html/`.
@@ -61,9 +61,9 @@ python -m sphinx -b html docs docs/_build/html
 - [User Guide](user-guide.md): how to author an edit file, format parameters,
   inject generated sources, and read errors.
 - [API Reference](api): generated signatures and docstrings for every
-  helper in `sidecar_edits.edit`.
-- [Design Notes](design/edit-api.md): implementation model and maintainer
-  constraints for the edit API.
+  helper in `sidecar_edits.edits`.
+- [Design Notes](design/edits-api.md): implementation model and maintainer
+  constraints for the edits API.
 
 ```{note}
 This project is intentionally small and text-first. It favors explicit,

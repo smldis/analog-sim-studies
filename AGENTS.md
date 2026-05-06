@@ -28,10 +28,10 @@ analog-study idea: copy an existing simulator input deck and apply explicit
 text/file edits. Do not add simulator launching, waveform parsing, measurement
 evaluation, or workflow orchestration unless explicitly requested.
 
-The user-facing edit API lives in `sidecar_edits.edit`. Edit configs should use:
+The user-facing edits API lives in `sidecar_edits.edits`. Edit configs should use:
 
 ```python
-from sidecar_edits import edit
+from sidecar_edits import edits
 ```
 
 Raw dictionary edit entries are intentionally unsupported. Do not reintroduce
@@ -43,7 +43,7 @@ document any broader need in `design/` instead of implementing it.
 
 ## Repository Map
 
-- `src/sidecar_edits/edit.py`: typed edit objects and user-facing edit helpers.
+- `src/sidecar_edits/edits.py`: typed edit objects and user-facing edit helpers.
 - `src/sidecar_edits/render.py`: directory copy, parameter expansion, error
   reporting, and concrete edit application.
 - `src/sidecar_edits/native/`: C helper source for subckt extraction.
@@ -92,9 +92,9 @@ maintainer action, not something users must do to run the prototype.
 Do not commit Sphinx doctree caches or source maps. The ignore rules intentionally
 track distributable HTML while excluding build/debug artifacts.
 
-## Edit API Invariants
+## Edits API Invariants
 
-When changing `edit.py` or `render.py`, preserve these expectations unless the
+When changing `edits.py` or `render.py`, preserve these expectations unless the
 user explicitly chooses a new API:
 
 - Edit helpers return typed edit objects with an `apply(context)` method.

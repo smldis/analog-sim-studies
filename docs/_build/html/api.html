@@ -3,10 +3,10 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Edit API" href="design/edit-api.html"><link rel="prev" title="User Guide" href="user-guide.html">
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Edits API" href="design/edits-api.html"><link rel="prev" title="User Guide" href="user-guide.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>Edit API Reference - Analog Sim Studies documentation</title>
+        <title>Edits API Reference - Analog Sim Studies documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -193,8 +193,8 @@
   <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="user-guide.html">User Guide</a></li>
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Edit API Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="design/edit-api.html">Edit API</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Edits API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/edits-api.html">Edits API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="design/manifesto.html">Should We Build a Text-First Analog Simulation Package?</a></li>
 </ul>
 
@@ -234,11 +234,11 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="module-sidecar_edits.edit">
-<span id="edit-api-reference"></span><h1>Edit API Reference<a class="headerlink" href="#module-sidecar_edits.edit" title="Link to this heading">¶</a></h1>
+          <section id="module-sidecar_edits.edits">
+<span id="edits-api-reference"></span><h1>Edits API Reference<a class="headerlink" href="#module-sidecar_edits.edits" title="Link to this heading">¶</a></h1>
 <dl class="py function">
-<dt class="sig sig-object py" id="sidecar_edits.edit.extract_subckts">
-<span class="sig-prename descclassname"><span class="pre">sidecar_edits.edit.</span></span><span class="sig-name descname"><span class="pre">extract_subckts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">input</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_main</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_subckts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optional</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.edit.extract_subckts" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="sidecar_edits.edits.extract_subckts">
+<span class="sig-prename descclassname"><span class="pre">sidecar_edits.edits.</span></span><span class="sig-name descname"><span class="pre">extract_subckts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">input</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_main</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_subckts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optional</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.edits.extract_subckts" title="Link to this definition">¶</a></dt>
 <dd><p>Extract subcircuit definitions from a netlist into a side include file.</p>
 <p>The renderer runs the packaged <code class="docutils literal notranslate"><span class="pre">extract_subckts</span></code> helper in the rendered
 run directory. <code class="docutils literal notranslate"><span class="pre">input</span></code> is read, <code class="docutils literal notranslate"><span class="pre">output_main</span></code> receives the main netlist
@@ -249,7 +249,7 @@ subckt definitions. If <code class="docutils literal notranslate"><span class="p
 Set <code class="docutils literal notranslate"><span class="pre">optional=True</span></code> only when it is acceptable to skip extraction if the
 helper cannot run.</p>
 <p>Example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edit</span><span class="o">.</span><span class="n">extract_subckts</span><span class="p">(</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edits</span><span class="o">.</span><span class="n">extract_subckts</span><span class="p">(</span>
     <span class="nb">input</span><span class="o">=</span><span class="s2">&quot;input.scs&quot;</span><span class="p">,</span>
     <span class="n">output_main</span><span class="o">=</span><span class="s2">&quot;input_main.scs&quot;</span><span class="p">,</span>
     <span class="n">output_subckts</span><span class="o">=</span><span class="s2">&quot;subckts.inc&quot;</span><span class="p">,</span>
@@ -274,8 +274,8 @@ helper cannot run.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="sidecar_edits.edit.copy_file">
-<span class="sig-prename descclassname"><span class="pre">sidecar_edits.edit.</span></span><span class="sig-name descname"><span class="pre">copy_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.edit.copy_file" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="sidecar_edits.edits.copy_file">
+<span class="sig-prename descclassname"><span class="pre">sidecar_edits.edits.</span></span><span class="sig-name descname"><span class="pre">copy_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.edits.copy_file" title="Link to this definition">¶</a></dt>
 <dd><p>Copy a file from the edit file directory into the rendered run directory.</p>
 <p><code class="docutils literal notranslate"><span class="pre">path</span></code> is resolved relative to the directory containing the edit file unless
 it is absolute. <code class="docutils literal notranslate"><span class="pre">to</span></code> is the destination path inside the rendered run
@@ -283,7 +283,7 @@ directory; if omitted, the copied file keeps its source filename.</p>
 <p>Source and destination paths are formatted with render parameters and
 environment variables. The edit fails if the source file does not exist.</p>
 <p>Example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edit</span><span class="o">.</span><span class="n">copy_file</span><span class="p">(</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edits</span><span class="o">.</span><span class="n">copy_file</span><span class="p">(</span>
     <span class="n">path</span><span class="o">=</span><span class="s2">&quot;assets/model_override.scs&quot;</span><span class="p">,</span>
     <span class="n">to</span><span class="o">=</span><span class="s2">&quot;include/model_override.scs&quot;</span><span class="p">,</span>
 <span class="p">)</span>
@@ -304,8 +304,8 @@ environment variables. The edit fails if the source file does not exist.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="sidecar_edits.edit.write_file">
-<span class="sig-prename descclassname"><span class="pre">sidecar_edits.edit.</span></span><span class="sig-name descname"><span class="pre">write_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">content</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.edit.write_file" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="sidecar_edits.edits.write_file">
+<span class="sig-prename descclassname"><span class="pre">sidecar_edits.edits.</span></span><span class="sig-name descname"><span class="pre">write_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">content</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.edits.write_file" title="Link to this definition">¶</a></dt>
 <dd><p>Write generated text to a file in the rendered run directory.</p>
 <p>The destination <code class="docutils literal notranslate"><span class="pre">path</span></code> is inside the rendered run directory. Parent
 directories are created automatically, and existing files are overwritten.</p>
@@ -313,7 +313,7 @@ directories are created automatically, and existing files are overwritten.</p>
 <code class="docutils literal notranslate"><span class="pre">content</span></code> is formatted with render parameters but does not expand
 environment variables.</p>
 <p>Example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edit</span><span class="o">.</span><span class="n">write_file</span><span class="p">(</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edits</span><span class="o">.</span><span class="n">write_file</span><span class="p">(</span>
     <span class="n">path</span><span class="o">=</span><span class="s2">&quot;generated/pwl_sources.inc&quot;</span><span class="p">,</span>
     <span class="n">content</span><span class="o">=</span><span class="s2">&quot;Vstim in 0 PWL(0 0 1n </span><span class="si">{vdd}</span><span class="s2">)</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span>
 <span class="p">)</span>
@@ -334,8 +334,8 @@ environment variables.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="sidecar_edits.edit.append_to_file">
-<span class="sig-prename descclassname"><span class="pre">sidecar_edits.edit.</span></span><span class="sig-name descname"><span class="pre">append_to_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">content</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.edit.append_to_file" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="sidecar_edits.edits.append_to_file">
+<span class="sig-prename descclassname"><span class="pre">sidecar_edits.edits.</span></span><span class="sig-name descname"><span class="pre">append_to_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">content</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.edits.append_to_file" title="Link to this definition">¶</a></dt>
 <dd><p>Append generated text to an existing file in the rendered run directory.</p>
 <p>The target <code class="docutils literal notranslate"><span class="pre">path</span></code> must already exist in the rendered run directory. The
 renderer appends exactly <code class="docutils literal notranslate"><span class="pre">content</span></code>; it does not add a newline for you.</p>
@@ -343,7 +343,7 @@ renderer appends exactly <code class="docutils literal notranslate"><span class=
 <code class="docutils literal notranslate"><span class="pre">content</span></code> is formatted with render parameters but does not expand
 environment variables.</p>
 <p>Example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edit</span><span class="o">.</span><span class="n">append_to_file</span><span class="p">(</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edits</span><span class="o">.</span><span class="n">append_to_file</span><span class="p">(</span>
     <span class="n">path</span><span class="o">=</span><span class="s2">&quot;input_main.scs&quot;</span><span class="p">,</span>
     <span class="n">content</span><span class="o">=</span><span class="s1">&#39;include &quot;generated/pwl_sources.inc&quot;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span>
 <span class="p">)</span>
@@ -364,8 +364,8 @@ environment variables.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="sidecar_edits.edit.insert_series_source_at_instance_net">
-<span class="sig-prename descclassname"><span class="pre">sidecar_edits.edit.</span></span><span class="sig-name descname"><span class="pre">insert_series_source_at_instance_net</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">instance</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">internal_net</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_line</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.edit.insert_series_source_at_instance_net" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="sidecar_edits.edits.insert_series_source_at_instance_net">
+<span class="sig-prename descclassname"><span class="pre">sidecar_edits.edits.</span></span><span class="sig-name descname"><span class="pre">insert_series_source_at_instance_net</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">instance</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">internal_net</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_line</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.edits.insert_series_source_at_instance_net" title="Link to this definition">¶</a></dt>
 <dd><p>Insert a source in series with one net on a uniquely named X instance.</p>
 <p>The renderer finds exactly one matching logical instance statement in the
 rendered file, inserts <code class="docutils literal notranslate"><span class="pre">source_line</span></code> before it, and replaces one occurrence
@@ -379,7 +379,7 @@ or ambiguous, or if the selected net is missing or repeated on that instance.</p
 character in instance names, a request for <code class="docutils literal notranslate"><span class="pre">XFOO</span></code> may also match
 <code class="docutils literal notranslate"><span class="pre">XFFOO</span></code>. If both forms are present, the edit fails as ambiguous.</p>
 <p>Example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edit</span><span class="o">.</span><span class="n">insert_series_source_at_instance_net</span><span class="p">(</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edits</span><span class="o">.</span><span class="n">insert_series_source_at_instance_net</span><span class="p">(</span>
     <span class="n">path</span><span class="o">=</span><span class="s2">&quot;input.scs&quot;</span><span class="p">,</span>
     <span class="n">instance</span><span class="o">=</span><span class="s2">&quot;X_SIDE_INJECT_001&quot;</span><span class="p">,</span>
     <span class="n">net</span><span class="o">=</span><span class="s2">&quot;in&quot;</span><span class="p">,</span>
@@ -409,8 +409,8 @@ character in instance names, a request for <code class="docutils literal notrans
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="sidecar_edits.edit.replace">
-<span class="sig-prename descclassname"><span class="pre">sidecar_edits.edit.</span></span><span class="sig-name descname"><span class="pre">replace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">old</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_no_match</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.edit.replace" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="sidecar_edits.edits.replace">
+<span class="sig-prename descclassname"><span class="pre">sidecar_edits.edits.</span></span><span class="sig-name descname"><span class="pre">replace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">old</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_no_match</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.edits.replace" title="Link to this definition">¶</a></dt>
 <dd><p>Replace all occurrences of literal text in a rendered file.</p>
 <p><code class="docutils literal notranslate"><span class="pre">path</span></code> is inside the rendered run directory. <code class="docutils literal notranslate"><span class="pre">old</span></code> and <code class="docutils literal notranslate"><span class="pre">new</span></code> are
 formatted with render parameters before replacement. Environment variables
@@ -418,7 +418,7 @@ are expanded in <code class="docutils literal notranslate"><span class="pre">pat
 <p>The edit fails if <code class="docutils literal notranslate"><span class="pre">old</span></code> is not found. Set <code class="docutils literal notranslate"><span class="pre">allow_no_match=True</span></code> when an
 absent target is acceptable.</p>
 <p>Example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edit</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edits</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
     <span class="n">path</span><span class="o">=</span><span class="s2">&quot;input.scs&quot;</span><span class="p">,</span>
     <span class="n">old</span><span class="o">=</span><span class="s2">&quot;parameters corner=seed&quot;</span><span class="p">,</span>
     <span class="n">new</span><span class="o">=</span><span class="s2">&quot;parameters corner=</span><span class="si">{corner}</span><span class="s2">&quot;</span><span class="p">,</span>
@@ -442,8 +442,8 @@ absent target is acceptable.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="sidecar_edits.edit.regex_replace">
-<span class="sig-prename descclassname"><span class="pre">sidecar_edits.edit.</span></span><span class="sig-name descname"><span class="pre">regex_replace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pattern</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_no_match</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.edit.regex_replace" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="sidecar_edits.edits.regex_replace">
+<span class="sig-prename descclassname"><span class="pre">sidecar_edits.edits.</span></span><span class="sig-name descname"><span class="pre">regex_replace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pattern</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_no_match</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.edits.regex_replace" title="Link to this definition">¶</a></dt>
 <dd><p>Replace text in a rendered file using a regular expression.</p>
 <p><code class="docutils literal notranslate"><span class="pre">pattern</span></code> is passed to Python <code class="docutils literal notranslate"><span class="pre">re.subn</span></code> with <code class="docutils literal notranslate"><span class="pre">re.MULTILINE</span></code>. <code class="docutils literal notranslate"><span class="pre">new</span></code> is
 formatted with render parameters before replacement. <code class="docutils literal notranslate"><span class="pre">count=0</span></code> means
@@ -451,7 +451,7 @@ replace all matches.</p>
 <p>The edit fails if the pattern does not match. Set <code class="docutils literal notranslate"><span class="pre">allow_no_match=True</span></code>
 when an absent match is acceptable.</p>
 <p>Example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edit</span><span class="o">.</span><span class="n">regex_replace</span><span class="p">(</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edits</span><span class="o">.</span><span class="n">regex_replace</span><span class="p">(</span>
     <span class="n">path</span><span class="o">=</span><span class="s2">&quot;input.scs&quot;</span><span class="p">,</span>
     <span class="n">pattern</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;^parameters .*&quot;</span><span class="p">,</span>
     <span class="n">new</span><span class="o">=</span><span class="s2">&quot;parameters vdd=</span><span class="si">{vdd}</span><span class="s2">&quot;</span><span class="p">,</span>
@@ -476,8 +476,8 @@ when an absent match is acceptable.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="sidecar_edits.edit.run">
-<span class="sig-prename descclassname"><span class="pre">sidecar_edits.edit.</span></span><span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">command</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optional</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.edit.run" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="sidecar_edits.edits.run">
+<span class="sig-prename descclassname"><span class="pre">sidecar_edits.edits.</span></span><span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">command</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optional</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.edits.run" title="Link to this definition">¶</a></dt>
 <dd><p>Run an external command in the rendered run directory.</p>
 <p>Each command argument is converted to text, formatted with render
 parameters, and expanded for environment variables. The command runs with
@@ -485,7 +485,7 @@ the rendered run directory as the current working directory.</p>
 <p>Set <code class="docutils literal notranslate"><span class="pre">optional=True</span></code> only when it is acceptable to skip the command if it is
 missing or exits unsuccessfully.</p>
 <p>Example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edit</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edits</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
     <span class="n">command</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;./run_sim.sh&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{corner}</span><span class="s2">&quot;</span><span class="p">],</span>
     <span class="n">description</span><span class="o">=</span><span class="s2">&quot;run simulator setup script&quot;</span><span class="p">,</span>
 <span class="p">)</span>
@@ -506,8 +506,8 @@ missing or exits unsuccessfully.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="sidecar_edits.edit.patch">
-<span class="sig-prename descclassname"><span class="pre">sidecar_edits.edit.</span></span><span class="sig-name descname"><span class="pre">patch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">patch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strip</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optional</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.edit.patch" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="sidecar_edits.edits.patch">
+<span class="sig-prename descclassname"><span class="pre">sidecar_edits.edits.</span></span><span class="sig-name descname"><span class="pre">patch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">patch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strip</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optional</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.edits.patch" title="Link to this definition">¶</a></dt>
 <dd><p>Apply a unified diff with the system patch command.</p>
 <p><code class="docutils literal notranslate"><span class="pre">patch</span></code> is formatted with render parameters and sent to <code class="docutils literal notranslate"><span class="pre">patch</span> <span class="pre">-p{strip}</span></code>
 in the rendered run directory. Use this for normal unified diffs when the
@@ -515,7 +515,7 @@ system <code class="docutils literal notranslate"><span class="pre">patch</span>
 <p>Set <code class="docutils literal notranslate"><span class="pre">optional=True</span></code> only when it is acceptable to skip the patch if the
 command is missing or the patch fails.</p>
 <p>Example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edit</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edits</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span>
     <span class="n">patch</span><span class="o">=</span><span class="s2">&quot;*** unified diff text ***&quot;</span><span class="p">,</span>
     <span class="n">strip</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
 <span class="p">)</span>
@@ -537,8 +537,8 @@ command is missing or the patch fails.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="sidecar_edits.edit.apply_patch">
-<span class="sig-prename descclassname"><span class="pre">sidecar_edits.edit.</span></span><span class="sig-name descname"><span class="pre">apply_patch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">patch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">binary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'apply_patch'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">command</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optional</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.edit.apply_patch" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="sidecar_edits.edits.apply_patch">
+<span class="sig-prename descclassname"><span class="pre">sidecar_edits.edits.</span></span><span class="sig-name descname"><span class="pre">apply_patch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">patch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">binary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'apply_patch'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">command</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optional</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.edits.apply_patch" title="Link to this definition">¶</a></dt>
 <dd><p>Apply an apply_patch patch in the rendered run directory.</p>
 <p><code class="docutils literal notranslate"><span class="pre">patch</span></code> is formatted with render parameters and sent to the configured
 <code class="docutils literal notranslate"><span class="pre">apply_patch</span></code> command in the rendered run directory. By default the
@@ -548,7 +548,7 @@ the full command.</p>
 <p>Set <code class="docutils literal notranslate"><span class="pre">optional=True</span></code> only when it is acceptable to skip the patch if the
 command is missing or the patch fails.</p>
 <p>Example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edit</span><span class="o">.</span><span class="n">apply_patch</span><span class="p">(</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edits</span><span class="o">.</span><span class="n">apply_patch</span><span class="p">(</span>
     <span class="n">patch</span><span class="o">=</span><span class="s2">&quot;*** Begin Patch</span><span class="se">\n</span><span class="s2">*** Add File: note.txt</span><span class="se">\n</span><span class="s2">+hello</span><span class="se">\n</span><span class="s2">*** End Patch</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
@@ -576,12 +576,12 @@ command is missing or the patch fails.</p>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="design/edit-api.html">
+          <a class="next-page" href="design/edits-api.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Edit API</div>
+                <div class="title">Edits API</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -626,17 +626,17 @@ command is missing or the patch fails.</p>
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">Edit API Reference</a><ul>
-<li><a class="reference internal" href="#sidecar_edits.edit.extract_subckts"><code class="docutils literal notranslate"><span class="pre">extract_subckts()</span></code></a></li>
-<li><a class="reference internal" href="#sidecar_edits.edit.copy_file"><code class="docutils literal notranslate"><span class="pre">copy_file()</span></code></a></li>
-<li><a class="reference internal" href="#sidecar_edits.edit.write_file"><code class="docutils literal notranslate"><span class="pre">write_file()</span></code></a></li>
-<li><a class="reference internal" href="#sidecar_edits.edit.append_to_file"><code class="docutils literal notranslate"><span class="pre">append_to_file()</span></code></a></li>
-<li><a class="reference internal" href="#sidecar_edits.edit.insert_series_source_at_instance_net"><code class="docutils literal notranslate"><span class="pre">insert_series_source_at_instance_net()</span></code></a></li>
-<li><a class="reference internal" href="#sidecar_edits.edit.replace"><code class="docutils literal notranslate"><span class="pre">replace()</span></code></a></li>
-<li><a class="reference internal" href="#sidecar_edits.edit.regex_replace"><code class="docutils literal notranslate"><span class="pre">regex_replace()</span></code></a></li>
-<li><a class="reference internal" href="#sidecar_edits.edit.run"><code class="docutils literal notranslate"><span class="pre">run()</span></code></a></li>
-<li><a class="reference internal" href="#sidecar_edits.edit.patch"><code class="docutils literal notranslate"><span class="pre">patch()</span></code></a></li>
-<li><a class="reference internal" href="#sidecar_edits.edit.apply_patch"><code class="docutils literal notranslate"><span class="pre">apply_patch()</span></code></a></li>
+<li><a class="reference internal" href="#">Edits API Reference</a><ul>
+<li><a class="reference internal" href="#sidecar_edits.edits.extract_subckts"><code class="docutils literal notranslate"><span class="pre">extract_subckts()</span></code></a></li>
+<li><a class="reference internal" href="#sidecar_edits.edits.copy_file"><code class="docutils literal notranslate"><span class="pre">copy_file()</span></code></a></li>
+<li><a class="reference internal" href="#sidecar_edits.edits.write_file"><code class="docutils literal notranslate"><span class="pre">write_file()</span></code></a></li>
+<li><a class="reference internal" href="#sidecar_edits.edits.append_to_file"><code class="docutils literal notranslate"><span class="pre">append_to_file()</span></code></a></li>
+<li><a class="reference internal" href="#sidecar_edits.edits.insert_series_source_at_instance_net"><code class="docutils literal notranslate"><span class="pre">insert_series_source_at_instance_net()</span></code></a></li>
+<li><a class="reference internal" href="#sidecar_edits.edits.replace"><code class="docutils literal notranslate"><span class="pre">replace()</span></code></a></li>
+<li><a class="reference internal" href="#sidecar_edits.edits.regex_replace"><code class="docutils literal notranslate"><span class="pre">regex_replace()</span></code></a></li>
+<li><a class="reference internal" href="#sidecar_edits.edits.run"><code class="docutils literal notranslate"><span class="pre">run()</span></code></a></li>
+<li><a class="reference internal" href="#sidecar_edits.edits.patch"><code class="docutils literal notranslate"><span class="pre">patch()</span></code></a></li>
+<li><a class="reference internal" href="#sidecar_edits.edits.apply_patch"><code class="docutils literal notranslate"><span class="pre">apply_patch()</span></code></a></li>
 </ul>
 </li>
 </ul>

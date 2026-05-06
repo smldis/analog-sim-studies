@@ -53,10 +53,10 @@ common and set-specific values for the same key.
 CLI:
 
 ```bash
-sidecar-render examples/basic/edit.py /tmp/run
-sidecar-render examples/basic/edit.py /tmp/run --run tt_1v2
-sidecar-render examples/basic/edit.py /tmp/run --run tt_1v2 --run ss_0v9
-sidecar-render examples/basic/edit.py /tmp/run --all
+sidecar-render examples/basic/edits.py /tmp/run
+sidecar-render examples/basic/edits.py /tmp/run --run tt_1v2
+sidecar-render examples/basic/edits.py /tmp/run --run tt_1v2 --run ss_0v9
+sidecar-render examples/basic/edits.py /tmp/run --all
 ```
 
 Default output layout:

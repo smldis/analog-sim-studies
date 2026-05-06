@@ -25,10 +25,10 @@ def write_editfile(tmp_path: Path, edits: str, base_text: str) -> Path:
     base_dir = tmp_path / "base"
     base_dir.mkdir()
     (base_dir / "input.scs").write_text(base_text, encoding="utf-8")
-    editfile_path = tmp_path / "edit.py"
+    editfile_path = tmp_path / "edits.py"
     editfile_path.write_text(
         f"""
-from sidecar_edits import edit
+from sidecar_edits import edits
 
 BASE_DIR = "base"
 COMMON_PARAMS = {{"vdd": "1.2"}}
@@ -42,9 +42,9 @@ EDITS = [
 
 
 def test_insert_series_source_helper_returns_typed_edit_object() -> None:
-    from sidecar_edits import edit
+    from sidecar_edits import edits
 
-    spec = edit.insert_series_source_at_instance_net(
+    spec = edits.insert_series_source_at_instance_net(
         path="input.scs",
         instance="X_SIDE_INJECT_001",
         net="in",
@@ -68,7 +68,7 @@ def test_insert_series_source_rewrites_unique_instance_net(tmp_path: Path) -> No
     editfile_path = write_editfile(
         tmp_path,
         """
-    edit.insert_series_source_at_instance_net(
+    edits.insert_series_source_at_instance_net(
         path="input.scs",
         instance="X_SIDE_INJECT_001",
         net="in",
@@ -93,7 +93,7 @@ def test_source_line_uses_render_params_and_operation_values(tmp_path: Path) -> 
     editfile_path = write_editfile(
         tmp_path,
         """
-    edit.insert_series_source_at_instance_net(
+    edits.insert_series_source_at_instance_net(
         path="input.scs",
         instance="X_SIDE_INJECT_001",
         net="in",
@@ -117,7 +117,7 @@ def test_continuation_lines_and_params_are_preserved_as_text(tmp_path: Path) -> 
     editfile_path = write_editfile(
         tmp_path,
         """
-    edit.insert_series_source_at_instance_net(
+    edits.insert_series_source_at_instance_net(
         path="input.scs",
         instance="X_SIDE_INJECT_001",
         net="vss",
@@ -142,7 +142,7 @@ def test_doubled_second_character_instance_convention_is_accepted(tmp_path: Path
     editfile_path = write_editfile(
         tmp_path,
         """
-    edit.insert_series_source_at_instance_net(
+    edits.insert_series_source_at_instance_net(
         path="input.scs",
         instance="XFOO",
         net="in",
@@ -166,7 +166,7 @@ def test_doubled_second_character_and_exact_instance_match_is_ambiguous(tmp_path
     editfile_path = write_editfile(
         tmp_path,
         """
-    edit.insert_series_source_at_instance_net(
+    edits.insert_series_source_at_instance_net(
         path="input.scs",
         instance="xfoo",
         net="in",
@@ -207,7 +207,7 @@ def test_insert_series_source_reports_actionable_failures(
     editfile_path = write_editfile(
         tmp_path,
         """
-    edit.insert_series_source_at_instance_net(
+    edits.insert_series_source_at_instance_net(
         path="input.scs",
         instance="X_SIDE_INJECT_001",
         net="vss",
@@ -227,10 +227,10 @@ def test_insert_series_source_reports_actionable_failures(
 
 
 def test_non_x_instance_name_is_rejected() -> None:
-    from sidecar_edits import edit
+    from sidecar_edits import edits
 
     with pytest.raises(ValueError, match="instance must start with X"):
-        edit.insert_series_source_at_instance_net(
+        edits.insert_series_source_at_instance_net(
             path="input.scs",
             instance="M1",
             net="in",

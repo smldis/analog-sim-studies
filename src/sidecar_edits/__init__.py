@@ -5,7 +5,7 @@ import subprocess
 from importlib.resources import files
 from pathlib import Path
 
-from sidecar_edits import edit as edit
+from sidecar_edits import edits as edits
 
 
 def tool_path(name: str) -> Path:

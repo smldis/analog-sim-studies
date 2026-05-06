@@ -283,7 +283,7 @@ def extract_subckts(
 
     Example::
 
-        edit.extract_subckts(
+        edits.extract_subckts(
             input="input.scs",
             output_main="input_main.scs",
             output_subckts="subckts.inc",
@@ -318,7 +318,7 @@ def copy_file(
 
     Example::
 
-        edit.copy_file(
+        edits.copy_file(
             path="assets/model_override.scs",
             to="include/model_override.scs",
         )
@@ -349,7 +349,7 @@ def write_file(
 
     Example::
 
-        edit.write_file(
+        edits.write_file(
             path="generated/pwl_sources.inc",
             content="Vstim in 0 PWL(0 0 1n {vdd})\\n",
         )
@@ -380,7 +380,7 @@ def append_to_file(
 
     Example::
 
-        edit.append_to_file(
+        edits.append_to_file(
             path="input_main.scs",
             content='include "generated/pwl_sources.inc"\\n',
         )
@@ -421,7 +421,7 @@ def insert_series_source_at_instance_net(
 
     Example::
 
-        edit.insert_series_source_at_instance_net(
+        edits.insert_series_source_at_instance_net(
             path="input.scs",
             instance="X_SIDE_INJECT_001",
             net="in",
@@ -465,7 +465,7 @@ def replace(
 
     Example::
 
-        edit.replace(
+        edits.replace(
             path="input.scs",
             old="parameters corner=seed",
             new="parameters corner={corner}",
@@ -502,7 +502,7 @@ def regex_replace(
 
     Example::
 
-        edit.regex_replace(
+        edits.regex_replace(
             path="input.scs",
             pattern=r"^parameters .*",
             new="parameters vdd={vdd}",
@@ -537,7 +537,7 @@ def run(
 
     Example::
 
-        edit.run(
+        edits.run(
             command=["./run_sim.sh", "{corner}"],
             description="run simulator setup script",
         )
@@ -569,7 +569,7 @@ def patch(
 
     Example::
 
-        edit.patch(
+        edits.patch(
             patch="*** unified diff text ***",
             strip=0,
         )
@@ -605,7 +605,7 @@ def apply_patch(
 
     Example::
 
-        edit.apply_patch(
+        edits.apply_patch(
             patch="*** Begin Patch\\n*** Add File: note.txt\\n+hello\\n*** End Patch\\n",
         )
     """

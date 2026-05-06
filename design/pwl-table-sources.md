@@ -77,7 +77,7 @@ belong to the user's netlist context.
 Potential user-facing API:
 
 ```python
-from sidecar_edits import edit
+from sidecar_edits import edits
 from sidecar_edits import pwl
 
 waveforms = pwl.waveforms_from_file("waveforms/startup.xlsx", sheet="startup")
@@ -88,12 +88,12 @@ source_lines = "\n".join(
 ) + "\n"
 
 EDITS = [
-    edit.write_file(
+    edits.write_file(
         path="generated/startup_pwl.inc",
         content=source_lines,
         description="generate startup PWL sources",
     ),
-    edit.append_to_file(
+    edits.append_to_file(
         path="input_main.scs",
         content='include "generated/startup_pwl.inc"\n',
         description="include startup PWL sources",
@@ -172,8 +172,8 @@ This feature fits the current edit-file model:
 2. The PWL table is read and converted to named PWL expressions.
 3. The rendered run directory is created.
 4. User Python composes source lines from the PWL names and expressions.
-5. `edit.write_file` writes the generated include.
-6. `edit.append_to_file`, `edit.replace`, or a future netlist-aware edit connects
+5. `edits.write_file` writes the generated include.
+6. `edits.append_to_file`, `edits.replace`, or a future netlist-aware edit connects
    the include to the main netlist.
 
 No explicit compilation pipeline is needed. The user still writes ordinary

@@ -10,16 +10,16 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BASIC_EXAMPLE_DIR = REPO_ROOT / "examples" / "basic"
-BASIC_EDITS = BASIC_EXAMPLE_DIR / "edit.py"
+BASIC_EDITS = BASIC_EXAMPLE_DIR / "edits.py"
 APPLY_PATCH_EXAMPLE_DIR = REPO_ROOT / "examples" / "apply_patch"
-APPLY_PATCH_EDITS = APPLY_PATCH_EXAMPLE_DIR / "edit.py"
+APPLY_PATCH_EDITS = APPLY_PATCH_EXAMPLE_DIR / "edits.py"
 PARAM_MATRIX_EXAMPLE_DIR = REPO_ROOT / "examples" / "param_matrix"
-PARAM_MATRIX_EDITS = PARAM_MATRIX_EXAMPLE_DIR / "edit.py"
+PARAM_MATRIX_EDITS = PARAM_MATRIX_EXAMPLE_DIR / "edits.py"
 
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 import sidecar_edits  # noqa: E402
-from sidecar_edits import edit  # noqa: E402
+from sidecar_edits import edits  # noqa: E402
 from sidecar_edits.render import (  # noqa: E402
     EditError,
     ParamSet,
@@ -305,7 +305,7 @@ def test_replace_failure_uses_edit_description(tmp_path: Path) -> None:
 def test_editfile_can_load_params_from_file(tmp_path: Path) -> None:
     (tmp_path / "base").mkdir()
     (tmp_path / "params.json").write_text('{"run_label": "file"}\n', encoding="utf-8")
-    editfile = tmp_path / "edit.py"
+    editfile = tmp_path / "edits.py"
     editfile.write_text(
         """
 BASE_DIR = "base"
@@ -329,7 +329,7 @@ def test_editfile_expands_env_vars_in_base_dir_and_params_file(
     (env_root / "base").mkdir(parents=True)
     (env_root / "params.json").write_text('{"run_label": "env-file"}\n', encoding="utf-8")
     monkeypatch.setenv("SIDECAR_TEST_ROOT", str(env_root))
-    editfile = tmp_path / "edit.py"
+    editfile = tmp_path / "edits.py"
     editfile.write_text(
         """
 BASE_DIR = "$SIDECAR_TEST_ROOT/base"
@@ -348,7 +348,7 @@ EDITS = []
 
 def test_editfile_can_define_params_inline(tmp_path: Path) -> None:
     (tmp_path / "base").mkdir()
-    editfile = tmp_path / "edit.py"
+    editfile = tmp_path / "edits.py"
     editfile.write_text(
         """
 BASE_DIR = "base"
@@ -368,10 +368,10 @@ def test_named_param_sets_render_all_by_default(tmp_path: Path) -> None:
     base_dir.mkdir()
     (base_dir / "input.txt").write_text("corner=seed\nvdd=seed\n", encoding="utf-8")
     (tmp_path / "ss.json").write_text('{"corner": "ss", "vdd": "0.90"}\n', encoding="utf-8")
-    editfile = tmp_path / "edit.py"
+    editfile = tmp_path / "edits.py"
     editfile.write_text(
         """
-from sidecar_edits import edit
+from sidecar_edits import edits
 
 BASE_DIR = "base"
 COMMON_PARAMS = {"vdd": "1.20"}
@@ -380,8 +380,8 @@ PARAM_SETS = [
     {"name": "ss", "targetdir": "custom_ss", "params_file": "ss.json"},
 ]
 EDITS = [
-    edit.replace(path="input.txt", old="corner=seed", new="corner={corner}"),
-    edit.replace(path="input.txt", old="vdd=seed", new="vdd={vdd}"),
+    edits.replace(path="input.txt", old="corner=seed", new="corner={corner}"),
+    edits.replace(path="input.txt", old="vdd=seed", new="vdd={vdd}"),
 ]
 """,
         encoding="utf-8",
@@ -405,15 +405,15 @@ EDITS = [
 def test_write_file_edit_creates_generated_file_with_params(tmp_path: Path) -> None:
     base_dir = tmp_path / "base"
     base_dir.mkdir()
-    editfile = tmp_path / "edit.py"
+    editfile = tmp_path / "edits.py"
     editfile.write_text(
         """
-from sidecar_edits import edit
+from sidecar_edits import edits
 
 BASE_DIR = "base"
 COMMON_PARAMS = {"name": "stim1", "vdd": "1.2"}
 EDITS = [
-    edit.write_file(
+    edits.write_file(
         path="generated/{name}.inc",
         content="V{name} in 0 PWL(0 0 1n {vdd})\\n",
         description="generate PWL source include",
@@ -443,15 +443,15 @@ def test_append_to_file_edit_appends_generated_text_with_params(tmp_path: Path) 
     base_dir = tmp_path / "base"
     base_dir.mkdir()
     (base_dir / "input.scs").write_text("simulator lang=spectre\n", encoding="utf-8")
-    editfile = tmp_path / "edit.py"
+    editfile = tmp_path / "edits.py"
     editfile.write_text(
         """
-from sidecar_edits import edit
+from sidecar_edits import edits
 
 BASE_DIR = "base"
 COMMON_PARAMS = {"include_path": "generated/pwl_sources.inc"}
 EDITS = [
-    edit.append_to_file(
+    edits.append_to_file(
         path="input.scs",
         content='include "{include_path}"\\n',
         description="append generated PWL include",
@@ -481,14 +481,14 @@ EDITS = [
 def test_append_to_file_edit_fails_when_target_is_missing(tmp_path: Path) -> None:
     base_dir = tmp_path / "base"
     base_dir.mkdir()
-    editfile = tmp_path / "edit.py"
+    editfile = tmp_path / "edits.py"
     editfile.write_text(
         """
-from sidecar_edits import edit
+from sidecar_edits import edits
 
 BASE_DIR = "base"
 EDITS = [
-    edit.append_to_file(
+    edits.append_to_file(
         path="missing.scs",
         content="include generated/pwl_sources.inc\\n",
         description="append generated PWL include",
@@ -517,10 +517,10 @@ def test_named_param_sets_run_filter(tmp_path: Path) -> None:
     base_dir = tmp_path / "base"
     base_dir.mkdir()
     (base_dir / "input.txt").write_text("corner=seed\n", encoding="utf-8")
-    editfile = tmp_path / "edit.py"
+    editfile = tmp_path / "edits.py"
     editfile.write_text(
         """
-from sidecar_edits import edit
+from sidecar_edits import edits
 
 BASE_DIR = "base"
 PARAM_SETS = [
@@ -528,7 +528,7 @@ PARAM_SETS = [
     {"name": "ff", "params": {"corner": "ff"}},
 ]
 EDITS = [
-    edit.replace(path="input.txt", old="corner=seed", new="corner={corner}"),
+    edits.replace(path="input.txt", old="corner=seed", new="corner={corner}"),
 ]
 """,
         encoding="utf-8",
@@ -561,7 +561,7 @@ def test_named_param_sets_unknown_run_fails(tmp_path: Path) -> None:
     base_dir = tmp_path / "base"
     base_dir.mkdir()
     (base_dir / "input.txt").write_text("corner=seed\n", encoding="utf-8")
-    editfile = tmp_path / "edit.py"
+    editfile = tmp_path / "edits.py"
     editfile.write_text(
         """
 BASE_DIR = "base"
@@ -599,10 +599,10 @@ def test_param_matrix_single_run_renders_under_output_base(tmp_path: Path) -> No
     base_dir = tmp_path / "base"
     base_dir.mkdir()
     (base_dir / "input.txt").write_text("vdd=seed\ntemp=seed\n", encoding="utf-8")
-    editfile = tmp_path / "edit.py"
+    editfile = tmp_path / "edits.py"
     editfile.write_text(
         """
-from sidecar_edits import edit
+from sidecar_edits import edits
 
 BASE_DIR = "base"
 COMMON_PARAMS = {"vdd": "from_common"}
@@ -611,8 +611,8 @@ PARAM_MATRIX = {
     "temp_c": [27],
 }
 EDITS = [
-    edit.replace(path="input.txt", old="vdd=seed", new="vdd={vdd}"),
-    edit.replace(path="input.txt", old="temp=seed", new="temp={temp_c}"),
+    edits.replace(path="input.txt", old="vdd=seed", new="vdd={vdd}"),
+    edits.replace(path="input.txt", old="temp=seed", new="temp={temp_c}"),
 ]
 """,
         encoding="utf-8",
@@ -641,10 +641,10 @@ def test_param_matrix_named_sets_use_nested_dirs_and_targetdir(tmp_path: Path) -
     base_dir = tmp_path / "base"
     base_dir.mkdir()
     (base_dir / "input.txt").write_text("corner=seed\ntemp=seed\n", encoding="utf-8")
-    editfile = tmp_path / "edit.py"
+    editfile = tmp_path / "edits.py"
     editfile.write_text(
         """
-from sidecar_edits import edit
+from sidecar_edits import edits
 
 BASE_DIR = "base"
 PARAM_SETS = [
@@ -655,8 +655,8 @@ PARAM_MATRIX = {
     "temp_c": [-40, 125],
 }
 EDITS = [
-    edit.replace(path="input.txt", old="corner=seed", new="corner={corner}"),
-    edit.replace(path="input.txt", old="temp=seed", new="temp={temp_c}"),
+    edits.replace(path="input.txt", old="corner=seed", new="corner={corner}"),
+    edits.replace(path="input.txt", old="temp=seed", new="temp={temp_c}"),
 ]
 """,
         encoding="utf-8",
@@ -692,7 +692,7 @@ EDITS = [
 
 def test_param_matrix_rejects_empty_axis(tmp_path: Path) -> None:
     (tmp_path / "base").mkdir()
-    editfile = tmp_path / "edit.py"
+    editfile = tmp_path / "edits.py"
     editfile.write_text(
         """
 BASE_DIR = "base"
@@ -749,7 +749,7 @@ def test_edit_target_path_expands_env_vars(
 
     apply_edit(
         target_dir,
-        edit.replace(
+        edits.replace(
             path="$TARGET_FILE",
             old='include "old.scs"',
             new='include "new.scs"',
@@ -884,7 +884,7 @@ def test_run_command_expands_env_vars_in_arguments(
 
 def test_editfile_rejects_ambiguous_param_sources(tmp_path: Path) -> None:
     (tmp_path / "base").mkdir()
-    editfile = tmp_path / "edit.py"
+    editfile = tmp_path / "edits.py"
     editfile.write_text(
         """
 BASE_DIR = "base"

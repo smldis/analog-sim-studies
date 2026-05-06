@@ -51,20 +51,20 @@ With the virtual environment activated:
 
 ```bash
 sidecar-render \
-  examples/basic/edit.py \
+  examples/basic/edits.py \
   /tmp/sidecar_example_run
 ```
 
 The basic example copies `examples/basic/base/` into the output directory, then applies
 the declared edit steps. It uses `extract_subckts`, `copy_file`, and
-`replace`; other operations are listed as a comment in `examples/basic/edit.py`.
+`replace`; other operations are listed as a comment in `examples/basic/edits.py`.
 
 The fuller example also exercises `extract_subckts`, `regex_replace`, `patch`,
 and `apply_patch`:
 
 ```bash
 sidecar-render \
-  examples/apply_patch/edit.py \
+  examples/apply_patch/edits.py \
   /tmp/sidecar_apply_patch_run
 ```
 
@@ -76,7 +76,7 @@ explicit voltage/temperature combinations:
 
 ```bash
 sidecar-render \
-  examples/param_matrix/edit.py \
+  examples/param_matrix/edits.py \
   /tmp/sidecar_matrix_run
 ```
 
@@ -98,33 +98,33 @@ the intended edit, for example `add run label to notes`, not the command or tool
 used to perform it. Required edits fail by default; set `optional: True` only
 when a skipped edit is acceptable.
 
-Edit operations are created through the `sidecar_edits.edit` namespace:
+Edit operations are created through the `sidecar_edits.edits` namespace:
 
 ```python
-from sidecar_edits import edit
+from sidecar_edits import edits
 
 EDITS = [
-    edit.extract_subckts(
+    edits.extract_subckts(
         description="split reusable subcircuits from main netlist",
         input="input.scs",
         output_main="input_main.scs",
         output_subckts="subckts.inc",
     ),
-    edit.copy_file(
+    edits.copy_file(
         path="assets/model_override.scs",
         to="include/model_override.scs",
     ),
-    edit.write_file(
+    edits.write_file(
         path="generated/pwl_sources.inc",
         content="Vstim in 0 PWL(0 0 1n {vdd})\n",
         description="generate PWL source include",
     ),
-    edit.append_to_file(
+    edits.append_to_file(
         path="input_main.scs",
         content='include "generated/pwl_sources.inc"\n',
         description="append generated PWL include",
     ),
-    edit.insert_series_source_at_instance_net(
+    edits.insert_series_source_at_instance_net(
         path="input_main.scs",
         instance="X_SIDE_INJECT_001",
         net="in",
@@ -132,7 +132,7 @@ EDITS = [
         source_line="Vinj {net} {internal_net} PULSE(0 1.2 0 10p 10p 4n 8n)",
         description="inject pulse on unique instance input",
     ),
-    edit.replace(
+    edits.replace(
         path="input_main.scs",
         old='include "/seed/netlists/rc_filter.scs"',
         new='include "{netlist_path}"',
@@ -141,7 +141,7 @@ EDITS = [
 ```
 
 These helpers are regular typed Python functions with docstrings, so editor
-autocomplete and `help(sidecar_edits.edit.replace)` can show the available
+autocomplete and `help(sidecar_edits.edits.replace)` can show the available
 arguments. Raw dictionary edit entries are not supported by the renderer.
 
 Parameters are defined inside the edit file, not assembled on the command line.
@@ -248,6 +248,6 @@ For a build without installing into the environment:
 ```bash
 python setup.py build_py
 PYTHONPATH=build/lib python -m sidecar_edits.render \
-  examples/basic/edit.py \
+  examples/basic/edits.py \
   /tmp/sidecar_example_run_manual
 ```

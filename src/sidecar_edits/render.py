@@ -15,7 +15,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from sidecar_edits import edit as edit_api
+from sidecar_edits import edits as edits_api
 from sidecar_edits import tool_path
 
 if __name__ == "__main__":
@@ -39,7 +39,7 @@ class RenderPlan:
     editfile_path: Path
     base_dir: Path
     copy_ignore: list[str]
-    edits: list[edit_api.EditSpec]
+    edits: list[edits_api.EditSpec]
     param_sets: list[ParamSet]
     param_matrix: dict[str, list[object]]
 
@@ -86,7 +86,7 @@ def load_editfile(editfile_path: Path) -> RenderPlan:
     return RenderPlan(editfile_path, base_dir, copy_ignore, edits, param_sets, param_matrix)
 
 
-def load_edits(editfile_path: Path, raw_edits: object) -> list[edit_api.EditSpec]:
+def load_edits(editfile_path: Path, raw_edits: object) -> list[edits_api.EditSpec]:
     if not isinstance(raw_edits, list):
         raise EditError(f"{editfile_path} EDITS must be a list")
     edits = []
@@ -94,10 +94,10 @@ def load_edits(editfile_path: Path, raw_edits: object) -> list[edit_api.EditSpec
         if isinstance(raw_edit, dict):
             raise EditError(
                 f"{editfile_path} EDITS[{index}] raw dictionary edits are not supported; "
-                "use sidecar_edits.edit helpers"
+                "use sidecar_edits.edits helpers"
             )
-        if not edit_api.is_edit_spec(raw_edit):
-            raise EditError(f"{editfile_path} EDITS[{index}] must be a sidecar_edits.edit object")
+        if not edits_api.is_edit_spec(raw_edit):
+            raise EditError(f"{editfile_path} EDITS[{index}] must be a sidecar_edits.edits object")
         edits.append(raw_edit)
     return edits
 
@@ -224,7 +224,7 @@ def resolve_editfile_path(base_dir: Path, value: str, params: dict[str, object])
     return (base_dir / path).resolve()
 
 
-def edit_description(edit: dict | edit_api.EditSpec) -> str:
+def edit_description(edit: dict | edits_api.EditSpec) -> str:
     if isinstance(edit, dict):
         description = edit.get("description")
         if description:
@@ -664,15 +664,15 @@ def replace_unique_net_token(
 
 def apply_edit(
     target_dir: Path,
-    edit: edit_api.EditSpec,
+    edit: edits_api.EditSpec,
     params: dict[str, object],
     editfile_dir: Path,
     editfile_path: Path | None = None,
 ) -> None:
     if isinstance(edit, dict):
-        raise EditError("raw dictionary edits are not supported; use sidecar_edits.edit helpers")
-    if not edit_api.is_edit_spec(edit):
-        raise EditError("edit must be a sidecar_edits.edit object")
+        raise EditError("raw dictionary edits are not supported; use sidecar_edits.edits helpers")
+    if not edits_api.is_edit_spec(edit):
+        raise EditError("edit must be a sidecar_edits.edits object")
     context = RenderContext(
         target_dir=target_dir,
         editfile_dir=editfile_dir,
@@ -682,7 +682,7 @@ def apply_edit(
     edit.apply(context)
 
 
-def format_edit_failure(editfile_path: Path, index: int, edit: edit_api.EditSpec, reason: str) -> str:
+def format_edit_failure(editfile_path: Path, index: int, edit: edits_api.EditSpec, reason: str) -> str:
     label = f'EDITS[{index}] {edit.op}'
     if edit.description:
         label += f' "{edit.description}"'

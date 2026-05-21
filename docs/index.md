@@ -13,6 +13,7 @@ source-location error reports.
 :caption: Contents
 
 user-guide
+examples
 api
 design/edits-api
 design/manifesto
@@ -60,8 +61,10 @@ python -m sphinx -b html docs docs/_build/html
 
 - [User Guide](user-guide.md): how to author an edit file, format parameters,
   inject generated sources, and read errors.
-- [API Reference](api): generated signatures and docstrings for every
-  helper in `sidecar_edits.edits`.
+- [Examples](examples.md): runnable edit files included in the repository,
+  including Excel-backed PWL source generation.
+- [API Reference](api): generated signatures and docstrings for the edits API
+  and PWL table helpers.
 - [Design Notes](design/edits-api.md): implementation model and maintainer
   constraints for the edits API.
 

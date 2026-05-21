@@ -8,6 +8,7 @@ The design note for this package lives in [design/manifesto.md](design/manifesto
 - `examples/basic/` contains a small runnable edit-file example
 - `examples/apply_patch/` contains the fuller example with `apply_patch`
 - `examples/param_matrix/` contains a named parameter-set plus matrix example
+- `examples/pwl_excel/` contains an Excel-backed PWL source generation example
 - `tests/` contains the pytest coverage for the current behavior
 - `design/` contains the project note and high-level intent
 
@@ -86,6 +87,15 @@ That creates paths such as:
 /tmp/sidecar_matrix_run_tt/vdd_0p90_temp_c_m40/
 /tmp/sidecar_matrix_run_tt/vdd_1p20_temp_c_125/
 /tmp/custom_ss_sweep/vdd_0p90_temp_c_m40/
+```
+
+The Excel PWL example reads `waveforms/startup.xlsx`, creates
+`generated/pwl_sources.inc`, and appends an include statement to `input.scs`:
+
+```bash
+sidecar-render \
+  examples/pwl_excel/edits.py \
+  /tmp/sidecar_pwl_excel_run
 ```
 
 The `apply_patch` operation uses the installed `apply_patch` executable from

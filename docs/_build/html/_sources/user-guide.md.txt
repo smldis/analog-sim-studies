@@ -43,8 +43,69 @@ EDITS = [
 ]
 ```
 
-The `edit` namespace keeps supported operations discoverable through editor
+The `edits` namespace keeps supported operations discoverable through editor
 autocomplete and normal Python help.
+
+## PWL Tables
+
+Use `sidecar_edits.pwl` when waveform points are authored in a spreadsheet and
+the edit file should generate SPICE `PWL(...)` expressions.
+
+The table format is:
+
+- The first header cell is `#time`.
+- Every other header is the name of one generated waveform.
+- A non-empty cell emits one point for that waveform at that row's time.
+- An empty cell is skipped; it is not interpreted as zero.
+
+Example table:
+
+| #time | vin | vclk | ireset |
+| --- | --- | --- | --- |
+| 0 | 0 | 0 | |
+| 1n | 0.2 | 1.2 | |
+| 2n | | 0 | 1m |
+| 5n | 1.2 | | 0 |
+
+Load a workbook or copied spreadsheet text in the edit file, then compose the
+actual SPICE source lines explicitly:
+
+```python
+from pathlib import Path
+
+from sidecar_edits import edits, pwl
+
+BASE_DIR = "base"
+
+waveforms = pwl.waveforms_from_file(
+    Path(__file__).parent / "waveforms" / "startup.xlsx",
+    sheet="startup",
+)
+
+pwl_source_lines = "\n".join(
+    f"V{name} {name} 0 {waveform.render_pwl()}"
+    for name, waveform in waveforms.items()
+) + "\n"
+
+EDITS = [
+    edits.write_file(
+        path="generated/pwl_sources.inc",
+        content=pwl_source_lines,
+        description="generate PWL sources from spreadsheet",
+    ),
+    edits.append_to_file(
+        path="input.scs",
+        content='include "generated/pwl_sources.inc"\n',
+        description="include generated PWL sources",
+    ),
+]
+```
+
+`waveforms_from_file(...)` accepts delimited text files and spreadsheet
+workbooks. If a workbook has multiple sheets, pass `sheet="..."`. If it has one
+sheet, the sheet can be inferred.
+
+See [Excel PWL Sources](examples.md#excel-pwl-sources) for a runnable example.
 
 ## Parameter Formatting
 

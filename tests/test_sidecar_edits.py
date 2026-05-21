@@ -15,6 +15,8 @@ APPLY_PATCH_EXAMPLE_DIR = REPO_ROOT / "examples" / "apply_patch"
 APPLY_PATCH_EDITS = APPLY_PATCH_EXAMPLE_DIR / "edits.py"
 PARAM_MATRIX_EXAMPLE_DIR = REPO_ROOT / "examples" / "param_matrix"
 PARAM_MATRIX_EDITS = PARAM_MATRIX_EXAMPLE_DIR / "edits.py"
+PWL_EXCEL_EXAMPLE_DIR = REPO_ROOT / "examples" / "pwl_excel"
+PWL_EXCEL_EDITS = PWL_EXCEL_EXAMPLE_DIR / "edits.py"
 
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
@@ -216,6 +218,30 @@ def test_param_matrix_example_renders_named_matrix_dirs(tmp_path: Path) -> None:
         'include "/work/netlists/amp_ss.scs"\n'
         "parameters corner=ss vdd=1.20 temp=125\n"
         "save V(out)\n"
+    )
+
+
+def test_pwl_excel_example_generates_include_from_workbook(tmp_path: Path) -> None:
+    output_dir = tmp_path / "pwl_excel_run"
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(REPO_ROOT / "src")
+
+    subprocess.run(
+        [sys.executable, "-m", "sidecar_edits.render", str(PWL_EXCEL_EDITS), str(output_dir)],
+        cwd=REPO_ROOT,
+        env=env,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert (output_dir / "generated" / "pwl_sources.inc").read_text(encoding="utf-8") == (
+        "Vvin vin 0 PWL(0 0 1n 0.2 5n 1.2)\n"
+        "Vvclk vclk 0 PWL(0 0 1n 1.2 2n 0)\n"
+        "Vireset ireset 0 PWL(2n 1m 5n 0)\n"
+    )
+    assert (output_dir / "input.scs").read_text(encoding="utf-8").endswith(
+        'include "generated/pwl_sources.inc"\n'
     )
 
 

@@ -191,7 +191,8 @@
   <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="user-guide.html">User Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api.html">Edits API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="design/edits-api.html">Edits API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="design/manifesto.html">Should We Build a Text-First Analog Simulation Package?</a></li>
 </ul>
@@ -229,7 +230,7 @@
           
 <section class="genindex-section">
   <h1 id="index">Index</h1>
-  <div class="genindex-jumpbox"><a href="#A"><strong>A</strong></a> | <a href="#C"><strong>C</strong></a> | <a href="#E"><strong>E</strong></a> | <a href="#I"><strong>I</strong></a> | <a href="#M"><strong>M</strong></a> | <a href="#P"><strong>P</strong></a> | <a href="#R"><strong>R</strong></a> | <a href="#S"><strong>S</strong></a> | <a href="#W"><strong>W</strong></a></div>
+  <div class="genindex-jumpbox"><a href="#A"><strong>A</strong></a> | <a href="#C"><strong>C</strong></a> | <a href="#E"><strong>E</strong></a> | <a href="#I"><strong>I</strong></a> | <a href="#M"><strong>M</strong></a> | <a href="#N"><strong>N</strong></a> | <a href="#P"><strong>P</strong></a> | <a href="#R"><strong>R</strong></a> | <a href="#S"><strong>S</strong></a> | <a href="#T"><strong>T</strong></a> | <a href="#V"><strong>V</strong></a> | <a href="#W"><strong>W</strong></a></div>
 </section>
 <section id="A" class="genindex-section">
   <h2>A</h2>
@@ -285,7 +286,19 @@
         <ul>
           <li><a href="api.html#module-sidecar_edits.edits">sidecar_edits.edits</a>
 </li>
+          <li><a href="api.html#module-sidecar_edits.pwl">sidecar_edits.pwl</a>
+</li>
         </ul></li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="N" class="genindex-section">
+  <h2>N</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#sidecar_edits.pwl.PwlWaveform.name">name (sidecar_edits.pwl.PwlWaveform attribute)</a>
+</li>
     </ul></td>
   </tr></table>
 </section>
@@ -296,6 +309,16 @@
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="api.html#sidecar_edits.edits.patch">patch() (in module sidecar_edits.edits)</a>
 </li>
+        <li><a href="api.html#sidecar_edits.pwl.PwlWaveform.points">points (sidecar_edits.pwl.PwlWaveform attribute)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#sidecar_edits.pwl.PwlPoint">PwlPoint (class in sidecar_edits.pwl)</a>
+</li>
+        <li><a href="api.html#sidecar_edits.pwl.PwlTableError">PwlTableError</a>
+</li>
+        <li><a href="api.html#sidecar_edits.pwl.PwlWaveform">PwlWaveform (class in sidecar_edits.pwl)</a>
+</li>
     </ul></td>
   </tr></table>
 </section>
@@ -305,6 +328,8 @@
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="api.html#sidecar_edits.edits.regex_replace">regex_replace() (in module sidecar_edits.edits)</a>
+</li>
+        <li><a href="api.html#sidecar_edits.pwl.PwlWaveform.render_pwl">render_pwl() (sidecar_edits.pwl.PwlWaveform method)</a>
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
@@ -328,6 +353,35 @@
 </li>
         </ul></li>
     </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li>
+    sidecar_edits.pwl
+
+        <ul>
+          <li><a href="api.html#module-sidecar_edits.pwl">module</a>
+</li>
+        </ul></li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="T" class="genindex-section">
+  <h2>T</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#sidecar_edits.pwl.PwlPoint.time">time (sidecar_edits.pwl.PwlPoint attribute)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="V" class="genindex-section">
+  <h2>V</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#sidecar_edits.pwl.PwlPoint.value">value (sidecar_edits.pwl.PwlPoint attribute)</a>
+</li>
+    </ul></td>
   </tr></table>
 </section>
 
@@ -335,6 +389,12 @@
   <h2>W</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#sidecar_edits.pwl.waveforms_from_file">waveforms_from_file() (in module sidecar_edits.pwl)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api.html#sidecar_edits.pwl.waveforms_from_text">waveforms_from_text() (in module sidecar_edits.pwl)</a>
+</li>
         <li><a href="api.html#sidecar_edits.edits.write_file">write_file() (in module sidecar_edits.edits)</a>
 </li>
     </ul></td>

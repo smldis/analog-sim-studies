@@ -3,10 +3,10 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Edits API" href="design/edits-api.html"><link rel="prev" title="User Guide" href="user-guide.html">
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Edits API" href="design/edits-api.html"><link rel="prev" title="Examples" href="examples.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>Edits API Reference - Analog Sim Studies documentation</title>
+        <title>API Reference - Analog Sim Studies documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -193,7 +193,8 @@
   <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="user-guide.html">User Guide</a></li>
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Edits API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">API Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="design/edits-api.html">Edits API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="design/manifesto.html">Should We Build a Text-First Analog Simulation Package?</a></li>
 </ul>
@@ -234,8 +235,10 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="module-sidecar_edits.edits">
-<span id="edits-api-reference"></span><h1>Edits API Reference<a class="headerlink" href="#module-sidecar_edits.edits" title="Link to this heading">¶</a></h1>
+          <section id="api-reference">
+<h1>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading">¶</a></h1>
+<section id="module-sidecar_edits.edits">
+<span id="edits-api"></span><h2>Edits API<a class="headerlink" href="#module-sidecar_edits.edits" title="Link to this heading">¶</a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="sidecar_edits.edits.extract_subckts">
 <span class="sig-prename descclassname"><span class="pre">sidecar_edits.edits.</span></span><span class="sig-name descname"><span class="pre">extract_subckts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">input</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_main</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_subckts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optional</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.edits.extract_subckts" title="Link to this definition">¶</a></dt>
@@ -570,6 +573,111 @@ command is missing or the patch fails.</p>
 </dd></dl>
 
 </section>
+<section id="module-sidecar_edits.pwl">
+<span id="pwl-table-helpers"></span><h2>PWL Table Helpers<a class="headerlink" href="#module-sidecar_edits.pwl" title="Link to this heading">¶</a></h2>
+<dl class="py exception">
+<dt class="sig sig-object py" id="sidecar_edits.pwl.PwlTableError">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">sidecar_edits.pwl.</span></span><span class="sig-name descname"><span class="pre">PwlTableError</span></span><a class="headerlink" href="#sidecar_edits.pwl.PwlTableError" title="Link to this definition">¶</a></dt>
+<dd><p>Raised when a PWL table cannot be converted into waveforms.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="sidecar_edits.pwl.PwlPoint">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">sidecar_edits.pwl.</span></span><span class="sig-name descname"><span class="pre">PwlPoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.pwl.PwlPoint" title="Link to this definition">¶</a></dt>
+<dd><p>One emitted time/value pair in a SPICE PWL expression.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>time</strong> (<em>str</em>)</p></li>
+<li><p><strong>value</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sidecar_edits.pwl.PwlPoint.time">
+<span class="sig-name descname"><span class="pre">time</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#sidecar_edits.pwl.PwlPoint.time" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sidecar_edits.pwl.PwlPoint.value">
+<span class="sig-name descname"><span class="pre">value</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#sidecar_edits.pwl.PwlPoint.value" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="sidecar_edits.pwl.PwlWaveform">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">sidecar_edits.pwl.</span></span><span class="sig-name descname"><span class="pre">PwlWaveform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">points</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.pwl.PwlWaveform" title="Link to this definition">¶</a></dt>
+<dd><p>Named waveform loaded from one non-empty source column.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>)</p></li>
+<li><p><strong>points</strong> (<em>tuple</em><em>[</em><a class="reference internal" href="#sidecar_edits.pwl.PwlPoint" title="sidecar_edits.pwl.PwlPoint"><em>PwlPoint</em></a><em>, </em><em>...</em><em>]</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sidecar_edits.pwl.PwlWaveform.name">
+<span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#sidecar_edits.pwl.PwlWaveform.name" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sidecar_edits.pwl.PwlWaveform.points">
+<span class="sig-name descname"><span class="pre">points</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#sidecar_edits.pwl.PwlPoint" title="sidecar_edits.pwl.PwlPoint"><span class="pre">PwlPoint</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#sidecar_edits.pwl.PwlWaveform.points" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sidecar_edits.pwl.PwlWaveform.render_pwl">
+<span class="sig-name descname"><span class="pre">render_pwl</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">wrap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">line_length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">88</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.pwl.PwlWaveform.render_pwl" title="Link to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>wrap</strong> (<em>bool</em>)</p></li>
+<li><p><strong>line_length</strong> (<em>int</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="sidecar_edits.pwl.waveforms_from_text">
+<span class="sig-prename descclassname"><span class="pre">sidecar_edits.pwl.</span></span><span class="sig-name descname"><span class="pre">waveforms_from_text</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.pwl.waveforms_from_text" title="Link to this definition">¶</a></dt>
+<dd><p>Load PWL waveforms from copied or exported delimited text.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <a class="reference internal" href="#sidecar_edits.pwl.PwlWaveform" title="sidecar_edits.pwl.PwlWaveform"><code class="xref py py-class docutils literal notranslate"><span class="pre">PwlWaveform</span></code></a>]</span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>text</strong> (<em>str</em>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="sidecar_edits.pwl.waveforms_from_file">
+<span class="sig-prename descclassname"><span class="pre">sidecar_edits.pwl.</span></span><span class="sig-name descname"><span class="pre">waveforms_from_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">sheet</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sidecar_edits.pwl.waveforms_from_file" title="Link to this definition">¶</a></dt>
+<dd><p>Load PWL waveforms from a delimited file or spreadsheet workbook.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <a class="reference internal" href="#sidecar_edits.pwl.PwlWaveform" title="sidecar_edits.pwl.PwlWaveform"><code class="xref py py-class docutils literal notranslate"><span class="pre">PwlWaveform</span></code></a>]</span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>path</strong> (<em>str</em><em> | </em><em>Path</em>)</p></li>
+<li><p><strong>sheet</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
 
         </article>
       </div>
@@ -585,14 +693,14 @@ command is missing or the patch fails.</p>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="user-guide.html">
+          <a class="prev-page" href="examples.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">User Guide</div>
+                <div class="title">Examples</div>
                 
               </div>
             </a>
@@ -626,7 +734,8 @@ command is missing or the patch fails.</p>
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">Edits API Reference</a><ul>
+<li><a class="reference internal" href="#">API Reference</a><ul>
+<li><a class="reference internal" href="#module-sidecar_edits.edits">Edits API</a><ul>
 <li><a class="reference internal" href="#sidecar_edits.edits.extract_subckts"><code class="docutils literal notranslate"><span class="pre">extract_subckts()</span></code></a></li>
 <li><a class="reference internal" href="#sidecar_edits.edits.copy_file"><code class="docutils literal notranslate"><span class="pre">copy_file()</span></code></a></li>
 <li><a class="reference internal" href="#sidecar_edits.edits.write_file"><code class="docutils literal notranslate"><span class="pre">write_file()</span></code></a></li>
@@ -637,6 +746,25 @@ command is missing or the patch fails.</p>
 <li><a class="reference internal" href="#sidecar_edits.edits.run"><code class="docutils literal notranslate"><span class="pre">run()</span></code></a></li>
 <li><a class="reference internal" href="#sidecar_edits.edits.patch"><code class="docutils literal notranslate"><span class="pre">patch()</span></code></a></li>
 <li><a class="reference internal" href="#sidecar_edits.edits.apply_patch"><code class="docutils literal notranslate"><span class="pre">apply_patch()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-sidecar_edits.pwl">PWL Table Helpers</a><ul>
+<li><a class="reference internal" href="#sidecar_edits.pwl.PwlTableError"><code class="docutils literal notranslate"><span class="pre">PwlTableError</span></code></a></li>
+<li><a class="reference internal" href="#sidecar_edits.pwl.PwlPoint"><code class="docutils literal notranslate"><span class="pre">PwlPoint</span></code></a><ul>
+<li><a class="reference internal" href="#sidecar_edits.pwl.PwlPoint.time"><code class="docutils literal notranslate"><span class="pre">PwlPoint.time</span></code></a></li>
+<li><a class="reference internal" href="#sidecar_edits.pwl.PwlPoint.value"><code class="docutils literal notranslate"><span class="pre">PwlPoint.value</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#sidecar_edits.pwl.PwlWaveform"><code class="docutils literal notranslate"><span class="pre">PwlWaveform</span></code></a><ul>
+<li><a class="reference internal" href="#sidecar_edits.pwl.PwlWaveform.name"><code class="docutils literal notranslate"><span class="pre">PwlWaveform.name</span></code></a></li>
+<li><a class="reference internal" href="#sidecar_edits.pwl.PwlWaveform.points"><code class="docutils literal notranslate"><span class="pre">PwlWaveform.points</span></code></a></li>
+<li><a class="reference internal" href="#sidecar_edits.pwl.PwlWaveform.render_pwl"><code class="docutils literal notranslate"><span class="pre">PwlWaveform.render_pwl()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#sidecar_edits.pwl.waveforms_from_text"><code class="docutils literal notranslate"><span class="pre">waveforms_from_text()</span></code></a></li>
+<li><a class="reference internal" href="#sidecar_edits.pwl.waveforms_from_file"><code class="docutils literal notranslate"><span class="pre">waveforms_from_file()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>

@@ -14,6 +14,7 @@ dependencies = [
 
 [project.scripts]
 sidecar-render = "sidecar_edits.render:main"
+spice-canonical = "spice_canonical.canonical_netlist:main"
 
 [project.optional-dependencies]
 docs = [

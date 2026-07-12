@@ -1,10 +1,12 @@
 # Analog Sim Studies
 
 The design note for this package lives in [design/manifesto.md](design/manifesto.md).
+The graph-oriented Eldo/ngspice extraction format is specified in
+[design/canonical-netlist-representation.md](design/canonical-netlist-representation.md).
 
 ## Layout
 
-- `src/sidecar_edits/` contains the package implementation
+- `src/sidecar_edits/` contains the simulation-input preparation package
 - `examples/basic/` contains a small runnable edit-file example
 - `examples/apply_patch/` contains the fuller example with `apply_patch`
 - `examples/param_matrix/` contains a named parameter-set plus matrix example
@@ -225,6 +227,38 @@ Run the tests:
 ```bash
 python -m pip install pytest
 python -m pytest -q
+```
+
+## Canonical Netlist Extraction
+
+Convert an Eldo netlist into the canonical net and device tables with:
+
+```bash
+spice-canonical input.spi --output canonical.txt
+```
+
+Select ngspice explicitly for its title, comment, control-block, and device
+syntax:
+
+```bash
+spice-canonical input.cir --format ngspice --output canonical.txt
+```
+
+Use `--strict` when unresolved subcircuits or unsupported proprietary devices
+should make extraction fail. The Python API is available from
+`spice_canonical.canonical_netlist`. File extraction recursively expands `.INCLUDE`
+and `.INC` directives, resolving relative paths from each including file.
+`.LIB` model libraries remain opaque. For model files referenced through
+`.INCLUDE`, use repeatable `--stop-include GLOB` boundaries and provide named
+pin signatures with `--external-subcircuits interfaces.json`. The JSON file
+maps external subcircuit names to pin arrays, for example
+`{"vendor_nfet": ["d", "g", "s", "b"]}`.
+
+To verify compatibility against checksum-pinned examples from the official
+ngspice repository, with ngspice installed:
+
+```bash
+python scripts/verify_ngspice_corpus.py
 ```
 
 ## Local Documentation

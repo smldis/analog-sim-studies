@@ -87,3 +87,68 @@ Implementation notes:
 
 This adds multi-run preparation without turning the prototype into a full
 scheduler or dependency graph yet.
+
+## Render Context Script Interface
+
+Status: Future option.
+
+The current interface treats the edit file as a small Python program that builds
+a declarative render plan:
+
+```python
+from sidecar_edits import edits
+
+EDITS = [
+    edits.replace(path="input.scs", old="corner=seed", new="corner=tt"),
+    edits.write_file(path="generated/sources.inc", content=generated_text),
+]
+```
+
+That model is useful when edits should be reviewable as data: the renderer can
+inspect, validate, replay, and report a numbered list of typed operations across
+parameter sets and matrix cases.
+
+A complementary interface could make the edit file a normal render script that
+receives a renderer-owned context:
+
+```python
+def render(ctx):
+    ctx.replace(path="input.scs", old="corner=seed", new="corner=tt")
+    ctx.write_file(path="generated/sources.inc", content=generated_text)
+```
+
+This would not be a raw arbitrary file-mutation script. The context would still
+own the run directory, parameter formatting, path handling, optional edit
+semantics, and domain-specific errors. The difference is that operations would
+execute procedurally instead of first being collected into `EDITS`.
+
+Potential advantages:
+
+- More natural for dynamic generation from spreadsheets, measurements, or other
+  Python libraries.
+- Normal Python tracebacks point directly into the procedural logic.
+- Users do not need to reason about the difference between generating edit
+  objects now and applying them later.
+- The same helper names could be exposed through `ctx`, preserving autocomplete.
+
+Potential drawbacks:
+
+- The renderer cannot inspect the full edit plan before applying it.
+- Dry-run, plan review, and serialization become harder or require recording
+  operations as they execute.
+- Failure reports would refer to the current operation rather than a stable
+  `EDITS[index]` entry.
+- Replaying exactly the same plan across runs depends on calling `render(ctx)`
+  for every run, so user code must remain deterministic.
+
+Possible coexistence model:
+
+- Keep `EDITS = [...]` as the declarative, reviewable interface.
+- Add `def render(ctx): ...` as an optional procedural interface.
+- Reject files that define both until there is a concrete reason to combine
+  them.
+- Share the same operation implementations behind `edits.*` and `ctx.*` to
+  avoid maintaining two behavior paths.
+
+This is worth revisiting if dynamic edit generation becomes common enough that
+the declarative list feels artificial to users.

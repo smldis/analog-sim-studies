@@ -40,7 +40,7 @@ def main() -> int:
         top_name="analog_frontend_hier_op",
     )
     core = next(c for c in netlist.subcircuits if c.name == "ota_core")
-    tags = decompose(core)
+    tags = decompose(core, vdd_nets=("vdd",), vss_nets=("vss",))
     kept = suppress_false_stacks(tags)
 
     def of_kind(kind, source=tags):
@@ -75,24 +75,69 @@ def main() -> int:
         ),
     )
 
-    mirrors = of_kind("simple_current_mirror")
     check(
-        "XM3/XM4 pmos simple mirror",
-        any(
-            tag.devices_for("reference") == ("XM3",)
-            and tag.devices_for("outputs") == ("XM4",)
-            for tag in mirrors
-        ),
+        "XM3 and XM8 are voltage biases; XM4, XM5, XM7 are current biases",
+        {t.members for t in of_kind("voltage_bias")}
+        == {frozenset({"XM3"}), frozenset({"XM8"})}
+        and {t.members for t in of_kind("current_bias")}
+        == {frozenset({"XM4"}), frozenset({"XM5"}), frozenset({"XM7"})},
     )
+    pairs = {
+        (tag.devices_for("voltage_bias"), tag.devices_for("current_bias"))
+        for tag in of_kind("current_mirror")
+    }
     check(
-        "XM8 -> XM5, XM7 nmos multi-output mirror",
-        any(
-            tag.devices_for("reference") == ("XM8",)
-            and set(tag.devices_for("outputs")) == {"XM5", "XM7"}
-            for tag in mirrors
-        ),
+        "pairwise mirrors: XM3/XM4, and XM8 shared by XM5 and XM7",
+        pairs == {(("XM3",), ("XM4",)), (("XM8",), ("XM5",)), (("XM8",), ("XM7",))},
     )
 
+    check(
+        "XM1/XM2 is a full Eq. 13 differential pair (tail is a current bias)",
+        any(
+            tag.members == frozenset({"XM1", "XM2"})
+            for tag in of_kind("differential_pair")
+        ),
+    )
+    tcs = of_kind("transconductance")
+    check(
+        "XM1/XM2 form the only transconductance (tcs)",
+        len(tcs) == 1
+        and tcs[0].members == frozenset({"XM1", "XM2"})
+        and ("tc_type", "tcs") in tcs[0].properties,
+    )
+    followers = of_kind("source_follower")
+    check(
+        "XM6 is a source follower (voltage buffer)",
+        len(followers) == 1
+        and followers[0].members == frozenset({"XM6"})
+        and ("function", "voltage_buffer") in followers[0].properties,
+    )
+    loads = of_kind("load")
+    check(
+        "XM3/XM4 mirror is the first-stage load (Alg. 3)",
+        len(loads) == 1 and loads[0].members == frozenset({"XM3", "XM4"}),
+    )
+    biases = {
+        dict(tag.properties)["output_type"]: tag for tag in of_kind("stage_bias")
+    }
+    check(
+        "XM5 is the current-output stage bias of the first stage",
+        len(biases) == 2
+        and biases.get("current") is not None
+        and biases["current"].members == frozenset({"XM5"}),
+    )
+    check(
+        "XM7 is the voltage-output stage bias of the follower",
+        biases.get("voltage") is not None
+        and biases["voltage"].members == frozenset({"XM7"}),
+    )
+    stages = of_kind("source_follower_stage")
+    check(
+        "XM6/XM7 form the source-follower output stage",
+        len(stages) == 1
+        and stages[0].members == frozenset({"XM6", "XM7"})
+        and stages[0].devices_for("follower") == ("XM6",),
+    )
     check(
         "XM7/XM6 stack is Eq. 9 valid (bottom-to-top XM7, XM6)",
         ("XM7", "XM6") in stack_orders(tags),

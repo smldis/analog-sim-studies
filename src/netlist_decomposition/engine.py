@@ -37,10 +37,26 @@ class IncidentPin:
 
 
 class CircuitGraph:
-    """Indexed view of one canonical circuit."""
+    """Indexed view of one canonical circuit.
 
-    def __init__(self, circuit: Circuit) -> None:
+    ``vdd_nets`` and ``vss_nets`` are declared power rails (positive rails
+    for PMOS sources, ground rails for NMOS sources).  They are never
+    inferred from net names; blocks that need supply context (the load
+    search of Algorithm 3, the paper's analog inverter) read them from
+    here.  ``supply_nets`` is their union.
+    """
+
+    def __init__(
+        self,
+        circuit: Circuit,
+        *,
+        vdd_nets: Iterable[str] = (),
+        vss_nets: Iterable[str] = (),
+    ) -> None:
         self.circuit = circuit
+        self.vdd_nets = frozenset(vdd_nets)
+        self.vss_nets = frozenset(vss_nets)
+        self.supply_nets = self.vdd_nets | self.vss_nets
         self.devices = {device.name: device for device in circuit.devices}
         incidents: dict[str, list[IncidentPin]] = {}
         for device in circuit.devices:
@@ -191,7 +207,11 @@ class DecompositionEngine:
         self.max_passes = max_passes
 
     def run(self, circuit: Circuit) -> tuple[BlockTag, ...]:
-        graph = CircuitGraph(circuit)
+        return self.run_index(CircuitGraph(circuit)).as_tuple()
+
+    def run_index(self, graph: CircuitGraph) -> BlockIndex:
+        """Run the rules to a fixed point and return the mutable index."""
+
         blocks = BlockIndex()
 
         for _ in range(self.max_passes):
@@ -206,7 +226,7 @@ class DecompositionEngine:
                         )
                     changed |= blocks.add(candidate, rule=rule.name)
             if not changed:
-                return blocks.as_tuple()
+                return blocks
 
         raise RuntimeError(
             f"functional decomposition did not converge in {self.max_passes} passes"
@@ -367,43 +387,6 @@ def transistor_stack_rule(*, exclusive_internal_nets: bool = False) -> FunctionR
     return FunctionRule("transistor stacks", matcher)
 
 
-def _current_mirrors(
-    graph: CircuitGraph, blocks: BlockIndex
-) -> Iterable[BlockCandidate]:
-    candidates = graph.mos_devices()
-    for diode in blocks.of_kind(HL1_DIODE):
-        reference = graph.devices[diode.devices_for("device")[0]]
-        gate = graph.pin_net(reference, "g")
-        source = graph.pin_net(reference, "s")
-        bulk = graph.pin_net(reference, "b")
-        outputs = tuple(
-            device
-            for device in candidates
-            if device.name != reference.name
-            and mos.same_polarity(device, reference)
-            and graph.pin_net(device, "g") == gate
-            and graph.pin_net(device, "s") == source
-            and graph.pin_net(device, "b") == bulk
-            and graph.pin_net(device, "d") != gate
-        )
-        if outputs:
-            yield BlockCandidate(
-                kind="simple_current_mirror",
-                members=frozenset(
-                    (reference.name, *(device.name for device in outputs))
-                ),
-                roles=(
-                    _device_role("reference", reference),
-                    _device_role("outputs", *outputs),
-                ),
-                nets=(("bias", gate or ""), ("common_source", source or "")),
-                properties=(
-                    ("mos_type", reference.type),
-                    ("output_count", str(len(outputs))),
-                ),
-            )
-
-
 def _differential_pairs(
     graph: CircuitGraph, _blocks: BlockIndex
 ) -> Iterable[BlockCandidate]:
@@ -465,18 +448,42 @@ def _cmos_inverters(
 DEFAULT_RULES: tuple[Rule, ...] = (
     FunctionRule("HL1 transistors", _hl1_transistors),
     transistor_stack_rule(),
-    FunctionRule("simple current mirrors", _current_mirrors),
     FunctionRule("differential-pair candidates", _differential_pairs),
     FunctionRule("CMOS inverters", _cmos_inverters),
 )
 
 
 def decompose(
-    circuit: Circuit, rules: Sequence[Rule] = DEFAULT_RULES
+    circuit: Circuit,
+    rules: Sequence[Rule] = DEFAULT_RULES,
+    *,
+    vdd_nets: Iterable[str] = (),
+    vss_nets: Iterable[str] = (),
 ) -> tuple[BlockTag, ...]:
-    """Return all functional-block tags found in one canonical circuit."""
+    """Return all functional-block tags found in one canonical circuit.
 
-    return DecompositionEngine(rules).run(circuit)
+    After the monotone rules reach their fixed point, the HL2 voltage/current
+    biases and current mirrors are recognized with the paper's Algorithm 1
+    (see ``netlist_decomposition.bias``), which needs the complete stack set
+    and negative conditions a monotone rule cannot express.  Then the full
+    differential pairs and the HL3 blocks (non-inverting transconductance,
+    load, current-output stage bias) are recognized per Algorithm 2 (see
+    ``netlist_decomposition.hl3``).  Irrelevant same-type-contained biases
+    and mirrors are pruned last, per Eq. 19 and matching the paper's
+    algorithm order.
+
+    ``vdd_nets``/``vss_nets`` declare the power rails.  Without them the
+    Algorithm 3 load search can only find load stacks whose sources sit on
+    transconductance outputs (folded arrangements), not rail-connected ones.
+    """
+
+    from netlist_decomposition import bias, hl3
+
+    graph = CircuitGraph(circuit, vdd_nets=vdd_nets, vss_nets=vss_nets)
+    blocks = DecompositionEngine(rules).run_index(graph)
+    bias.resolve_bias_blocks(graph, blocks)
+    hl3.resolve_hl3_blocks(graph, blocks)
+    return bias.prune_irrelevant(blocks.as_tuple())
 
 
 def suppress_false_stacks(tags: Sequence[BlockTag]) -> tuple[BlockTag, ...]:

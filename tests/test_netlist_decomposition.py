@@ -16,9 +16,9 @@ from netlist_decomposition import (  # noqa: E402
 )
 from netlist_decomposition.engine import (  # noqa: E402
     _cmos_inverters,
-    _current_mirrors,
     _differential_pairs,
     _hl1_transistors,
+    CircuitGraph,
     FunctionRule,
 )
 
@@ -299,29 +299,91 @@ def _tags(kind: str):
     return tuple(tag for tag in decompose(circuit) if tag.kind == kind)
 
 
-def test_tags_a_diode_connected_reference_and_mirror() -> None:
+def test_tags_a_diode_reference_as_bias_pair_and_simple_mirror() -> None:
     diode = _tags("diode_transistor")
-    mirrors = _tags("simple_current_mirror")
+    mirrors = _tags("current_mirror")
 
     assert [tag.members for tag in diode] == [frozenset({"MREF"})]
+    assert [tag.devices_for("ordered_devices") for tag in _tags("voltage_bias")] == [
+        ("MREF",)
+    ]
+    assert [tag.devices_for("ordered_devices") for tag in _tags("current_bias")] == [
+        ("MOUT",)
+    ]
     assert len(mirrors) == 1
-    assert mirrors[0].devices_for("reference") == ("MREF",)
-    assert mirrors[0].devices_for("outputs") == ("MOUT",)
+    assert mirrors[0].devices_for("voltage_bias") == ("MREF",)
+    assert mirrors[0].devices_for("current_bias") == ("MOUT",)
     assert mirrors[0].net_for("bias") == "bias"
+    assert mirrors[0].net_for("output") == "tail"
+    assert ("variant", "scm") in mirrors[0].properties
 
 
-def test_tags_multi_output_current_mirror() -> None:
+def test_multi_output_structure_becomes_pairwise_overlapping_mirrors() -> None:
     netlist = MODELS + (
         "MREF bias bias vss vss N\n"
         "MOUT1 o1 bias vss vss N\n"
         "MOUT2 o2 bias vss vss N\n"
     )
     tags = decompose(canonical_netlist.from_text(netlist).top)
-    mirrors = _of_kind(tags, "simple_current_mirror")
+    mirrors = _of_kind(tags, "current_mirror")
 
+    # One voltage bias shared by two overlapping pairwise mirrors: the
+    # paper's current-mirror bench is this overlap, not an aggregate tag.
+    assert {tag.members for tag in mirrors} == {
+        frozenset({"MREF", "MOUT1"}),
+        frozenset({"MREF", "MOUT2"}),
+    }
+    assert all(tag.devices_for("voltage_bias") == ("MREF",) for tag in mirrors)
+    assert {tag.net_for("output") for tag in mirrors} == {"o1", "o2"}
+
+
+def test_cascode_mirror_prunes_contained_simple_mirror() -> None:
+    tags = _decompose_devices(
+        "MA n1 n1 vss b N\n"
+        "MB n2 n2 n1 b N\n"
+        "MC m1 n1 vss b N\n"
+        "MD out n2 m1 b N\n"
+    )
+
+    # The inner MA/MC simple mirror and all one-device biases are irrelevant
+    # per Eq. 19: same kind, strictly contained in the cascode blocks.
+    assert [tag.members for tag in _of_kind(tags, "voltage_bias")] == [
+        frozenset({"MA", "MB"})
+    ]
+    assert [tag.members for tag in _of_kind(tags, "current_bias")] == [
+        frozenset({"MC", "MD"})
+    ]
+    mirrors = _of_kind(tags, "current_mirror")
     assert len(mirrors) == 1
-    assert mirrors[0].devices_for("outputs") == ("MOUT1", "MOUT2")
-    assert ("output_count", "2") in mirrors[0].properties
+    assert mirrors[0].devices_for("voltage_bias") == ("MA", "MB")
+    assert mirrors[0].devices_for("current_bias") == ("MC", "MD")
+    assert mirrors[0].net_for("output") == "out"
+    assert ("variant", "unclassified") in mirrors[0].properties
+
+
+def test_current_bias_rejected_when_drain_drives_same_doping_gate() -> None:
+    # MOUT's drain feeds MLOAD's gate: per Alg. 1 line 8 (Eq. 11's negated
+    # existential) MOUT cannot be a current bias, so no mirror is formed.
+    tags = _decompose_devices(
+        "MREF bias bias vss b N\n"
+        "MOUT o1 bias vss b N\n"
+        "MLOAD x o1 vss b N\n"
+    )
+
+    assert not _of_kind(tags, "voltage_bias")
+    assert not _of_kind(tags, "current_bias")
+    assert not _of_kind(tags, "current_mirror")
+
+
+def test_supply_nets_are_declared_not_inferred() -> None:
+    circuit = canonical_netlist.from_text(MODELS + "M1 d g s b N\n").top
+
+    assert CircuitGraph(circuit).supply_nets == frozenset()
+    graph = CircuitGraph(circuit, vdd_nets=("vdd",), vss_nets=("vss", "gnd"))
+    assert graph.vdd_nets == frozenset({"vdd"})
+    assert graph.vss_nets == frozenset({"vss", "gnd"})
+    assert graph.supply_nets == frozenset({"vdd", "vss", "gnd"})
+    assert decompose(circuit, vdd_nets=("vdd",), vss_nets=("vss",))
 
 
 def test_tags_differential_pair_candidate() -> None:
@@ -362,11 +424,200 @@ def test_dependent_rules_reject_unknown_polarity() -> None:
     )
     rules = (
         FunctionRule("HL1 transistors", _hl1_transistors),
-        FunctionRule("simple current mirrors", _current_mirrors),
+        transistor_stack_rule(),
         FunctionRule("differential-pair candidates", _differential_pairs),
         FunctionRule("CMOS inverters", _cmos_inverters),
     )
     tags = decompose(canonical_netlist.from_text(netlist).top, rules)
 
-    assert not _of_kind(tags, "simple_current_mirror")
+    assert not _of_kind(tags, "current_mirror")
     assert not _of_kind(tags, "differential_pair_candidate")
+
+
+# --- Full differential pairs and HL3 blocks ------------------------------------
+
+
+FIVE_TRANSISTOR_OTA = (
+    "MREF bias bias vss vss N\n"
+    "MTAIL tail bias vss vss N\n"
+    "MIN1 outn in_p tail vss N\n"
+    "MIN2 outp in_n tail vss N\n"
+    "MLP1 outn outn vdd vdd P\n"
+    "MLP2 outp outn vdd vdd P\n"
+)
+
+
+def test_full_differential_pair_requires_current_bias_tail() -> None:
+    tags = _decompose_devices(FIVE_TRANSISTOR_OTA)
+    pairs = _of_kind(tags, "differential_pair")
+
+    assert [tag.members for tag in pairs] == [frozenset({"MIN1", "MIN2"})]
+    assert pairs[0].net_for("common_source") == "tail"
+    assert pairs[0].net_for("output_1") == "outn"
+
+    # Source-coupled devices without a recognized current bias on the common
+    # source stay candidates only (Eq. 13's existential is not met).
+    tail_less = _decompose_devices(
+        "MIN1 left in1 tail b N\n"
+        "MIN2 right in2 tail b N\n"
+    )
+    assert not _of_kind(tail_less, "differential_pair")
+    assert _of_kind(tail_less, "differential_pair_candidate")
+
+
+def test_five_transistor_ota_decomposes_into_tc_load_stage_bias() -> None:
+    netlist = canonical_netlist.from_text(MODELS + FIVE_TRANSISTOR_OTA)
+    tags = decompose(netlist.top, vdd_nets=("vdd",), vss_nets=("vss",))
+
+    tc = _of_kind(tags, "transconductance")
+    assert len(tc) == 1
+    assert tc[0].members == frozenset({"MIN1", "MIN2"})
+    assert ("tc_type", "tcs") in tc[0].properties
+    assert tc[0].net_for("out_1") == "outn"
+    assert tc[0].net_for("out_2") == "outp"
+
+    loads = _of_kind(tags, "load")
+    assert len(loads) == 1
+    assert loads[0].members == frozenset({"MLP1", "MLP2"})
+    assert loads[0].devices_for("part_pmos") == ("MLP1", "MLP2")
+    assert loads[0].devices_for("part_nmos") == ()
+    assert loads[0].devices_for("transconductance") == ("MIN1", "MIN2")
+
+    stage_bias = _of_kind(tags, "stage_bias")
+    assert len(stage_bias) == 1
+    assert stage_bias[0].members == frozenset({"MTAIL"})
+    assert stage_bias[0].net_for("output_1") == "tail"
+    assert ("output_type", "current") in stage_bias[0].properties
+
+
+def test_load_needs_declared_rails_for_rail_connected_stacks() -> None:
+    # Same OTA without declared supplies: Algorithm 3 cannot see that the
+    # PMOS load sources sit on a rail, so no load is recognized.
+    tags = _decompose_devices(FIVE_TRANSISTOR_OTA)
+
+    assert not _of_kind(tags, "load")
+    assert _of_kind(tags, "transconductance")
+
+
+def test_cascode_differential_pair_forms_one_cascode_transconductance() -> None:
+    tags = _decompose_devices(
+        "MREF bias bias vss b N\n"
+        "MTAIL tail bias vss b N\n"
+        "MIN1 d1 inp tail b N\n"
+        "MIN2 d2 inn tail b N\n"
+        "MC1 o1 cas d1 b N\n"
+        "MC2 o2 cas d2 b N\n"
+    )
+
+    couples = _of_kind(tags, "gate_connected_couple")
+    assert [tag.members for tag in couples] == [frozenset({"MC1", "MC2"})]
+
+    cascode = _of_kind(tags, "cascode_differential_pair")
+    assert len(cascode) == 1
+    assert cascode[0].devices_for("pair") == ("MIN1", "MIN2")
+    assert cascode[0].devices_for("couple") == ("MC1", "MC2")
+    assert ("variant", "cdp") in cascode[0].properties
+    assert cascode[0].net_for("output_1") == "o1"
+
+    tc = _of_kind(tags, "transconductance")
+    assert len(tc) == 1
+    assert tc[0].members == frozenset({"MIN1", "MIN2", "MC1", "MC2"})
+    assert tc[0].devices_for("cascode_devices") == ("MC1", "MC2")
+    assert tc[0].net_for("out_1") == "o1"
+
+
+def test_complementary_transconductance_from_opposite_doping_pairs() -> None:
+    tags = _decompose_devices(
+        "MREFN biasn biasn vss b N\n"
+        "MTN tailn biasn vss b N\n"
+        "MN1 x1 ina tailn b N\n"
+        "MN2 x2 inb tailn b N\n"
+        "MREFP biasp biasp vdd b P\n"
+        "MTP tailp biasp vdd b P\n"
+        "MP1 y1 ina tailp b P\n"
+        "MP2 y2 inb tailp b P\n"
+    )
+
+    tc = _of_kind(tags, "transconductance")
+    assert len(tc) == 1
+    assert ("tc_type", "tcc") in tc[0].properties
+    assert ("mos_type", "mixed") in tc[0].properties
+    assert tc[0].members == frozenset({"MN1", "MN2", "MP1", "MP2"})
+
+
+def test_cmfb_transconductance_from_single_shared_gate() -> None:
+    tags = _decompose_devices(
+        "MREF bias bias vss b N\n"
+        "MT1 tail1 bias vss b N\n"
+        "MT2 tail2 bias vss b N\n"
+        "MA1 a1 ga tail1 b N\n"
+        "MA2 a2 shared tail1 b N\n"
+        "MB1 b1 shared tail2 b N\n"
+        "MB2 b2 gc tail2 b N\n"
+    )
+
+    tc = _of_kind(tags, "transconductance")
+    assert len(tc) == 1
+    assert ("tc_type", "tccmfb") in tc[0].properties
+    assert tc[0].members == frozenset({"MA1", "MA2", "MB1", "MB2"})
+
+
+SOURCE_FOLLOWER = (
+    "MREF bias bias vss vss N\n"
+    "MSINK out bias vss vss N\n"
+    "MFOL vdd in out vss N\n"
+)
+
+
+def test_source_follower_stage_from_rail_transistor_and_biased_output() -> None:
+    netlist = canonical_netlist.from_text(MODELS + SOURCE_FOLLOWER)
+    tags = decompose(netlist.top, vdd_nets=("vdd",), vss_nets=("vss",))
+
+    followers = _of_kind(tags, "source_follower")
+    assert len(followers) == 1
+    assert followers[0].members == frozenset({"MFOL"})
+    assert ("function", "voltage_buffer") in followers[0].properties
+    assert followers[0].net_for("input") == "in"
+    assert followers[0].net_for("output") == "out"
+    # A follower is a voltage buffer, not a transconductance stage.
+    assert not _of_kind(tags, "transconductance")
+
+    stage_bias = _of_kind(tags, "stage_bias")
+    assert len(stage_bias) == 1
+    assert stage_bias[0].members == frozenset({"MSINK"})
+    assert ("output_type", "voltage") in stage_bias[0].properties
+    assert stage_bias[0].net_for("output_1") == "out"
+    assert stage_bias[0].devices_for("source_follower") == ("MFOL",)
+
+    stages = _of_kind(tags, "source_follower_stage")
+    assert len(stages) == 1
+    assert stages[0].members == frozenset({"MFOL", "MSINK"})
+    assert stages[0].devices_for("follower") == ("MFOL",)
+    assert stages[0].devices_for("current_biases") == ("MSINK",)
+    assert stages[0].net_for("input") == "in"
+    assert stages[0].net_for("output") == "out"
+
+
+def test_pmos_source_follower_is_symmetric() -> None:
+    netlist = canonical_netlist.from_text(
+        MODELS
+        + "MREF bias bias vdd vdd P\n"
+        + "MSRC out bias vdd vdd P\n"
+        + "MFOL vss in out vdd P\n"
+    )
+    tags = decompose(netlist.top, vdd_nets=("vdd",), vss_nets=("vss",))
+
+    stages = _of_kind(tags, "source_follower_stage")
+    assert len(stages) == 1
+    assert stages[0].members == frozenset({"MFOL", "MSRC"})
+    assert ("mos_type", "pmos") in stages[0].properties
+
+
+def test_source_follower_needs_declared_rails() -> None:
+    # Without rails the follower drain cannot be recognized as
+    # rail-connected, so no follower blocks appear.
+    tags = _decompose_devices(SOURCE_FOLLOWER)
+
+    assert not _of_kind(tags, "source_follower_stage")
+    assert not _of_kind(tags, "stage_bias")
+    assert not _of_kind(tags, "source_follower")

@@ -28,6 +28,82 @@ paper decomposition.
   all-pairs form also rejects degenerate three-device rings. For two-device
   stacks the gate exclusion is already implied by HL1: a higher gate on the
   internal net would be a gate-source self connection.
+- **Voltage and current bias (Section 4.1/4.2 via Algorithm 1).**
+  `netlist_decomposition.bias` implements the paper's Algorithm 1 rather than
+  raw Eq. 10/11, which are mutually recursive and contain a negated
+  existential no monotone rule can express: per doping, stacks are paired
+  into primary voltage/current biases (drain-to-gate plus complete gate-gate
+  connection, the current bias carrying no other gate connections and no
+  same-doping stack gate on its drain), then secondary voltage biases of
+  already-known current biases are added until a fixed point.  As in the
+  paper, Eq. 10's last clause (each stack gate has exactly one gate-drain
+  partner belonging to some bias) is not checked, and line 8's stack-gate
+  test stands in for Eq. 11's "no voltage bias on the drain".  One extra
+  guard beyond the paper: a bias pairing must be device-disjoint.
+- **Current mirror (Eq. 12).** One voltage bias plus exactly one current
+  bias: equal doping, connected stack sources, index-aligned gate-gate
+  connections up to the voltage-bias length, voltage-bias drain on a
+  current-bias gate, and every non-uppermost voltage-bias gate on exactly
+  one member drain.  Multi-output structures produce several overlapping
+  pairwise mirror tags sharing the voltage bias -- the paper's
+  "current-mirror bench" is that overlap, not a block type.  The `variant`
+  property is `scm` only for the one-plus-one composition (the paper's
+  simple current mirror); everything else is `unclassified`.
+- **Irrelevant multiple assignments (Eq. 19).** After mirror recognition,
+  voltage biases, current biases, and current mirrors whose member set is a
+  strict subset of another block of the same kind are deleted (the simple
+  mirror inside a cascode mirror, Fig. 10a).  Other kinds, including
+  stacks, are never pruned.
+- **Differential pair, gate-connected couple, cascode pair (Eq. 13-17).**
+  `netlist_decomposition.hl3` recognizes the full `differential_pair` (two
+  normal transistors, equal doping, connected only at their sources, with a
+  same-doping current-bias drain on the common source), the
+  `gate_connected_couple`, and the `cascode_differential_pair` with its
+  `fcdp`/`cdp` doping subtypes.  Matching Algorithm 1's ordering, pairs are
+  found against the pre-Eq.-19 current biases.  Couples are only tagged as
+  constituents of a cascode pair; standalone Eq. 14 matches (e.g. the upper
+  devices of a cascode mirror) are not emitted.  Eq. 13 has no bulk
+  condition, unlike the legacy `differential_pair_candidate`, which stays
+  as a cheap tag for netlists without recognizable biases.
+- **Non-inverting transconductance (Eq. 20-22).** `tcs` (one pair or one
+  cascode pair with no gate connection to any other pair), `tcc` (two
+  simple pairs, opposite doping, both gates connected), `tccmfb` (two
+  simple pairs, equal doping, exactly one shared gate).  Complementary and
+  CMFB types over cascoded pairs are not built.
+- **Load (Algorithm 3, deliberately not Eq. 24/25).** The paper recommends
+  its Algorithm 3 because it works when the load is biased externally: for
+  each transconductance output net, same-doping stacks whose drain sits on
+  the net and whose source reaches the doping-matching declared rail or
+  another transconductance output form the NMOS/PMOS load parts.  Stacks
+  sharing a device with the transconductance are excluded; without that
+  guard the Section 4.6 false stacks (tail plus input device) would be
+  recognized as loads.  Rail-connected load parts require declared
+  supplies.
+- **Current-output stage bias (Eq. 28/29).** The Eq.-19-maximal current
+  biases whose drains sit on a transconductance source, one `stage_bias`
+  tag per transconductance.  The voltage-output stage bias (Eq. 26/27) is
+  not implemented: Algorithm 2 resolves it, together with the inverting
+  transconductance (Eq. 23), inside the amplification-stage loop, i.e.
+  with HL4.
+- **Source follower (extension, not a paper rule).** The paper's
+  transconductance types do not cover a transistor whose voltage output is
+  its own source: the non-inverting types are built on differential pairs
+  and the inverting type (Eq. 23) outputs at a stack drain.  A
+  common-drain stage is a voltage buffer, not a transconductance stage,
+  so the extension introduces a new HL3 kind instead of stretching the
+  paper's taxonomy.  Following the paper's abstraction boundaries, the
+  follower is split rather than tagged as one block: a normal transistor
+  outside every differential pair, drain on the doping-matching declared
+  rail (NMOS: vdd, PMOS: vss), with a same-doping Eq.-19-maximal current
+  bias from its source to the opposite rail, becomes a `source_follower`
+  with `function=voltage_buffer`; the bias becomes a `stage_bias`
+  with `output_type=voltage` (the Eq. 26/27 flavor, though not their
+  formulation); and the composition is emitted as a
+  `source_follower_stage` (HL4-level, but fully determined by its two
+  HL3 parts).  Recognition requires both the declared rails and the
+  bias -- a rail-connected transistor alone is never a follower.  The
+  underlying bias-plus-follower Eq. 9 stack remains tagged; the stack is
+  the structure, the stage is its function.
 - **Section 4.6 false stacks (partial).** `suppress_false_stacks` removes
   stacks whose internal net is the common source of a
   `differential_pair_candidate` and that include one of the pair's devices
@@ -52,12 +128,35 @@ paper decomposition.
   used to infer polarity.
 - The former `diode_connected_mos` tag kind was replaced by
   `diode_transistor` (no alias is kept); the new predicate additionally
-  excludes drain-source-shorted devices per Eq. 8.
+  excludes drain-source-shorted devices per Eq. 8.  The former grouped
+  `simple_current_mirror` kind was replaced by pairwise `current_mirror`
+  tags built from resolved biases.
+- **Supply nets are declared, never inferred.**
+  `decompose(circuit, vdd_nets=..., vss_nets=...)` stores the rails on the
+  `CircuitGraph` (positive rails and ground rails separately, as
+  Algorithm 3 and Eq. 18 are doping-specific); no name-based guessing.
+  Without declared rails, loads are only found in folded arrangements.
+- `decompose` runs the monotone rule engine to its fixed point, then the
+  Algorithm 1 bias resolution, then the Eq. 13-17 pairs and HL3 blocks per
+  Algorithm 2, then Eq. 19 pruning last -- the same order as the paper's
+  algorithms.  These passes need complete block sets and negative
+  conditions, so they cannot be ordinary monotone rules.
 
 ## Exact versus candidate names
 
 - Exact per the paper: `normal_transistor`, `diode_transistor`,
-  `transistor_stack` (Eq. 7/8/9 as above).
+  `transistor_stack` (Eq. 7/8/9 as above); `voltage_bias`, `current_bias`,
+  and `current_mirror` to the fidelity of the paper's own Algorithm 1
+  (with the documented Eq. 10/11 approximations the paper itself makes);
+  `differential_pair`, `gate_connected_couple`,
+  `cascode_differential_pair` (Eq. 13-17); `transconductance` for the
+  non-inverting types (Eq. 20-22); `load` per Algorithm 3; `stage_bias`
+  for the current-output type (Eq. 28/29).
+- Extensions with no paper counterpart: `source_follower` (the
+  common-drain transistor itself, `function=voltage_buffer`), the
+  `output_type=voltage` stage bias produced with it, and
+  `source_follower_stage`.  `transconductance` remains exclusively the
+  paper's types.
 - Stack `structural_variant` labels are composition-only, derived from the
   bottom-to-top `member_classes` (`nt`/`dt`) sequence: `single_normal`,
   `single_diode`, `all_normal`, `diode_pair` (the paper's dip), `all_diode`,
@@ -65,21 +164,29 @@ paper decomposition.
   cascode pair (cp) and mixed pairs mp1/mp2 additionally require the
   enclosing HL2 voltage/current bias (Fig. 4 and 5), and vr1/vr2 require
   specific gate connections; none of those names are claimed.
-- `simple_current_mirror`, `differential_pair_candidate`, and
-  `cmos_inverter` predate this alignment and do not implement the paper's
-  full HL2 definitions (Eq. 10-15): the mirror rule consumes
-  `diode_transistor` references but does not build the paper's voltage/
-  current bias pair, and the differential pair is explicitly a candidate.
+- `differential_pair_candidate` and `cmos_inverter` predate this alignment
+  and do not implement the paper's full HL2 definitions (Eq. 13-18); the
+  differential pair is explicitly a candidate.
 
 ## Unimplemented paper rules
 
-- HL2 voltage bias and current bias (Eq. 10 and 11) and therefore all
-  bias-dependent stack variant names (cp, mp1, mp2, vr1, vr2).
-- The paper's current mirror (Eq. 12) built from vb/cb, and every HL2+ block
-  beyond the simple candidates above; all of HL3-HL5.
-- Section 4.6 beyond the false-stack case listed above: irrelevant same-type
-  containment (Eq. 19) and bias-informed suppression. Extend
-  `suppress_false_stacks` when the HL2 blocks exist.
+- Bias-dependent stack variant names (cp, mp1, mp2, vr1, vr2) and the named
+  current-mirror examples beyond scm (ccm, 4cm, wcm, wscm, iwcm from
+  Fig. 6): mirrors with longer stacks carry `variant=unclassified`.
+- Full analog inverter (Eq. 18), inverting transconductance (Eq. 23), and
+  the paper's voltage-output stage bias (Eq. 26/27): Algorithm 2
+  recognizes these inside the amplification-stage loop, so they belong to
+  the HL4 step.  (The follower's voltage-output stage bias above is a
+  separate extension, not an Eq. 26/27 implementation.)
+- Cascoded source followers (follower reaching the rail through a stack)
+  and followers biased by unrecognized structures.
+- All of HL4-HL5: amplification stages (Eq. 30-33), circuit bias,
+  compensation/load capacitors, op-amp classification.
+- Complementary/CMFB transconductances over cascoded pairs.
+- Section 4.6 false-stack suppression beyond the differential-pair case
+  listed above (Algorithm 1's ordering, where inverters are recognized last
+  to avoid false positives inside differential pairs, becomes relevant once
+  the full inverter exists).
 
 ## Optional policies
 

@@ -1,0 +1,515 @@
+"""Small rule engine for structural functional-block tags.
+
+This is deliberately a graph matcher, not an electrical verifier.  Its output is
+a set of overlapping candidate tags: for example, one MOS may be tagged as a
+diode transistor, as a one-device transistor stack, and as the reference device
+of a current mirror at the same time.  Tags are not a partition of the devices.
+
+Transistor classification and transistor stacks follow Abel et al. (2021),
+"A Functional Block Decomposition Method for Automatic Op-Amp Design":
+
+- hierarchy level 1 (Eq. 7 and 8): ``normal_transistor`` / ``diode_transistor``;
+- transistor stacks (Eq. 9): ordered same-doping chains of 1-3 HL1 transistors.
+
+Stack members are ordered bottom-to-top, i.e. from the stack source to the
+stack drain, matching the paper's ``x_{k,1} .. x_{k,n}`` numbering where the
+source not connected to any member drain is the stack source.
+
+Drain and source are assumed to have already been assigned their intended roles
+in the canonical netlist.  No drain/source swapping or bulk inference is done.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Callable, Iterable, Protocol, Sequence
+
+from spice_canonical.canonical_netlist import Circuit, Device
+
+from netlist_decomposition import mos
+from netlist_decomposition.mos import MOS_TYPES
+
+
+@dataclass(frozen=True)
+class IncidentPin:
+    device: str
+    pin: str
+
+
+class CircuitGraph:
+    """Indexed view of one canonical circuit."""
+
+    def __init__(self, circuit: Circuit) -> None:
+        self.circuit = circuit
+        self.devices = {device.name: device for device in circuit.devices}
+        incidents: dict[str, list[IncidentPin]] = {}
+        for device in circuit.devices:
+            for connection in device.connections:
+                incidents.setdefault(connection.net, []).append(
+                    IncidentPin(device.name, connection.pin)
+                )
+        self._incidents = {
+            net: tuple(net_incidents) for net, net_incidents in incidents.items()
+        }
+
+    def pin_net(self, device: Device, pin: str) -> str | None:
+        for connection in device.connections:
+            if connection.pin == pin:
+                return connection.net
+        return None
+
+    def incidents(self, net: str) -> tuple[IncidentPin, ...]:
+        return self._incidents.get(net, ())
+
+    def mos_devices(self) -> tuple[Device, ...]:
+        return tuple(
+            device for device in self.circuit.devices if device.type in MOS_TYPES
+        )
+
+    def channel_incidents(self, net: str) -> tuple[IncidentPin, ...]:
+        """Return MOS drain/source terminals on ``net``."""
+
+        return tuple(
+            incident
+            for incident in self.incidents(net)
+            if incident.pin in {"d", "s"}
+            and self.devices[incident.device].type in MOS_TYPES
+        )
+
+
+Role = tuple[str, tuple[str, ...]]
+NamedNet = tuple[str, str]
+Property = tuple[str, str]
+
+
+@dataclass(frozen=True)
+class BlockCandidate:
+    """A match returned by a rule before the engine assigns its tag id."""
+
+    kind: str
+    members: frozenset[str]
+    roles: tuple[Role, ...] = ()
+    nets: tuple[NamedNet, ...] = ()
+    properties: tuple[Property, ...] = ()
+
+
+@dataclass(frozen=True)
+class BlockTag:
+    """One structural interpretation of a group of devices."""
+
+    id: str
+    kind: str
+    members: frozenset[str]
+    roles: tuple[Role, ...]
+    nets: tuple[NamedNet, ...]
+    properties: tuple[Property, ...]
+    rule: str
+
+    def devices_for(self, role: str) -> tuple[str, ...]:
+        return next((devices for name, devices in self.roles if name == role), ())
+
+    def net_for(self, name: str) -> str | None:
+        return next((net for net_name, net in self.nets if net_name == name), None)
+
+
+class BlockIndex:
+    """Deduplicated collection exposed to later/higher-level rules."""
+
+    def __init__(self) -> None:
+        self._tags: list[BlockTag] = []
+        self._keys: set[tuple[object, ...]] = set()
+        self._kind_counts: dict[str, int] = {}
+
+    def __iter__(self):  # type annotation kept compatible with Python 3.10
+        return iter(self._tags)
+
+    def of_kind(self, kind: str) -> tuple[BlockTag, ...]:
+        return tuple(tag for tag in self._tags if tag.kind == kind)
+
+    def add(self, candidate: BlockCandidate, *, rule: str) -> bool:
+        key = (
+            candidate.kind,
+            tuple(sorted(candidate.members)),
+            candidate.roles,
+            candidate.nets,
+            candidate.properties,
+        )
+        if key in self._keys:
+            return False
+
+        count = self._kind_counts.get(candidate.kind, 0) + 1
+        self._kind_counts[candidate.kind] = count
+        self._tags.append(
+            BlockTag(
+                id=f"{candidate.kind}:{count}",
+                kind=candidate.kind,
+                members=candidate.members,
+                roles=candidate.roles,
+                nets=candidate.nets,
+                properties=candidate.properties,
+                rule=rule,
+            )
+        )
+        self._keys.add(key)
+        return True
+
+    def as_tuple(self) -> tuple[BlockTag, ...]:
+        return tuple(self._tags)
+
+
+class Rule(Protocol):
+    name: str
+
+    def find(
+        self, graph: CircuitGraph, blocks: BlockIndex
+    ) -> Iterable[BlockCandidate]: ...
+
+
+Matcher = Callable[[CircuitGraph, BlockIndex], Iterable[BlockCandidate]]
+
+
+@dataclass(frozen=True)
+class FunctionRule:
+    """Adapter that makes a normal Python matcher function into a rule."""
+
+    name: str
+    matcher: Matcher
+
+    def find(
+        self, graph: CircuitGraph, blocks: BlockIndex
+    ) -> Iterable[BlockCandidate]:
+        return self.matcher(graph, blocks)
+
+
+class DecompositionEngine:
+    """Apply ordered rules to a fixed point."""
+
+    def __init__(self, rules: Sequence[Rule], *, max_passes: int = 16) -> None:
+        if max_passes < 1:
+            raise ValueError("max_passes must be at least one")
+        self.rules = tuple(rules)
+        self.max_passes = max_passes
+
+    def run(self, circuit: Circuit) -> tuple[BlockTag, ...]:
+        graph = CircuitGraph(circuit)
+        blocks = BlockIndex()
+
+        for _ in range(self.max_passes):
+            changed = False
+            for rule in self.rules:
+                for candidate in rule.find(graph, blocks):
+                    unknown = candidate.members.difference(graph.devices)
+                    if unknown:
+                        raise ValueError(
+                            f"rule {rule.name!r} returned unknown devices: "
+                            f"{sorted(unknown)}"
+                        )
+                    changed |= blocks.add(candidate, rule=rule.name)
+            if not changed:
+                return blocks.as_tuple()
+
+        raise RuntimeError(
+            f"functional decomposition did not converge in {self.max_passes} passes"
+        )
+
+
+def _device_role(name: str, *devices: Device) -> Role:
+    return name, tuple(device.name for device in devices)
+
+
+HL1_NORMAL = "normal_transistor"
+HL1_DIODE = "diode_transistor"
+
+
+def _hl1_transistors(
+    graph: CircuitGraph, _blocks: BlockIndex
+) -> Iterable[BlockCandidate]:
+    """Classify supported MOS devices per Abel et al. (2021) Eq. 7 and Eq. 8.
+
+    A diode transistor (Eq. 8) has its drain connected to its gate and not to
+    its source.  A normal transistor (Eq. 7) has no self connection at all:
+    drain, gate, and source are on three distinct nets.  A device whose gate
+    and source share a net, or whose drain and source share a net, is neither.
+    """
+
+    for device in graph.mos_devices():
+        drain = mos.pin_net(device, "d")
+        gate = mos.pin_net(device, "g")
+        source = mos.pin_net(device, "s")
+        if drain is None or gate is None or source is None:
+            continue
+        if drain == gate and drain != source:
+            yield BlockCandidate(
+                kind=HL1_DIODE,
+                members=frozenset({device.name}),
+                roles=(_device_role("device", device),),
+                nets=(("gate_drain", gate), ("source", source)),
+                properties=(("mos_type", device.type),),
+            )
+        elif drain != source and drain != gate and gate != source:
+            yield BlockCandidate(
+                kind=HL1_NORMAL,
+                members=frozenset({device.name}),
+                roles=(_device_role("device", device),),
+                nets=(("drain", drain), ("gate", gate), ("source", source)),
+                properties=(("mos_type", device.type),),
+            )
+
+
+def _stack_variant(member_classes: Sequence[str]) -> str:
+    """Composition-only variant label for a bottom-to-top ``nt``/``dt`` sequence.
+
+    ``diode_pair`` is the paper's dip.  An all-normal multi-device stack is the
+    composition underlying the paper's cascode pair, and the mixed pairs
+    underlie mp1/mp2; those paper names additionally require the enclosing
+    voltage- or current-bias context, so only neutral labels are used here.
+    """
+
+    if all(item == "nt" for item in member_classes):
+        return "single_normal" if len(member_classes) == 1 else "all_normal"
+    if all(item == "dt" for item in member_classes):
+        if len(member_classes) == 1:
+            return "single_diode"
+        return "diode_pair" if len(member_classes) == 2 else "all_diode"
+    if len(member_classes) == 2:
+        if member_classes[0] == "dt":
+            return "mixed_pair_diode_bottom"
+        return "mixed_pair_diode_top"
+    return "mixed"
+
+
+def transistor_stack_rule(*, exclusive_internal_nets: bool = False) -> FunctionRule:
+    """Create the Eq. 9 transistor-stack rule.
+
+    Stacks of one to three transistors are built from the HL1
+    ``normal_transistor``/``diode_transistor`` tags.  Members are reported
+    bottom-to-top: ``ordered_devices[0]`` provides the stack source and
+    ``ordered_devices[-1]`` the stack drain.  For every pair of a lower and a
+    higher member, the higher gate must not touch the lower drain and the
+    higher drain must not touch the lower source.  Eq. 9 states these
+    exclusions for adjacent members; the paper's prose states them for all
+    lower/higher pairs, and this stricter reading is used because it also
+    rejects degenerate three-device rings.
+
+    ``exclusive_internal_nets`` is an optional conservative policy, not a paper
+    rule: it additionally requires every net inside a stack to carry exactly
+    two MOS drain/source terminals, which drops stacks that branch (for
+    example through a differential-pair common source).
+    """
+
+    def matcher(
+        graph: CircuitGraph, blocks: BlockIndex
+    ) -> Iterable[BlockCandidate]:
+        classes: dict[str, str] = {}
+        for tag in blocks.of_kind(HL1_NORMAL):
+            classes[tag.devices_for("device")[0]] = "nt"
+        for tag in blocks.of_kind(HL1_DIODE):
+            classes[tag.devices_for("device")[0]] = "dt"
+        members = tuple(
+            device for device in graph.mos_devices() if device.name in classes
+        )
+
+        def valid_extension(current: tuple[Device, ...], upper: Device) -> bool:
+            lower = current[-1]
+            internal = mos.pin_net(lower, "d")
+            if internal != mos.pin_net(upper, "s"):
+                return False
+            if not mos.same_polarity(lower, upper):
+                return False
+            if (
+                exclusive_internal_nets
+                and len(graph.channel_incidents(internal)) != 2
+            ):
+                return False
+            # HL1 classification guarantees non-None d/g/s nets for members.
+            gate = mos.pin_net(upper, "g")
+            drain = mos.pin_net(upper, "d")
+            return not any(
+                gate == mos.pin_net(item, "d") or drain == mos.pin_net(item, "s")
+                for item in current
+            )
+
+        def extend(current: tuple[Device, ...]) -> Iterable[tuple[Device, ...]]:
+            yield current
+            if len(current) == 3:
+                return
+            for upper in members:
+                if upper not in current and valid_extension(current, upper):
+                    yield from extend(current + (upper,))
+
+        for bottom in members:
+            for stack in extend((bottom,)):
+                names = tuple(device.name for device in stack)
+                member_classes = tuple(classes[name] for name in names)
+                yield BlockCandidate(
+                    kind="transistor_stack",
+                    members=frozenset(names),
+                    roles=(("ordered_devices", names),),
+                    nets=(
+                        ("source", mos.pin_net(stack[0], "s") or ""),
+                        ("drain", mos.pin_net(stack[-1], "d") or ""),
+                    ),
+                    properties=(
+                        ("length", str(len(stack))),
+                        ("mos_type", stack[0].type),
+                        ("member_classes", ",".join(member_classes)),
+                        ("structural_variant", _stack_variant(member_classes)),
+                        (
+                            "internal_nets",
+                            ",".join(
+                                mos.pin_net(device, "d") or ""
+                                for device in stack[:-1]
+                            ),
+                        ),
+                    ),
+                )
+
+    return FunctionRule("transistor stacks", matcher)
+
+
+def _current_mirrors(
+    graph: CircuitGraph, blocks: BlockIndex
+) -> Iterable[BlockCandidate]:
+    candidates = graph.mos_devices()
+    for diode in blocks.of_kind(HL1_DIODE):
+        reference = graph.devices[diode.devices_for("device")[0]]
+        gate = graph.pin_net(reference, "g")
+        source = graph.pin_net(reference, "s")
+        bulk = graph.pin_net(reference, "b")
+        outputs = tuple(
+            device
+            for device in candidates
+            if device.name != reference.name
+            and mos.same_polarity(device, reference)
+            and graph.pin_net(device, "g") == gate
+            and graph.pin_net(device, "s") == source
+            and graph.pin_net(device, "b") == bulk
+            and graph.pin_net(device, "d") != gate
+        )
+        if outputs:
+            yield BlockCandidate(
+                kind="simple_current_mirror",
+                members=frozenset(
+                    (reference.name, *(device.name for device in outputs))
+                ),
+                roles=(
+                    _device_role("reference", reference),
+                    _device_role("outputs", *outputs),
+                ),
+                nets=(("bias", gate or ""), ("common_source", source or "")),
+                properties=(
+                    ("mos_type", reference.type),
+                    ("output_count", str(len(outputs))),
+                ),
+            )
+
+
+def _differential_pairs(
+    graph: CircuitGraph, _blocks: BlockIndex
+) -> Iterable[BlockCandidate]:
+    candidates = graph.mos_devices()
+    for position, left in enumerate(candidates):
+        for right in candidates[position + 1 :]:
+            common_source = graph.pin_net(left, "s")
+            if (
+                not mos.same_polarity(left, right)
+                or common_source is None
+                or graph.pin_net(right, "s") != common_source
+                or graph.pin_net(right, "b") != graph.pin_net(left, "b")
+                or graph.pin_net(right, "g") == graph.pin_net(left, "g")
+                or graph.pin_net(right, "d") == graph.pin_net(left, "d")
+            ):
+                continue
+            yield BlockCandidate(
+                kind="differential_pair_candidate",
+                members=frozenset({left.name, right.name}),
+                roles=(
+                    _device_role("input_1", left),
+                    _device_role("input_2", right),
+                ),
+                nets=(
+                    ("input_1", graph.pin_net(left, "g") or ""),
+                    ("input_2", graph.pin_net(right, "g") or ""),
+                    ("common_source", common_source),
+                ),
+                properties=(("mos_type", left.type),),
+            )
+
+
+def _cmos_inverters(
+    graph: CircuitGraph, _blocks: BlockIndex
+) -> Iterable[BlockCandidate]:
+    pmos = tuple(device for device in graph.mos_devices() if device.type == "pmos")
+    nmos = tuple(device for device in graph.mos_devices() if device.type == "nmos")
+    for pull_up in pmos:
+        for pull_down in nmos:
+            common_gate = graph.pin_net(pull_up, "g")
+            common_drain = graph.pin_net(pull_up, "d")
+            if (
+                common_gate is not None
+                and common_drain is not None
+                and graph.pin_net(pull_down, "g") == common_gate
+                and graph.pin_net(pull_down, "d") == common_drain
+            ):
+                yield BlockCandidate(
+                    kind="cmos_inverter",
+                    members=frozenset({pull_up.name, pull_down.name}),
+                    roles=(
+                        _device_role("pull_up", pull_up),
+                        _device_role("pull_down", pull_down),
+                    ),
+                    nets=(("input", common_gate), ("output", common_drain)),
+                )
+
+
+DEFAULT_RULES: tuple[Rule, ...] = (
+    FunctionRule("HL1 transistors", _hl1_transistors),
+    transistor_stack_rule(),
+    FunctionRule("simple current mirrors", _current_mirrors),
+    FunctionRule("differential-pair candidates", _differential_pairs),
+    FunctionRule("CMOS inverters", _cmos_inverters),
+)
+
+
+def decompose(
+    circuit: Circuit, rules: Sequence[Rule] = DEFAULT_RULES
+) -> tuple[BlockTag, ...]:
+    """Return all functional-block tags found in one canonical circuit."""
+
+    return DecompositionEngine(rules).run(circuit)
+
+
+def suppress_false_stacks(tags: Sequence[BlockTag]) -> tuple[BlockTag, ...]:
+    """Drop transistor stacks that climb through a differential pair.
+
+    This is the one false multiple assignment from Section 4.6 of Abel et al.
+    (2021) that the currently implemented blocks can express: a stack whose
+    internal net is the common source of a differential-pair candidate and
+    that contains one of the pair's devices (for example a tail device stacked
+    with one input device).  The paper suppresses these to avoid false analog
+    inverters.
+
+    Candidate generation stays separate from suppression: ``decompose`` still
+    returns these stacks, and callers opt in by filtering through this
+    function.  Full Section 4.6 handling (irrelevant same-type containment per
+    Eq. 19, and suppression informed by HL2 voltage/current biases) needs
+    functional blocks that are not implemented yet; extend this function when
+    they exist.
+    """
+
+    pairs = tuple(
+        tag for tag in tags if tag.kind == "differential_pair_candidate"
+    )
+
+    def is_false(tag: BlockTag) -> bool:
+        if tag.kind != "transistor_stack":
+            return False
+        internal = dict(tag.properties).get("internal_nets", "")
+        internal_nets = set(filter(None, internal.split(",")))
+        return any(
+            pair.net_for("common_source") in internal_nets
+            and tag.members & pair.members
+            for pair in pairs
+        )
+
+    return tuple(tag for tag in tags if not is_false(tag))

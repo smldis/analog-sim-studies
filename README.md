@@ -7,6 +7,7 @@ The graph-oriented Eldo/ngspice extraction format is specified in
 ## Layout
 
 - `src/sidecar_edits/` contains the simulation-input preparation package
+- `src/netlist_decomposition/` contains structural functional-block tagging
 - `examples/basic/` contains a small runnable edit-file example
 - `examples/apply_patch/` contains the fuller example with `apply_patch`
 - `examples/param_matrix/` contains a named parameter-set plus matrix example

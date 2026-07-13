@@ -5,6 +5,17 @@ Graeb (2021), *A Functional Block Decomposition Method for Automatic Op-Amp
 Design*. Only the parts listed below are implemented; this is not the full
 paper decomposition.
 
+The current rule dependencies are structured metadata rendered in
+[functional-decomposition-dependencies.md](functional-decomposition-dependencies.md),
+the Markdown-table counterpart of Figure 15. The generated table deliberately
+separates hierarchy levels (tag taxonomy) from composition passes (recognition
+order). Regenerate or verify it with:
+
+```bash
+python scripts/generate_decomposition_dependencies.py
+python scripts/generate_decomposition_dependencies.py --check
+```
+
 ## Implemented paper rules
 
 - **Hierarchy level 1 (Section 3, Eq. 7 and 8).**

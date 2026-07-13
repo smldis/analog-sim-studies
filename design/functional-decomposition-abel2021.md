@@ -49,13 +49,17 @@ paper decomposition.
   "current-mirror bench" is that overlap, not a block type.  The `variant`
   property is `scm` only for the one-plus-one composition (the paper's
   simple current mirror); everything else is `unclassified`.
-- **Irrelevant multiple assignments (Eq. 19).** After mirror recognition,
-  voltage biases, current biases, and current mirrors whose member set is a
-  strict subset of another block of the same kind are deleted (the simple
-  mirror inside a cascode mirror, Fig. 10a).  Other kinds, including
-  stacks, are never pruned.
+- **Irrelevant multiple assignments (Eq. 19).** Voltage biases, current
+  biases, and current mirrors whose member set is a strict subset of
+  another block of the same kind are deleted (the simple mirror inside a
+  cascode mirror, Fig. 10a).  Other kinds, including stacks, are never
+  pruned.  As in the paper, the deletion closes hierarchy level 2: it is
+  physically removed from the block index at the end of the HL2 stage --
+  after the differential pairs, which Algorithm 1 finds against the
+  pre-deletion current biases -- so HL3 and every caller read the cleaned
+  set directly.
 - **Differential pair, gate-connected couple, cascode pair (Eq. 13-17).**
-  `netlist_decomposition.hl3` recognizes the full `differential_pair` (two
+  `netlist_decomposition.hl2` recognizes the full `differential_pair` (two
   normal transistors, equal doping, connected only at their sources, with a
   same-doping current-bias drain on the common source), the
   `gate_connected_couple`, and the `cascode_differential_pair` with its
@@ -90,18 +94,20 @@ paper decomposition.
   its own source: the non-inverting types are built on differential pairs
   and the inverting type (Eq. 23) outputs at a stack drain.  A
   common-drain stage is a voltage buffer, not a transconductance stage,
-  so the extension introduces a new HL3 kind instead of stretching the
-  paper's taxonomy.  Following the paper's abstraction boundaries, the
-  follower is split rather than tagged as one block: a normal transistor
-  outside every differential pair, drain on the doping-matching declared
-  rail (NMOS: vdd, PMOS: vss), with a same-doping Eq.-19-maximal current
-  bias from its source to the opposite rail, becomes a `source_follower`
-  with `function=voltage_buffer`; the bias becomes a `stage_bias`
+  so the extension introduces new kinds instead of stretching the paper's
+  taxonomy.  Following the paper's abstraction boundaries, the follower
+  is split across levels: at HL2 (justified by the paper's own precedent
+  -- the analog inverter Eq. 18 uses rail knowledge at HL2, and the
+  mirror Eq. 12 composes other HL2 blocks), a normal transistor outside
+  every differential pair, drain on the doping-matching declared rail
+  (NMOS: vdd, PMOS: vss), with a same-doping Eq.-19-maximal current bias
+  from its source to the opposite rail, becomes a `source_follower` with
+  `function=voltage_buffer`.  At HL3, the bias becomes a `stage_bias`
   with `output_type=voltage` (the Eq. 26/27 flavor, though not their
-  formulation); and the composition is emitted as a
-  `source_follower_stage` (HL4-level, but fully determined by its two
-  HL3 parts).  Recognition requires both the declared rails and the
-  bias -- a rail-connected transistor alone is never a follower.  The
+  formulation) and the composition is emitted as a
+  `source_follower_stage` -- a buffer stage, deliberately not an HL4
+  amplification stage.  Recognition requires both the declared rails and
+  the bias -- a rail-connected transistor alone is never a follower.  The
   underlying bias-plus-follower Eq. 9 stack remains tagged; the stack is
   the structure, the stage is its function.
 - **Section 4.6 false stacks (partial).** `suppress_false_stacks` removes
@@ -136,11 +142,21 @@ paper decomposition.
   `CircuitGraph` (positive rails and ground rails separately, as
   Algorithm 3 and Eq. 18 are doping-specific); no name-based guessing.
   Without declared rails, loads are only found in folded arrangements.
-- `decompose` runs the monotone rule engine to its fixed point, then the
-  Algorithm 1 bias resolution, then the Eq. 13-17 pairs and HL3 blocks per
-  Algorithm 2, then Eq. 19 pruning last -- the same order as the paper's
-  algorithms.  These passes need complete block sets and negative
-  conditions, so they cannot be ordinary monotone rules.
+- **The pipeline is explicit hierarchy levels** (`HIERARCHY_LEVELS`,
+  matching the paper's numbering): HL1 classifies transistors (Eq. 7/8);
+  HL2 runs the monotone structural rules (stacks, candidates), then
+  Algorithm 1 (biases, mirrors), then the Eq. 13-17 pairs and the source
+  follower, and closes with the Eq. 19 deletion, mirroring Algorithm 1;
+  HL3 resolves transconductances, loads, stage biases, and stages per
+  Algorithm 2.  Every level leaves the index in its complete post-level
+  state, so destructive normalization happens at the earliest point where
+  no later consumer needs the removed blocks.  The resolution passes need
+  complete block sets and negative conditions, so they cannot
+  be ordinary monotone rules; monotone rules carry a `level` attribute
+  (default 2) selecting the level whose fixed point runs them.
+  `decompose(..., max_level=1|2|3)` stops after the given level, and each
+  `HierarchyLevel.run(graph, blocks, rules)` can be applied individually
+  to a caller-owned index, provided the lower levels ran before.
 
 ## Exact versus candidate names
 

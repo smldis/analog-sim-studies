@@ -2,6 +2,7 @@
 
 from netlist_decomposition.engine import (
     DEFAULT_RULES,
+    HIERARCHY_LEVELS,
     HL1_DIODE,
     HL1_NORMAL,
     BlockCandidate,
@@ -10,6 +11,7 @@ from netlist_decomposition.engine import (
     CircuitGraph,
     DecompositionEngine,
     FunctionRule,
+    HierarchyLevel,
     Rule,
     decompose,
     suppress_false_stacks,
@@ -18,6 +20,7 @@ from netlist_decomposition.engine import (
 
 __all__ = [
     "DEFAULT_RULES",
+    "HIERARCHY_LEVELS",
     "HL1_DIODE",
     "HL1_NORMAL",
     "BlockCandidate",
@@ -26,6 +29,7 @@ __all__ = [
     "CircuitGraph",
     "DecompositionEngine",
     "FunctionRule",
+    "HierarchyLevel",
     "Rule",
     "decompose",
     "suppress_false_stacks",

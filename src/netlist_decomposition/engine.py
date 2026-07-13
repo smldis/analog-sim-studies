@@ -142,14 +142,18 @@ class BlockIndex:
     def of_kind(self, kind: str) -> tuple[BlockTag, ...]:
         return tuple(tag for tag in self._tags if tag.kind == kind)
 
-    def add(self, candidate: BlockCandidate, *, rule: str) -> bool:
-        key = (
-            candidate.kind,
-            tuple(sorted(candidate.members)),
-            candidate.roles,
-            candidate.nets,
-            candidate.properties,
+    @staticmethod
+    def _key(tag: BlockCandidate | BlockTag) -> tuple[object, ...]:
+        return (
+            tag.kind,
+            tuple(sorted(tag.members)),
+            tag.roles,
+            tag.nets,
+            tag.properties,
         )
+
+    def add(self, candidate: BlockCandidate, *, rule: str) -> bool:
+        key = self._key(candidate)
         if key in self._keys:
             return False
 
@@ -169,6 +173,24 @@ class BlockIndex:
         self._keys.add(key)
         return True
 
+    def discard(self, tags: Iterable[BlockTag]) -> None:
+        """Remove tags from the index (the Eq. 19 deletions).
+
+        The removed tags' dedup keys are freed with them, so an identical
+        candidate could be re-added afterwards; deletions therefore run
+        only once every producer of the affected kinds has finished.
+        Kind counters are not rewound -- tag ids stay unique for the life
+        of the index.
+        """
+
+        doomed = {tag.id for tag in tags}
+        if not doomed:
+            return
+        for tag in self._tags:
+            if tag.id in doomed:
+                self._keys.discard(self._key(tag))
+        self._tags = [tag for tag in self._tags if tag.id not in doomed]
+
     def as_tuple(self) -> tuple[BlockTag, ...]:
         return tuple(self._tags)
 
@@ -186,10 +208,18 @@ Matcher = Callable[[CircuitGraph, BlockIndex], Iterable[BlockCandidate]]
 
 @dataclass(frozen=True)
 class FunctionRule:
-    """Adapter that makes a normal Python matcher function into a rule."""
+    """Adapter that makes a normal Python matcher function into a rule.
+
+    ``level`` assigns the rule to a hierarchy level of the pipeline (see
+    ``HIERARCHY_LEVELS``); monotone structural rules default to level 2.
+    A rule labelled with a level its dependencies do not precede still
+    converges -- each level runs its rules to a fixed point -- it just
+    becomes visible one level later.
+    """
 
     name: str
     matcher: Matcher
+    level: int = 2
 
     def find(
         self, graph: CircuitGraph, blocks: BlockIndex
@@ -213,6 +243,11 @@ class DecompositionEngine:
         """Run the rules to a fixed point and return the mutable index."""
 
         blocks = BlockIndex()
+        self.extend_index(graph, blocks)
+        return blocks
+
+    def extend_index(self, graph: CircuitGraph, blocks: BlockIndex) -> None:
+        """Run the rules to a fixed point on an existing index."""
 
         for _ in range(self.max_passes):
             changed = False
@@ -226,7 +261,7 @@ class DecompositionEngine:
                         )
                     changed |= blocks.add(candidate, rule=rule.name)
             if not changed:
-                return blocks
+                return
 
         raise RuntimeError(
             f"functional decomposition did not converge in {self.max_passes} passes"
@@ -446,10 +481,65 @@ def _cmos_inverters(
 
 
 DEFAULT_RULES: tuple[Rule, ...] = (
-    FunctionRule("HL1 transistors", _hl1_transistors),
+    FunctionRule("HL1 transistors", _hl1_transistors, level=1),
     transistor_stack_rule(),
     FunctionRule("differential-pair candidates", _differential_pairs),
     FunctionRule("CMOS inverters", _cmos_inverters),
+)
+
+
+LevelRunner = Callable[[CircuitGraph, BlockIndex, Sequence[Rule]], None]
+
+
+@dataclass(frozen=True)
+class HierarchyLevel:
+    """One runnable hierarchy level of the decomposition pipeline."""
+
+    number: int
+    name: str
+    run: LevelRunner
+
+
+def _level_rules(rules: Sequence[Rule], number: int) -> tuple[Rule, ...]:
+    return tuple(rule for rule in rules if getattr(rule, "level", 2) == number)
+
+
+def _run_hl1(graph: CircuitGraph, blocks: BlockIndex, rules: Sequence[Rule]) -> None:
+    DecompositionEngine(_level_rules(rules, 1)).extend_index(graph, blocks)
+
+
+def _run_hl2(graph: CircuitGraph, blocks: BlockIndex, rules: Sequence[Rule]) -> None:
+    from netlist_decomposition import bias, hl2
+
+    DecompositionEngine(_level_rules(rules, 2)).extend_index(graph, blocks)
+    bias.resolve_bias_blocks(graph, blocks)
+    hl2.resolve_hl2_blocks(graph, blocks)
+    # Eq. 19 closes the level, as in Algorithm 1: later levels read the
+    # cleaned index directly.
+    bias.prune_irrelevant(blocks)
+
+
+def _run_hl3(graph: CircuitGraph, blocks: BlockIndex, rules: Sequence[Rule]) -> None:
+    from netlist_decomposition import hl3
+
+    DecompositionEngine(_level_rules(rules, 3)).extend_index(graph, blocks)
+    hl3.resolve_hl3_blocks(graph, blocks)
+
+
+#: The decomposition pipeline, one entry per hierarchy level of the paper
+#: (HL4/HL5 are not implemented).  Each level leaves the shared block
+#: index in its complete post-level state: HL1 classifies transistors
+#: (Eq. 7/8); HL2 runs the monotone structural rules (stacks, candidates),
+#: Algorithm 1 (biases, mirrors), the pair/follower resolution, and closes
+#: with the Eq. 19 deletion of irrelevant contained blocks; HL3 resolves
+#: transconductances, loads, stage biases, and stages.  Levels can be run
+#: individually on a caller-owned ``CircuitGraph``/``BlockIndex`` as long
+#: as the lower levels ran before -- higher levels only read tags, never
+#: raw devices.
+HIERARCHY_LEVELS: tuple[HierarchyLevel, ...] = (
+    HierarchyLevel(1, "hl1", _run_hl1),
+    HierarchyLevel(2, "hl2", _run_hl2),
+    HierarchyLevel(3, "hl3", _run_hl3),
 )
 
 
@@ -459,31 +549,32 @@ def decompose(
     *,
     vdd_nets: Iterable[str] = (),
     vss_nets: Iterable[str] = (),
+    max_level: int = 3,
 ) -> tuple[BlockTag, ...]:
     """Return all functional-block tags found in one canonical circuit.
 
-    After the monotone rules reach their fixed point, the HL2 voltage/current
-    biases and current mirrors are recognized with the paper's Algorithm 1
-    (see ``netlist_decomposition.bias``), which needs the complete stack set
-    and negative conditions a monotone rule cannot express.  Then the full
-    differential pairs and the HL3 blocks (non-inverting transconductance,
-    load, current-output stage bias) are recognized per Algorithm 2 (see
-    ``netlist_decomposition.hl3``).  Irrelevant same-type-contained biases
-    and mirrors are pruned last, per Eq. 19 and matching the paper's
-    algorithm order.
+    Runs the ``HIERARCHY_LEVELS`` pipeline up to ``max_level``.  Each level
+    runs its monotone rules (selected by the rules' ``level`` attribute) to
+    a fixed point, then its resolution passes -- Algorithm 1, the
+    pair/follower recognition, and the closing Eq. 19 deletion at level 2
+    (see ``netlist_decomposition.bias`` and ``.hl2``), Algorithm 2's
+    transconductance/load/stage-bias/stage recognition at level 3 (see
+    ``netlist_decomposition.hl3``) -- which need complete block sets and
+    negative conditions a monotone rule cannot express.
 
     ``vdd_nets``/``vss_nets`` declare the power rails.  Without them the
     Algorithm 3 load search can only find load stacks whose sources sit on
-    transconductance outputs (folded arrangements), not rail-connected ones.
+    transconductance outputs (folded arrangements), and no source follower
+    is recognized.
     """
 
-    from netlist_decomposition import bias, hl3
-
     graph = CircuitGraph(circuit, vdd_nets=vdd_nets, vss_nets=vss_nets)
-    blocks = DecompositionEngine(rules).run_index(graph)
-    bias.resolve_bias_blocks(graph, blocks)
-    hl3.resolve_hl3_blocks(graph, blocks)
-    return bias.prune_irrelevant(blocks.as_tuple())
+    blocks = BlockIndex()
+    for level in HIERARCHY_LEVELS:
+        if level.number > max_level:
+            break
+        level.run(graph, blocks, rules)
+    return blocks.as_tuple()
 
 
 def suppress_false_stacks(tags: Sequence[BlockTag]) -> tuple[BlockTag, ...]:

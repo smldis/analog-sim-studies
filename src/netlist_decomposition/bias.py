@@ -208,25 +208,43 @@ def resolve_bias_blocks(graph: CircuitGraph, blocks: BlockIndex) -> None:
                 )
 
 
-def prune_irrelevant(tags: Sequence[BlockTag]) -> tuple[BlockTag, ...]:
+def maximal(tags: Sequence[BlockTag]) -> tuple[BlockTag, ...]:
+    """Eq. 19 view: drop tags strictly contained in a same-kind tag.
+
+    Non-destructive counterpart of ``prune_irrelevant``, used inside HL2
+    by recognizers that run after Algorithm 1 but before the level's
+    closing deletion (the source follower must not accept a sub-stack
+    current bias the deletion is about to remove).
+    """
+
+    return tuple(
+        tag
+        for tag in tags
+        if not any(tag.members < other.members for other in tags)
+    )
+
+
+def prune_irrelevant(blocks: BlockIndex) -> None:
     """Delete irrelevant same-type-contained blocks per Eq. 19.
 
     A voltage bias, current bias, or current mirror whose member set is a
     strict subset of another block of the same kind adds no information
     (e.g. the simple mirror inside a cascode mirror, Fig. 10a) and is
-    removed.  All other kinds are left untouched.
+    removed from the index.  All other kinds are left untouched.  As in
+    the paper, this closes Algorithm 1's hierarchy level: it runs at the
+    end of HL2, after the differential pairs (which Algorithm 1 finds
+    against the pre-deletion current biases), so every later level reads
+    the cleaned block set directly.
     """
 
     members_by_kind: dict[str, list[frozenset[str]]] = {}
-    for tag in tags:
+    for tag in blocks:
         if tag.kind in PRUNED_KINDS:
             members_by_kind.setdefault(tag.kind, []).append(tag.members)
 
-    def irrelevant(tag: BlockTag) -> bool:
-        if tag.kind not in PRUNED_KINDS:
-            return False
-        return any(
-            tag.members < other for other in members_by_kind[tag.kind]
-        )
-
-    return tuple(tag for tag in tags if not irrelevant(tag))
+    blocks.discard(
+        tag
+        for tag in blocks
+        if tag.kind in PRUNED_KINDS
+        and any(tag.members < other for other in members_by_kind[tag.kind])
+    )

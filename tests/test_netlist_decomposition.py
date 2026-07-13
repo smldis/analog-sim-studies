@@ -613,6 +613,22 @@ def test_pmos_source_follower_is_symmetric() -> None:
     assert ("mos_type", "pmos") in stages[0].properties
 
 
+def test_hierarchy_levels_stop_at_max_level() -> None:
+    netlist = canonical_netlist.from_text(MODELS + SOURCE_FOLLOWER)
+    rails = {"vdd_nets": ("vdd",), "vss_nets": ("vss",)}
+
+    hl1 = decompose(netlist.top, max_level=1, **rails)
+    assert {tag.kind for tag in hl1} == {"normal_transistor", "diode_transistor"}
+
+    hl2_kinds = {tag.kind for tag in decompose(netlist.top, max_level=2, **rails)}
+    assert "source_follower" in hl2_kinds
+    assert "current_mirror" in hl2_kinds
+    assert not hl2_kinds & {"stage_bias", "source_follower_stage"}
+
+    full_kinds = {tag.kind for tag in decompose(netlist.top, **rails)}
+    assert {"stage_bias", "source_follower_stage"} <= full_kinds
+
+
 def test_source_follower_needs_declared_rails() -> None:
     # Without rails the follower drain cannot be recognized as
     # rail-connected, so no follower blocks appear.

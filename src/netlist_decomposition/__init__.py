@@ -1,17 +1,18 @@
 """Structural functional-block tagging for canonical circuit netlists."""
 
 from netlist_decomposition.engine import (
+    COMPOSITION_PASSES,
     DEFAULT_RULES,
-    HIERARCHY_LEVELS,
     HL1_DIODE,
     HL1_NORMAL,
+    KIND_LEVELS,
     BlockCandidate,
     BlockIndex,
     BlockTag,
     CircuitGraph,
+    CompositionPass,
     DecompositionEngine,
     FunctionRule,
-    HierarchyLevel,
     Rule,
     decompose,
     suppress_false_stacks,
@@ -19,17 +20,18 @@ from netlist_decomposition.engine import (
 )
 
 __all__ = [
+    "COMPOSITION_PASSES",
     "DEFAULT_RULES",
-    "HIERARCHY_LEVELS",
     "HL1_DIODE",
     "HL1_NORMAL",
+    "KIND_LEVELS",
     "BlockCandidate",
     "BlockIndex",
     "BlockTag",
     "CircuitGraph",
+    "CompositionPass",
     "DecompositionEngine",
     "FunctionRule",
-    "HierarchyLevel",
     "Rule",
     "decompose",
     "suppress_false_stacks",

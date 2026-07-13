@@ -18,6 +18,7 @@ from netlist_decomposition.engine import (  # noqa: E402
     _cmos_inverters,
     _differential_pairs,
     _hl1_transistors,
+    BlockCandidate,
     CircuitGraph,
     FunctionRule,
 )
@@ -613,7 +614,7 @@ def test_pmos_source_follower_is_symmetric() -> None:
     assert ("mos_type", "pmos") in stages[0].properties
 
 
-def test_hierarchy_levels_stop_at_max_level() -> None:
+def test_max_level_completes_and_filters_tagging_sets() -> None:
     netlist = canonical_netlist.from_text(MODELS + SOURCE_FOLLOWER)
     rails = {"vdd_nets": ("vdd",), "vss_nets": ("vss",)}
 
@@ -637,3 +638,213 @@ def test_source_follower_needs_declared_rails() -> None:
     assert not _of_kind(tags, "source_follower_stage")
     assert not _of_kind(tags, "stage_bias")
     assert not _of_kind(tags, "source_follower")
+
+
+# --- Analog inverters and HL4 stages --------------------------------------------
+
+
+RAILS = {"vdd_nets": ("vdd",), "vss_nets": ("vss",)}
+
+TWO_STAGE_MILLER = (
+    FIVE_TRANSISTOR_OTA
+    + "MP2 out outp vdd vdd P\n"
+    + "MN2 out bias vss vss N\n"
+    + "CC outp out 1p\n"
+    + "CL out vss 5p\n"
+)
+
+
+def _decompose_with_rails(devices: str, **kwargs):
+    netlist = canonical_netlist.from_text(MODELS + devices)
+    assert not netlist.diagnostics
+    return decompose(netlist.top, **RAILS, **kwargs)
+
+
+def test_gate_coupled_cmos_pair_is_not_an_analog_inverter() -> None:
+    # Eq. 18 forbids gate-gate connections between the stacks: the digital
+    # CMOS inverter stays the legacy cmos_inverter tag only.
+    tags = _decompose_with_rails(
+        "MP out in vdd vdd P\n"
+        "MN out in vss vss N\n"
+    )
+
+    assert not _of_kind(tags, "analog_inverter")
+    assert _of_kind(tags, "cmos_inverter")
+
+
+def test_differential_pair_false_stacks_do_not_form_analog_inverters() -> None:
+    tags = _decompose_with_rails(FIVE_TRANSISTOR_OTA)
+
+    # The MTAIL/MIN2 false stack (Section 4.6) must not pair with the MLP2
+    # load transistor into an inverter.
+    assert not _of_kind(tags, "analog_inverter")
+
+    # The five-transistor OTA is one simple first stage (Eq. 30/31).
+    stages = _of_kind(tags, "amplification_stage")
+    assert len(stages) == 1
+    assert stages[0].members == frozenset(
+        {"MIN1", "MIN2", "MLP1", "MLP2", "MTAIL"}
+    )
+    assert ("stage_class", "as") in stages[0].properties
+    assert ("inverting", "false") in stages[0].properties
+    assert stages[0].net_for("out_1") == "outn"
+
+    # Eq. 37: the reference diode is the only bias outside the stage.
+    circuit_bias = _of_kind(tags, "circuit_bias")
+    assert len(circuit_bias) == 1
+    assert circuit_bias[0].members == frozenset({"MREF"})
+
+
+def test_two_stage_miller_recognizes_inverting_stage_and_capacitors() -> None:
+    tags = _decompose_with_rails(TWO_STAGE_MILLER)
+
+    inverters = _of_kind(tags, "analog_inverter")
+    assert len(inverters) == 1
+    assert inverters[0].members == frozenset({"MP2", "MN2"})
+    assert inverters[0].devices_for("stack_pmos") == ("MP2",)
+    assert inverters[0].net_for("output") == "out"
+
+    stages = {
+        dict(tag.properties)["stage_class"]: tag
+        for tag in _of_kind(tags, "amplification_stage")
+    }
+    assert set(stages) == {"as", "ainvc"}
+    assert ("stage_index", "1") in stages["as"].properties
+    second = stages["ainvc"]
+    assert second.members == frozenset({"MP2", "MN2"})
+    assert ("stage_index", "2") in second.properties
+    assert ("inverting", "true") in second.properties
+    assert second.net_for("in_1") == "outp"
+    assert second.net_for("out_1") == "out"
+
+    # Algorithm 2 emits the HL3 tcinv and its Eq. 28 stage bias with the
+    # stage.
+    tcinv = [
+        tag
+        for tag in _of_kind(tags, "transconductance")
+        if ("tc_type", "tcinv") in tag.properties
+    ]
+    assert len(tcinv) == 1
+    assert tcinv[0].members == frozenset({"MP2"})
+    assert tcinv[0].net_for("in_1") == "outp"
+    second_bias = [
+        tag
+        for tag in _of_kind(tags, "stage_bias")
+        if tag.devices_for("transconductance") == ("MP2",)
+    ]
+    assert len(second_bias) == 1
+    assert second_bias[0].members == frozenset({"MN2"})
+    assert ("output_type", "current") in second_bias[0].properties
+
+    circuit_bias = _of_kind(tags, "circuit_bias")
+    assert len(circuit_bias) == 1
+    assert circuit_bias[0].members == frozenset({"MREF"})
+
+    # Eq. 38: CC bridges the outputs of stage 1 and stage 2; Eq. 39: CL
+    # hangs from the highest-stage output to the declared ground rail.
+    comp = _of_kind(tags, "compensation_capacitor")
+    assert [tag.members for tag in comp] == [frozenset({"CC"})]
+    load_caps = _of_kind(tags, "load_capacitor")
+    assert [tag.members for tag in load_caps] == [frozenset({"CL"})]
+    assert load_caps[0].net_for("output") == "out"
+    assert ("stage_index", "2") in load_caps[0].properties
+
+
+SYMMETRICAL_OTA = (
+    "MREF bias bias vss vss N\n"
+    "MTAIL tail bias vss vss N\n"
+    "MIN1 outn in_p tail vss N\n"
+    "MIN2 outp in_n tail vss N\n"
+    "MLP1 outn outn vdd vdd P\n"
+    "MLP2 outp outp vdd vdd P\n"
+    "MP3 outa outn vdd vdd P\n"
+    "MP4 outb outp vdd vdd P\n"
+    "MN3 outa outa vss vss N\n"
+    "MN4 outb outa vss vss N\n"
+)
+
+
+def test_symmetrical_ota_second_stages_are_ainvc_and_ainvv() -> None:
+    tags = _decompose_with_rails(SYMMETRICAL_OTA)
+
+    classes = {
+        dict(tag.properties)["stage_class"]: tag
+        for tag in _of_kind(tags, "amplification_stage")
+    }
+    assert set(classes) == {"as", "ainvc", "ainvv"}
+    assert classes["ainvc"].members == frozenset({"MP4", "MN4"})
+    assert classes["ainvv"].members == frozenset({"MP3", "MN3"})
+    assert ("stage_index", "2") in classes["ainvc"].properties
+    assert ("stage_index", "2") in classes["ainvv"].properties
+
+    # Eq. 27: the ainvv stage bias is one voltage bias on the tcinv drain.
+    voltage_stage_bias = [
+        tag
+        for tag in _of_kind(tags, "stage_bias")
+        if ("output_type", "voltage") in tag.properties
+    ]
+    assert len(voltage_stage_bias) == 1
+    assert voltage_stage_bias[0].members == frozenset({"MN3"})
+    assert voltage_stage_bias[0].devices_for("voltage_biases") == ("MN3",)
+
+    tcinv_members = {
+        tag.members
+        for tag in _of_kind(tags, "transconductance")
+        if ("tc_type", "tcinv") in tag.properties
+    }
+    assert tcinv_members == {frozenset({"MP3"}), frozenset({"MP4"})}
+
+    assert _of_kind(tags, "circuit_bias")[0].members == frozenset({"MREF"})
+
+
+def test_max_level_three_returns_complete_level_three_view() -> None:
+    netlist = canonical_netlist.from_text(MODELS + TWO_STAGE_MILLER)
+    level4_kinds = {
+        "amplification_stage",
+        "circuit_bias",
+        "compensation_capacitor",
+        "load_capacitor",
+    }
+
+    level3_view = decompose(netlist.top, max_level=3, **RAILS)
+    level3_kinds = {tag.kind for tag in level3_view}
+    assert "analog_inverter" in level3_kinds  # a level-2 kind
+    assert not level3_kinds & level4_kinds
+    # The stages pass completes levels 3 and 4 together, so the level-3
+    # view already holds the tcinv transconductance Algorithm 2 emits
+    # inside the amplification-stage loop.
+    assert any(
+        ("tc_type", "tcinv") in tag.properties
+        for tag in level3_view
+        if tag.kind == "transconductance"
+    )
+
+    full_kinds = {tag.kind for tag in decompose(netlist.top, **RAILS)}
+    assert level4_kinds <= full_kinds
+
+
+def test_tags_carry_their_hierarchy_level() -> None:
+    netlist = canonical_netlist.from_text(MODELS + TWO_STAGE_MILLER)
+    tags = decompose(netlist.top, **RAILS)
+    levels = {tag.kind: tag.level for tag in tags}
+
+    assert levels["normal_transistor"] == 1
+    assert levels["current_bias"] == 2
+    assert levels["stage_bias"] == 3
+    assert levels["amplification_stage"] == 4
+
+
+def test_unregistered_kind_gets_no_level_and_survives_filtering() -> None:
+    def probe(graph, blocks):
+        return [BlockCandidate(kind="custom_probe", members=frozenset({"M1"}))]
+
+    netlist = canonical_netlist.from_text(MODELS + "M1 d g s b N\n")
+    tags = decompose(
+        netlist.top,
+        DEFAULT_RULES + (FunctionRule("custom probe", probe),),
+        max_level=2,
+    )
+
+    probes = _of_kind(tags, "custom_probe")
+    assert len(probes) == 1
+    assert probes[0].level is None

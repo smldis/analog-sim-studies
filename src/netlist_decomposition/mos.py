@@ -49,6 +49,31 @@ def pin_net(device: Device, pin: str) -> str | None:
     return None
 
 
+def decoupled(devices: tuple[Device, ...], *, sources: bool = False) -> bool:
+    """True when no two devices share a gate-gate or gate-drain connection.
+
+    This is the pairwise exclusion of the paper's analog inverter (Eq. 18)
+    and inverting transconductance (Eq. 23).  With ``sources=True`` the
+    Eq. 18 source-source exclusion is checked as well.  Missing pins are
+    never connected.
+    """
+
+    for position, first in enumerate(devices):
+        gate = pin_net(first, "g")
+        source = pin_net(first, "s")
+        for other, second in enumerate(devices):
+            if position == other:
+                continue
+            if gate is not None and gate in (
+                pin_net(second, "g"),
+                pin_net(second, "d"),
+            ):
+                return False
+            if sources and source is not None and source == pin_net(second, "s"):
+                return False
+    return True
+
+
 def pins_connected(
     first: Device, first_pin: str, second: Device, second_pin: str
 ) -> bool:

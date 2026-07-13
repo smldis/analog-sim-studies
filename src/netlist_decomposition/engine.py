@@ -111,7 +111,12 @@ class BlockCandidate:
 
 @dataclass(frozen=True)
 class BlockTag:
-    """One structural interpretation of a group of devices."""
+    """One structural interpretation of a group of devices.
+
+    ``level`` is the tag's tagging set -- the hierarchy level of its kind
+    per ``KIND_LEVELS``, stamped when the tag enters the index.  Kinds not
+    registered there get ``None`` and are never filtered by ``max_level``.
+    """
 
     id: str
     kind: str
@@ -120,12 +125,46 @@ class BlockTag:
     nets: tuple[NamedNet, ...]
     properties: tuple[Property, ...]
     rule: str
+    level: int | None = None
 
     def devices_for(self, role: str) -> tuple[str, ...]:
         return next((devices for name, devices in self.roles if name == role), ())
 
     def net_for(self, name: str) -> str | None:
         return next((net for net_name, net in self.nets if net_name == name), None)
+
+
+#: Tagging sets: every block kind belongs to a hierarchy level of the
+#: paper's Fig. 15 (extensions get levels by analogy).  This is taxonomy
+#: metadata only -- it says nothing about *when* a kind is recognized;
+#: that is declared by ``COMPOSITION_PASSES``.
+KIND_LEVELS: dict[str, int] = {
+    # level 1 (Eq. 7/8)
+    "normal_transistor": 1,
+    "diode_transistor": 1,
+    # level 2 (Eq. 9-19 + extensions + legacy candidates)
+    "transistor_stack": 2,
+    "voltage_bias": 2,
+    "current_bias": 2,
+    "current_mirror": 2,
+    "differential_pair": 2,
+    "gate_connected_couple": 2,
+    "cascode_differential_pair": 2,
+    "analog_inverter": 2,
+    "source_follower": 2,
+    "differential_pair_candidate": 2,
+    "cmos_inverter": 2,
+    # level 3 (Eq. 20-29 + follower extension)
+    "transconductance": 3,
+    "load": 3,
+    "stage_bias": 3,
+    "source_follower_stage": 3,
+    # level 4 (Eq. 30-39)
+    "amplification_stage": 4,
+    "circuit_bias": 4,
+    "compensation_capacitor": 4,
+    "load_capacitor": 4,
+}
 
 
 class BlockIndex:
@@ -168,6 +207,7 @@ class BlockIndex:
                 nets=candidate.nets,
                 properties=candidate.properties,
                 rule=rule,
+                level=KIND_LEVELS.get(candidate.kind),
             )
         )
         self._keys.add(key)
@@ -210,11 +250,10 @@ Matcher = Callable[[CircuitGraph, BlockIndex], Iterable[BlockCandidate]]
 class FunctionRule:
     """Adapter that makes a normal Python matcher function into a rule.
 
-    ``level`` assigns the rule to a hierarchy level of the pipeline (see
-    ``HIERARCHY_LEVELS``); monotone structural rules default to level 2.
-    A rule labelled with a level its dependencies do not precede still
-    converges -- each level runs its rules to a fixed point -- it just
-    becomes visible one level later.
+    ``level`` is the hierarchy level of the kinds the rule emits (default
+    2).  A rule runs in the composition pass whose ``completes`` tuple
+    contains its level (see ``COMPOSITION_PASSES``), to a fixed point,
+    before that pass's resolution steps.
     """
 
     name: str
@@ -488,58 +527,77 @@ DEFAULT_RULES: tuple[Rule, ...] = (
 )
 
 
-LevelRunner = Callable[[CircuitGraph, BlockIndex, Sequence[Rule]], None]
+PassRunner = Callable[[CircuitGraph, BlockIndex, Sequence[Rule]], None]
 
 
 @dataclass(frozen=True)
-class HierarchyLevel:
-    """One runnable hierarchy level of the decomposition pipeline."""
+class CompositionPass:
+    """One composition pass of the recognition pipeline.
+
+    ``completes`` names the tagging sets (hierarchy levels, ``KIND_LEVELS``)
+    whose membership is final once this pass ends: later passes may only
+    enrich existing tags of those levels with properties, never add or
+    remove them.  The one in-pass deletion is Eq. 19, which runs inside
+    pass 2 *before* level 2 completes.
+    """
 
     number: int
     name: str
-    run: LevelRunner
+    completes: tuple[int, ...]
+    run: PassRunner
 
 
-def _level_rules(rules: Sequence[Rule], number: int) -> tuple[Rule, ...]:
-    return tuple(rule for rule in rules if getattr(rule, "level", 2) == number)
+def _pass_rules(rules: Sequence[Rule], completes: tuple[int, ...]) -> tuple[Rule, ...]:
+    return tuple(rule for rule in rules if getattr(rule, "level", 2) in completes)
 
 
-def _run_hl1(graph: CircuitGraph, blocks: BlockIndex, rules: Sequence[Rule]) -> None:
-    DecompositionEngine(_level_rules(rules, 1)).extend_index(graph, blocks)
+def _run_classify(
+    graph: CircuitGraph, blocks: BlockIndex, rules: Sequence[Rule]
+) -> None:
+    DecompositionEngine(_pass_rules(rules, (1,))).extend_index(graph, blocks)
 
 
-def _run_hl2(graph: CircuitGraph, blocks: BlockIndex, rules: Sequence[Rule]) -> None:
+def _run_structure(
+    graph: CircuitGraph, blocks: BlockIndex, rules: Sequence[Rule]
+) -> None:
     from netlist_decomposition import bias, hl2
 
-    DecompositionEngine(_level_rules(rules, 2)).extend_index(graph, blocks)
+    DecompositionEngine(_pass_rules(rules, (2,))).extend_index(graph, blocks)
     bias.resolve_bias_blocks(graph, blocks)
     hl2.resolve_hl2_blocks(graph, blocks)
-    # Eq. 19 closes the level, as in Algorithm 1: later levels read the
-    # cleaned index directly.
+    # Eq. 19 closes the pass, as in Algorithm 1: level 2 membership is
+    # final only after this deletion.
     bias.prune_irrelevant(blocks)
 
 
-def _run_hl3(graph: CircuitGraph, blocks: BlockIndex, rules: Sequence[Rule]) -> None:
-    from netlist_decomposition import hl3
+def _run_stages(
+    graph: CircuitGraph, blocks: BlockIndex, rules: Sequence[Rule]
+) -> None:
+    from netlist_decomposition import stages
 
-    DecompositionEngine(_level_rules(rules, 3)).extend_index(graph, blocks)
-    hl3.resolve_hl3_blocks(graph, blocks)
+    DecompositionEngine(_pass_rules(rules, (3, 4))).extend_index(graph, blocks)
+    stages.resolve_stage_blocks(graph, blocks)
 
 
-#: The decomposition pipeline, one entry per hierarchy level of the paper
-#: (HL4/HL5 are not implemented).  Each level leaves the shared block
-#: index in its complete post-level state: HL1 classifies transistors
-#: (Eq. 7/8); HL2 runs the monotone structural rules (stacks, candidates),
-#: Algorithm 1 (biases, mirrors), the pair/follower resolution, and closes
-#: with the Eq. 19 deletion of irrelevant contained blocks; HL3 resolves
-#: transconductances, loads, stage biases, and stages.  Levels can be run
+#: The recognition pipeline: three composition passes mirroring Abel et
+#: al. (2021) Section 7, decoupled from the four-level kind taxonomy
+#: (``KIND_LEVELS``).  Pass 1 classifies transistors (7.1, Eq. 7/8).
+#: Pass 2 runs the monotone structural rules (stacks, candidates),
+#: Algorithm 1 (biases, mirrors), the pair/follower/inverter resolution,
+#: and closes level 2 with the Eq. 19 deletion (7.2).  Pass 3 runs
+#: Algorithm 2 (7.3) and completes levels 3 AND 4 together, because the
+#: inverting transconductance (level 3, Eq. 23) and its stage bias
+#: (Eq. 27/28) are mutually dependent with the amplification stages and
+#: resolvable only through the stage loop -- emitting level-3 kinds there
+#: is the declared contract, not a level violation.  The op-amp
+#: classification above level 4 is not implemented.  Passes can be run
 #: individually on a caller-owned ``CircuitGraph``/``BlockIndex`` as long
-#: as the lower levels ran before -- higher levels only read tags, never
+#: as the earlier passes ran before -- later passes only read tags, never
 #: raw devices.
-HIERARCHY_LEVELS: tuple[HierarchyLevel, ...] = (
-    HierarchyLevel(1, "hl1", _run_hl1),
-    HierarchyLevel(2, "hl2", _run_hl2),
-    HierarchyLevel(3, "hl3", _run_hl3),
+COMPOSITION_PASSES: tuple[CompositionPass, ...] = (
+    CompositionPass(1, "classify", (1,), _run_classify),
+    CompositionPass(2, "structure", (2,), _run_structure),
+    CompositionPass(3, "stages", (3, 4), _run_stages),
 )
 
 
@@ -549,18 +607,28 @@ def decompose(
     *,
     vdd_nets: Iterable[str] = (),
     vss_nets: Iterable[str] = (),
-    max_level: int = 3,
+    max_level: int = 4,
 ) -> tuple[BlockTag, ...]:
     """Return all functional-block tags found in one canonical circuit.
 
-    Runs the ``HIERARCHY_LEVELS`` pipeline up to ``max_level``.  Each level
-    runs its monotone rules (selected by the rules' ``level`` attribute) to
-    a fixed point, then its resolution passes -- Algorithm 1, the
-    pair/follower recognition, and the closing Eq. 19 deletion at level 2
-    (see ``netlist_decomposition.bias`` and ``.hl2``), Algorithm 2's
-    transconductance/load/stage-bias/stage recognition at level 3 (see
-    ``netlist_decomposition.hl3``) -- which need complete block sets and
-    negative conditions a monotone rule cannot express.
+    ``max_level`` selects tagging sets, with completion-plus-view
+    semantics: every composition pass that completes a level ``<=
+    max_level`` runs, then the returned tuple is filtered to tags whose
+    ``level`` is unknown (``None``) or ``<= max_level``.  Because pass 3
+    completes levels 3 and 4 together, ``max_level=3`` runs Algorithm 2 in
+    full and view-filters the level-4 tags -- the index behind the view
+    always holds the complete pass output; the filter is a read view, not
+    a deletion (unlike Eq. 19, which is a real deletion inside pass 2).
+
+    Each pass runs its monotone rules (selected by the rules' ``level``
+    attribute against the pass's ``completes``) to a fixed point, then its
+    resolution steps -- Algorithm 1, the pair/follower/inverter
+    recognition, and the closing Eq. 19 deletion in pass 2 (see
+    ``netlist_decomposition.bias`` and ``.hl2``); Algorithm 2's
+    transconductance/load/stage-bias recognition, amplification-stage
+    loop, circuit bias, and capacitors in pass 3 (see
+    ``netlist_decomposition.stages``) -- which need complete block sets
+    and negative conditions a monotone rule cannot express.
 
     ``vdd_nets``/``vss_nets`` declare the power rails.  Without them the
     Algorithm 3 load search can only find load stacks whose sources sit on
@@ -570,11 +638,15 @@ def decompose(
 
     graph = CircuitGraph(circuit, vdd_nets=vdd_nets, vss_nets=vss_nets)
     blocks = BlockIndex()
-    for level in HIERARCHY_LEVELS:
-        if level.number > max_level:
-            break
-        level.run(graph, blocks, rules)
-    return blocks.as_tuple()
+    for composition_pass in COMPOSITION_PASSES:
+        if all(level > max_level for level in composition_pass.completes):
+            continue
+        composition_pass.run(graph, blocks, rules)
+    return tuple(
+        tag
+        for tag in blocks.as_tuple()
+        if tag.level is None or tag.level <= max_level
+    )
 
 
 def suppress_false_stacks(tags: Sequence[BlockTag]) -> tuple[BlockTag, ...]:

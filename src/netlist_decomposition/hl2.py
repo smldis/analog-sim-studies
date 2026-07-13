@@ -12,17 +12,22 @@ rule engine):
   with the folded/equal-doping subtypes of Eq. 16/17.  Couples are only
   tagged as constituents of a cascode pair; a standalone Eq. 14 match (for
   example the upper devices of a cascode current mirror) is not emitted;
+- analog inverter (Eq. 18): two all-normal stacks of opposite doping
+  joined at their drains, each source on the doping-matching declared
+  rail, with no gate-gate, gate-drain, or source-source connection
+  between any two member transistors.  Recognized last, as Algorithm 1
+  line 19 prescribes;
 - source follower (extension, not in the paper): a normal transistor
   outside every differential pair, drain on the doping-matching declared
   rail (NMOS: vdd, PMOS: vss), with a same-doping Eq.-19-maximal current
   bias sinking from its source to the opposite rail.  Rail knowledge at
   HL2 follows the paper's own analog inverter (Eq. 18), and composing
   other HL2 blocks follows its current mirror (Eq. 12).  The follower's
-  stage bias and the composed ``source_follower_stage`` are HL3 blocks
-  (see ``netlist_decomposition.hl3``).
+  stage bias and the composed ``source_follower_stage`` are level-3 kinds
+  (see ``netlist_decomposition.stages``).
 
 ``pair_views``/``unit_views`` rebuild the recognition data from the emitted
-tags so hierarchy level 3 can run as a separate pipeline stage.
+tags so the stage composition pass can run separately.
 """
 
 from __future__ import annotations
@@ -32,7 +37,7 @@ from dataclasses import dataclass
 from spice_canonical.canonical_netlist import Device
 
 from netlist_decomposition import mos
-from netlist_decomposition.bias import maximal
+from netlist_decomposition.bias import _stack_views, maximal
 from netlist_decomposition.engine import (
     HL1_NORMAL,
     BlockCandidate,
@@ -70,7 +75,7 @@ class _Unit:
 
 
 def resolve_hl2_blocks(graph: CircuitGraph, blocks: BlockIndex) -> None:
-    """Add differential-pair, cascode-pair, and source-follower tags."""
+    """Add differential-pair, cascode-pair, follower, and inverter tags."""
 
     normals = tuple(
         graph.devices[tag.devices_for("device")[0]]
@@ -80,6 +85,9 @@ def resolve_hl2_blocks(graph: CircuitGraph, blocks: BlockIndex) -> None:
     _cascode_pairs(graph, blocks, normals, pairs)
     maximal_cbs = maximal(blocks.of_kind("current_bias"))
     _source_followers(graph, blocks, normals, pairs, maximal_cbs)
+    # Algorithm 1 line 19: inverters are the last HL2 recognition, after
+    # the differential pairs whose false stacks they must not pick up.
+    _analog_inverters(graph, blocks, pairs)
 
 
 def _differential_pairs(
@@ -273,6 +281,63 @@ def _source_followers(
             ),
             rule=_RULE,
         )
+
+
+def _analog_inverters(
+    graph: CircuitGraph, blocks: BlockIndex, pairs: tuple[_Pair, ...]
+) -> None:
+    """Eq. 18 analog inverters, recognized last per Algorithm 1 line 19.
+
+    Two all-normal-transistor stacks of opposite doping share their drain
+    net; each stack source sits on the doping-matching declared rail (so
+    nothing is found without declared rails).  No gate-gate, gate-drain,
+    or source-source connection may exist between any two member
+    transistors -- which also excludes the gate-coupled digital CMOS
+    inverter (that remains the legacy ``cmos_inverter`` tag).  Stacks
+    sharing a device with an Eq. 13 differential pair are skipped: those
+    are the Section 4.6 false stacks (tail plus input device) whose
+    suppression the paper prescribes exactly to avoid false inverters.
+    """
+
+    paired = frozenset().union(*(pair.members for pair in pairs))
+    rails = {"p": graph.vdd_nets, "n": graph.vss_nets}
+    halves: dict[str, list] = {"p": [], "n": []}
+    for stack in _stack_views(graph, blocks):
+        if (
+            all(item == "nt" for item in stack.member_classes.split(","))
+            and stack.source in rails[stack.doping]
+            and not (stack.members & paired)
+        ):
+            halves[stack.doping].append(stack)
+    for upper in halves["p"]:
+        for lower in halves["n"]:
+            if upper.drain != lower.drain:
+                continue
+            devices = tuple(
+                graph.devices[name] for name in (*upper.names, *lower.names)
+            )
+            if not mos.decoupled(devices, sources=True):
+                continue
+            blocks.add(
+                BlockCandidate(
+                    kind="analog_inverter",
+                    members=upper.members | lower.members,
+                    roles=(
+                        ("stack_pmos", upper.names),
+                        ("stack_nmos", lower.names),
+                    ),
+                    nets=(
+                        ("output", upper.drain),
+                        ("input_pmos", upper.gates[0]),
+                        ("input_nmos", lower.gates[0]),
+                    ),
+                    properties=(
+                        ("pmos_length", str(len(upper.names))),
+                        ("nmos_length", str(len(lower.names))),
+                    ),
+                ),
+                rule=_RULE,
+            )
 
 
 def pair_views(blocks: BlockIndex) -> tuple[_Pair, ...]:

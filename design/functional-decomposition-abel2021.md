@@ -54,10 +54,10 @@ paper decomposition.
   another block of the same kind are deleted (the simple mirror inside a
   cascode mirror, Fig. 10a).  Other kinds, including stacks, are never
   pruned.  As in the paper, the deletion closes hierarchy level 2: it is
-  physically removed from the block index at the end of the HL2 stage --
-  after the differential pairs, which Algorithm 1 finds against the
-  pre-deletion current biases -- so HL3 and every caller read the cleaned
-  set directly.
+  physically removed from the block index at the end of the structure
+  pass -- after the differential pairs, which Algorithm 1 finds against
+  the pre-deletion current biases -- so the stage pass and every caller
+  read the cleaned set directly.
 - **Differential pair, gate-connected couple, cascode pair (Eq. 13-17).**
   `netlist_decomposition.hl2` recognizes the full `differential_pair` (two
   normal transistors, equal doping, connected only at their sources, with a
@@ -83,12 +83,45 @@ paper decomposition.
   guard the Section 4.6 false stacks (tail plus input device) would be
   recognized as loads.  Rail-connected load parts require declared
   supplies.
+- **Analog inverter (Eq. 18).** Two all-normal-transistor stacks of
+  opposite doping joined at their drains, each source on the
+  doping-matching declared rail, with no gate-gate, gate-drain, or
+  source-source connection between any two member transistors -- which
+  also excludes the gate-coupled digital CMOS inverter (that stays the
+  legacy `cmos_inverter` tag).  Recognized last within the structure pass, as
+  Algorithm 1 line 19 prescribes; stacks sharing a device with an Eq. 13
+  differential pair are skipped, implementing the Section 4.6
+  false-stack suppression that avoids false inverters.
 - **Current-output stage bias (Eq. 28/29).** The Eq.-19-maximal current
   biases whose drains sit on a transconductance source, one `stage_bias`
-  tag per transconductance.  The voltage-output stage bias (Eq. 26/27) is
-  not implemented: Algorithm 2 resolves it, together with the inverting
-  transconductance (Eq. 23), inside the amplification-stage loop, i.e.
-  with HL4.
+  tag per transconductance.
+- **Amplification stages (Eq. 30-36 via Algorithm 2).**
+  `netlist_decomposition.stages` composes each non-inverting
+  transconductance with its load and current-output stage bias into an
+  `amplification_stage` (Eq. 30; the connectivity conditions hold by
+  construction) classified per Eq. 31-33 (`stage_class` of `as`, `ac`,
+  `acmfb`, or generic `aninv` when the doping pattern matches none).
+  The inverting-stage loop (Alg. 2 lines 8-26) then iterates over the
+  analog inverters: a stack gate-driven by a recognized stage output
+  whose partner stack is a current bias yields the `tcinv`
+  transconductance (Eq. 23), its Eq. 28 stage bias, and an `ainvc`
+  stage (Eq. 34/35), repeated to a fixed point so stage chains number
+  themselves (`stage_index`).  The symmetrical-OTA branch (Eq. 36,
+  Alg. 2 lines 17-23) runs while exactly one `ainvc` exists and a
+  simple first stage has a single load part containing two voltage
+  biases; its stage bias is one voltage bias on the tcinv drain --
+  exactly the Eq. 27 voltage-output stage bias.  The tcinv tags and
+  their stage biases are level-3 kinds emitted by the stage pass, which
+  declares `completes=(3, 4)` -- matching the paper, which recognizes
+  HL3-4 in one algorithm because of that bidirectional dependency.
+- **Circuit bias (Eq. 37).** One `circuit_bias` tag collecting the
+  voltage and current biases claimed by no amplification stage (nor, in
+  line with the follower extension, by a `source_follower_stage`).  Its
+  Eq. 26 voltage-output structure is not verified.
+- **Compensation and load capacitors (Eq. 38/39).** A capacitor between
+  the outputs of two different amplification stages is a
+  `compensation_capacitor`; a capacitor between an output of the
+  highest stage and a declared ground rail is a `load_capacitor`.
 - **Source follower (extension, not a paper rule).** The paper's
   transconductance types do not cover a transistor whose voltage output is
   its own source: the non-inverting types are built on differential pairs
@@ -142,21 +175,40 @@ paper decomposition.
   `CircuitGraph` (positive rails and ground rails separately, as
   Algorithm 3 and Eq. 18 are doping-specific); no name-based guessing.
   Without declared rails, loads are only found in folded arrangements.
-- **The pipeline is explicit hierarchy levels** (`HIERARCHY_LEVELS`,
-  matching the paper's numbering): HL1 classifies transistors (Eq. 7/8);
-  HL2 runs the monotone structural rules (stacks, candidates), then
-  Algorithm 1 (biases, mirrors), then the Eq. 13-17 pairs and the source
-  follower, and closes with the Eq. 19 deletion, mirroring Algorithm 1;
-  HL3 resolves transconductances, loads, stage biases, and stages per
-  Algorithm 2.  Every level leaves the index in its complete post-level
-  state, so destructive normalization happens at the earliest point where
-  no later consumer needs the removed blocks.  The resolution passes need
-  complete block sets and negative conditions, so they cannot
-  be ordinary monotone rules; monotone rules carry a `level` attribute
-  (default 2) selecting the level whose fixed point runs them.
-  `decompose(..., max_level=1|2|3)` stops after the given level, and each
-  `HierarchyLevel.run(graph, blocks, rules)` can be applied individually
-  to a caller-owned index, provided the lower levels ran before.
+- **Hierarchy levels are tagging sets; the pipeline is composition
+  passes.**  The paper's levels 1-4 are a kind taxonomy (Fig. 15), not a
+  computation order: `KIND_LEVELS` assigns every kind its level
+  (extensions by analogy), and each `BlockTag` carries it as `level`
+  (`None` for unregistered custom kinds, which are never filtered).
+  Recognition runs as `COMPOSITION_PASSES`, mirroring the paper's own
+  Section 7 "Functional Block Analysis": pass 1 `classify` (7.1,
+  Eq. 7/8, completes level 1); pass 2 `structure` (7.2) runs the
+  monotone structural rules (stacks, candidates), then Algorithm 1
+  (biases, mirrors), then the Eq. 13-17 pairs, the source follower, and
+  the Eq. 18 inverters, and closes level 2 with the Eq. 19 deletion;
+  pass 3 `stages` (7.3) runs Algorithm 2 and completes levels 3 AND 4
+  together, because tcinv (Eq. 23) and its stage bias (Eq. 27/28) are
+  mutually dependent with the amplification stages -- emitting level-3
+  kinds there is the declared `completes=(3, 4)` contract.
+  **Membership/annotation contract:** a level's set membership is final
+  once its completing pass ends (Eq. 19 runs inside pass 2, before
+  completion); later passes may only enrich existing tags with
+  properties, never add or remove tags of completed levels.  No
+  enrichment exists yet; it is the defined home for future
+  bias-dependent variant naming (see unimplemented list).  The
+  resolution steps need complete block sets and negative conditions, so
+  they cannot be ordinary monotone rules; monotone rules carry a
+  `level` attribute (default 2) naming the level of the kinds they
+  emit, and run in the pass whose `completes` contains it.
+  `decompose(..., max_level=1|2|3|4)` has completion-plus-view
+  semantics: every pass completing a level `<= max_level` runs, then
+  the returned tags are filtered to `level <= max_level` (or `None`).
+  At `max_level=3` the level-4 work therefore executes and is
+  view-filtered -- inherent to the paper's merged 7.3; the filter is a
+  read view, not a deletion, unlike Eq. 19.  Each
+  `CompositionPass.run(graph, blocks, rules)` can be applied
+  individually to a caller-owned index, provided the earlier passes ran
+  before.
 
 ## Exact versus candidate names
 
@@ -165,9 +217,13 @@ paper decomposition.
   and `current_mirror` to the fidelity of the paper's own Algorithm 1
   (with the documented Eq. 10/11 approximations the paper itself makes);
   `differential_pair`, `gate_connected_couple`,
-  `cascode_differential_pair` (Eq. 13-17); `transconductance` for the
-  non-inverting types (Eq. 20-22); `load` per Algorithm 3; `stage_bias`
-  for the current-output type (Eq. 28/29).
+  `cascode_differential_pair` (Eq. 13-17); `analog_inverter` (Eq. 18);
+  `transconductance` for the non-inverting types (Eq. 20-22) and, via
+  the Algorithm 2 loop, the inverting type (Eq. 23); `load` per
+  Algorithm 3; `stage_bias` for the current-output type (Eq. 28/29) and
+  the single-voltage-bias Eq. 27 type produced with the `ainvv` stage;
+  `amplification_stage` (Eq. 30-36), `circuit_bias` (Eq. 37, structure
+  unverified), `compensation_capacitor`/`load_capacitor` (Eq. 38/39).
 - Extensions with no paper counterpart: `source_follower` (the
   common-drain transistor itself, `function=voltage_buffer`), the
   `output_type=voltage` stage bias produced with it, and
@@ -189,20 +245,20 @@ paper decomposition.
 - Bias-dependent stack variant names (cp, mp1, mp2, vr1, vr2) and the named
   current-mirror examples beyond scm (ccm, 4cm, wcm, wscm, iwcm from
   Fig. 6): mirrors with longer stacks carry `variant=unclassified`.
-- Full analog inverter (Eq. 18), inverting transconductance (Eq. 23), and
-  the paper's voltage-output stage bias (Eq. 26/27): Algorithm 2
-  recognizes these inside the amplification-stage loop, so they belong to
-  the HL4 step.  (The follower's voltage-output stage bias above is a
-  separate extension, not an Eq. 26/27 implementation.)
+  Under the membership/annotation contract these are now expressible as
+  later-pass property enrichment of the completed level-2 tags (still
+  unimplemented).
+- The exact load definitions Eq. 24/25 (Algorithm 3 is used instead, on
+  the paper's own recommendation) and the multi-bias Eq. 26 bias-with-
+  voltage-output structure (the emitted `circuit_bias` does not verify
+  it; the Eq. 27 single-voltage-bias stage bias is implemented).
+- Op-amp classification above HL4 (the paper's final composition level).
 - Cascoded source followers (follower reaching the rail through a stack)
   and followers biased by unrecognized structures.
-- All of HL4-HL5: amplification stages (Eq. 30-33), circuit bias,
-  compensation/load capacitors, op-amp classification.
 - Complementary/CMFB transconductances over cascoded pairs.
-- Section 4.6 false-stack suppression beyond the differential-pair case
-  listed above (Algorithm 1's ordering, where inverters are recognized last
-  to avoid false positives inside differential pairs, becomes relevant once
-  the full inverter exists).
+- Section 4.6 false-stack suppression beyond the differential-pair cases
+  listed above (the Eq. 13 pair guard inside the inverter recognition,
+  and the candidate-based `suppress_false_stacks` output filter).
 
 ## Optional policies
 
@@ -211,6 +267,14 @@ conservative behavior that every stack-internal net must carry exactly two
 MOS drain/source terminals. This is not a paper rule (default off); it
 over-approximates Section 4.6 by dropping every branching stack, including
 paper-valid ones.
+
+The stage pass keeps Algorithm 2's tcinv trigger verbatim: an analog
+inverter enters the loop only when one stack is gate-driven by the output
+of an already recognized stage.  Eq. 23's own condition is wider (gate on
+any transconductance or load output); a literal-Eq. 23 switch would
+additionally tag tcinv in circuits whose driving stage never completed
+(e.g. a first stage without a recognized stage bias).  Not implemented;
+recorded here as a possible future policy.
 
 ## Manual verification
 

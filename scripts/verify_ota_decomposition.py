@@ -138,6 +138,21 @@ def main() -> int:
         and stages[0].members == frozenset({"XM6", "XM7"})
         and stages[0].devices_for("follower") == ("XM6",),
     )
+    stages_a = of_kind("amplification_stage")
+    check(
+        "tc + XM3/XM4 load + XM5 bias form one simple first stage (as)",
+        len(stages_a) == 1
+        and stages_a[0].members == frozenset({"XM1", "XM2", "XM3", "XM4", "XM5"})
+        and ("stage_class", "as") in stages_a[0].properties
+        and ("stage_index", "1") in stages_a[0].properties,
+    )
+    check("no analog inverter in ota_core", not of_kind("analog_inverter"))
+    circuit_bias = of_kind("circuit_bias")
+    check(
+        "XM8 alone remains as the circuit bias (Eq. 37)",
+        len(circuit_bias) == 1
+        and circuit_bias[0].members == frozenset({"XM8"}),
+    )
     check(
         "XM7/XM6 stack is Eq. 9 valid (bottom-to-top XM7, XM6)",
         ("XM7", "XM6") in stack_orders(tags),

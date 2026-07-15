@@ -52,6 +52,8 @@ Some simulations are not independent.
 
 That means the package may eventually need to treat studies not only as isolated runs, but also as connected work with explicit ordering and traceable relationships.
 
+To be precise about terms: this means study-level dependencies, where one study consumes a named artifact produced by another (an extracted netlist, an operating point, a measured value). It is unrelated to the recognition-pass dependencies described in the functional-decomposition design documents, which are internal to netlist analysis and follow different rules.
+
 This should not turn into a giant workflow engine, but it is still an important pressure on the design.
 
 ## What is the most practical starting point?
@@ -108,6 +110,8 @@ Commercial tools already cover a lot of simulation management:
 
 Those tools are the reason this package should stay focused. Rebuilding their entire scope would be a mistake.
 
+On the open-source side, [CACE](https://cace.readthedocs.io/) already covers much of the headline territory — YAML-defined characterization with parameters, corners, Monte Carlo, and spec limits. So "parameterized analog studies" alone is not a differentiator. What remains open, and what this package should claim, is composition around arbitrary existing simulator directories: the deck stays authoritative, and the transformations applied to it stay explicit and reviewable.
+
 Other tools suggest better architectural ideas:
 
 - [cocotb](https://docs.cocotb.org/) for Python-first user experience and reusable test logic
@@ -135,7 +139,7 @@ We should probably build it only if it can make these things clearly better:
 - parameter management
 - sweep and corner expansion
 - testbench reuse
-- user-authored reusable templates
+- user-authored reusable templates (explicit, typed edits plus small harness templates — not unrestricted free-form templating)
 - explicit dependency handling between studies
 - automation in pipelines
 - reviewability in version control

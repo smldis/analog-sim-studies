@@ -31,7 +31,8 @@ rejected, or annotated without implying acceptance of the others.
    ([CACE datasheet format](https://cace.readthedocs.io/en/latest/reference/datasheet_format.html),
    [5T OTA tutorial](https://cace.readthedocs.io/en/latest/tutorials/ota_5t.html)).
 
-   **Annotation:** _
+   **Annotation:** CACE is awesome, however i looked at the internals and there is not much and its easily reiplementable to our liking, some naming is confusing, for example i saw some parameter datastructure actually handling simulations, isnt that weird?
+   In any case the CACE approach on dependency handling of the whole verification flow is awsome and should be added to the scope of the manifest.
 
 2. **Correct the opening question so it does not promise the broader stack**
 
@@ -58,7 +59,7 @@ rejected, or annotated without implying acceptance of the others.
    ([spicelib overview](https://spicelib.readthedocs.io/en/latest/readme.html),
    [SimRunner example](https://spicelib.readthedocs.io/en/latest/_modules/spicelib/sim/sim_runner.html)).
 
-   **Annotation:** _
+   **Annotation:** The manifesto is a vision, the opening statements have the corect scope, i would drop text-based and replace it with headless, since many times headless is good for reuse, latency tooling and agentic workflows. Bundling different systems is good if it follows the vision, we should make them moular, explicit, composable and individually usable both by an agent(preferably through cli interfaces) and by humans. Spicelib Is out due to licensing, i suggest we dont even look at its code to avoid GPL poisoning a more permissive codebase.
 
 3. **Rewrite the “simpler claim” to state the actual differentiator**
 
@@ -85,7 +86,8 @@ rejected, or annotated without implying acceptance of the others.
    ([Hdl21 repository](https://github.com/dan-fritchman/Hdl21),
    [VLSIR repository](https://github.com/Vlsir/Vlsir)).
 
-   **Annotation:** _
+   **Annotation:** u can change the claim, it is supposed to be a target, not a claim. This is the scope of a manifesto. "It aims to be a ..." would be ok?. For the arguments would it be right to try to separate the strongest arch. committment from the main scope into a separate component (sidecaredits)? The component vision could still be part of the manifesto.
+   For Hdl21 I love it, didnt know it. we should definitely keep track of existing tooling and approaches, even in the manifesto if they provide inspiration or architectural/implementation directions. VLSIR look like an implementation detail, not part of this scope right?
 
 4. **Treat a working directory as an asset, not merely accidental reuse**
 
@@ -113,7 +115,9 @@ rejected, or annotated without implying acceptance of the others.
    authoritative substrate even in a highly programmable flow
    ([PyOPUS performance-evaluator tutorial](https://spiceopus.si/pyopus/download/0.11.1/docsrc/_build/html/tutorial.evaluation.02-evaluator.html)).
 
-   **Annotation:** _
+   **Annotation:** the proposed change is weird sometimes I would  use a base just to have something to start with that execute without errors already, but later filled with the actual data to be used. we should avoid inserting these limit in the manifesto now at this early phase otherwise we risk missing opportunities. This concept of scoping and opportunitism  could be added to the manifesto, but i would try to avoid polluting the actual sections that should target clarity over verboseness. Maybe a final thoughs section or some other alternative to it fits the job.
+   
+   For Pyopus i really like the concept, we should avoid it due to licensing poisoning, if we would want to look at the source code we should ask the mantainer if he could consider releasing under APACHE2 / MIT.
 
 5. **Qualify “templates” in favor of typed edits and small harnesses**
 
@@ -141,7 +145,7 @@ rejected, or annotated without implying acceptance of the others.
    ([CACE template substitutions](https://cace.readthedocs.io/en/latest/reference/template_format.html),
    [CACE datasheet conditions](https://cace.readthedocs.io/en/latest/reference/datasheet_format.html#conditions)).
 
-   **Annotation:** _
+   **Annotation:** I am not sold on the change, the existing "templates" statements are proably ambiguos or wrong right  now, but they represent a real need that needs to be handled correctly in the manifesto without disrupting its essence, therefore I would avoid using current implementations and defaults as references for changes in the manifesto.
 
 6. **Remove subjective commercial-tool claims from the factual premise**
 
@@ -171,7 +175,7 @@ rejected, or annotated without implying acceptance of the others.
    ([Virtuoso ADE Suite datasheet](https://www.cadence.com/en_US/home/resources/datasheets/virtuoso-ade-suite-ds.html),
    [ADE Assembler product page](https://www.cadence.com/en_US/home/tools/custom-ic-analog-rf-design/circuit-design/virtuoso-ade-assembler.html)).
 
-   **Annotation:** _
+   **Annotation:** You  are wrong about Virtuoso ADE/ Studio, even if they have those features I can tell you their usability is currently very low due to user discomfort due to freezing, resource wasting, complex api. Reimplementing these features would better fit our users needs and also become free of charge.
 
 7. **Bound study dependencies to named artifact relationships**
 
@@ -198,7 +202,7 @@ rejected, or annotated without implying acceptance of the others.
    is a separate product category
    ([mflowgen documentation](https://mflowgen.readthedocs.io/en/stable/)).
 
-   **Annotation:** _
+   **Annotation:** mflowgen is also inspiring, we should not be afraid to introduce a vision of something similar to it in one of our submodules, also CACE has a similar feature even if it is less dynamic. It is a narrow topic if we are looking at the manifesto top level, but it should be handled with care (if people built packages for it they probably had a good reason to do it, and i feel there is the need). I am not sure i understand your arguments about dependency and artifacts could you explain them?
 
 8. **Make the cocotb analogy precise rather than broadly procedural**
 
@@ -225,7 +229,7 @@ rejected, or annotated without implying acceptance of the others.
    ([cocotb mixed-signal documentation](https://docs.cocotb.org/en/development/mixed_signal.html),
    [regulator example](https://docs.cocotb.org/en/v1.8.0/regulator.html)).
 
-   **Annotation:** _
+   **Annotation:** ok
 
 9. **Split competitors from architectural inspirations**
 
@@ -254,7 +258,7 @@ rejected, or annotated without implying acceptance of the others.
    [EDAM API](https://edalize.readthedocs.io/en/latest/edam/api.html),
    [mflowgen documentation](https://mflowgen.readthedocs.io/en/stable/)).
 
-   **Annotation:** _
+   **Annotation:** be careful that tools like CACE have multiple of submodules that may fit this manifesto submodules, the mainfesto has a broader scope because it is a vision, all those tools can provide references, contributions, or even be part entirely of what we are targeting here. I am not expecting they would replace the current concept fully.
 
 10. **Turn the build-worthiness checklist into comparative, scoped tests**
 
@@ -283,7 +287,7 @@ rejected, or annotated without implying acceptance of the others.
     working deck is
     ([PyOPUS documentation](https://spiceopus.si/pyopus/doc/index.html)).
 
-    **Annotation:** _
+    **Annotation:** I already have seen benefits with the existing sidecaredits module, so build worthiness is already a Yes. Analog sim studies is becoming a broader concept built on top of modules, we should be able eventually to map the checklist items to modules/submodules. This composition concept also helps to avoid a single roadmap
 
 11. **Define repeatability at the preparation boundary**
 
@@ -310,4 +314,4 @@ rejected, or annotated without implying acceptance of the others.
     therefore have backend-specific execution semantics
     ([PyOPUS HSPICE adapter](https://spiceopus.si/pyopus/doc/simulator.hspice.html)).
 
-    **Annotation:** _
+    **Annotation:** I would avoid reducing the scope, we can split the reduced scope of a module from the toplevel. However your argument about external data is not valid, we can always track their versions and provenance fro reproducibility or even save a local copy when needed. This is full reproducibility, we might then also add less exacts alternatives as needed that could go under the concept of repeatability or ligther reproducibility.

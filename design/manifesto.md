@@ -1,4 +1,4 @@
-# Analog Sim Studies: A Headless, Modular Vision
+# Analog Sim Studies: A Headless, Python-Native Study System
 
 This is a vision statement, not a description of what exists today. Where it
 says "is", read "aims to be". The implemented scope is currently much narrower
@@ -7,13 +7,18 @@ intentional and is closed module by module.
 
 ## The vision
 
-Build a headless, modular toolkit for defining, expanding, launching, and
-evaluating parameterized analog simulation studies in a reusable way.
+Build our own headless analog-study system in the same broad product category
+as CACE: define studies, expand conditions, prepare simulator inputs, launch
+runs, evaluate measurements and specifications, track dependencies, and retain
+the resulting evidence. It should feel like one coherent tool to a user while
+remaining a composition of narrow Python modules underneath.
 
 Headless is the key word. Plain files and CLI-first interfaces make every
 capability equally usable by a human at a shell, a CI pipeline, and an agent —
 low latency, scriptable, reviewable in version control. No cockpit, no GUI
-project state, no proprietary database holding the authored intent.
+project state, no proprietary database holding the authored intent. Python is
+the authoring and extension language; materialized files and manifests are the
+portable evidence.
 
 ## Why
 
@@ -55,27 +60,61 @@ The concrete pains have not changed:
 - evaluating results in code instead of by hand
 - knowing which results depend on which inputs, and what must be re-run
 
-## Shape: a composition of modules
+## Product direction: a CACE-like tool of our own
 
-This is not one framework. It is an umbrella of modules that are modular,
-explicit, composable, and individually usable — each with a narrow contract
-that stands on its own, exposed through a CLI (and a Python API underneath).
-The vision is the composition; no module needs the others to be useful, and no
-single roadmap has to order them.
+The project is no longer defined by the scope of `sidecar_edits`.
+`sidecar_edits` is the first proven component and preserves an important
+adoption boundary, but the repository-level goal includes the complete
+analog-study lifecycle.
+
+The integrated tool should provide:
+
+- Python-authored studies, conditions, corners, sweeps, Monte Carlo policies,
+  measurements, specifications, and plots
+- explicit expansion from authored intent to individually inspectable run cases
+- preparation of arbitrary existing simulator directories without forcing the
+  circuit into a new canonical representation
+- pluggable simulator, netlisting, extraction, and result adapters
+- local and parallel execution first, with remote execution as an adapter
+- named input/output artifacts and dependency-aware stale detection
+- content-addressed run identity, provenance, resumability, and selective reuse
+- machine-readable results plus concise human reports
+- the same contracts for interactive users, CI, and bounded agentic loops
+
+This is not a compatibility clone of CACE and need not inherit its datasheet
+schema, project layout, placeholder language, or internal names. CACE is both a
+baseline and a source of working ideas. Our differentiator is a Python-native,
+deck-first system in which ordinary simulator inputs remain authoritative,
+every generated case is materialized and inspectable, and dependencies and
+results have explicit artifact identities.
+
+The product-level interface should compose the modules rather than hide them.
+A user may run one end-to-end study through a coherent CLI and Python API, while
+another user may import only preparation, execution, measurement, or dependency
+facilities. Modularity is an architectural property of the product, not a
+reason to avoid building the integrated tool.
+
+## Shape: an integrated tool over composable modules
+
+Each module has a narrow contract, a CLI where that is useful, and a Python API.
+The integrated study layer owns lifecycle composition and shared identities; it
+does not absorb every implementation into a monolith.
 
 The module map, roughly in dependency order:
 
-1. **Preparation — `sidecar_edits` (exists, proven).** Copy an authoritative,
+1. **Study model and expansion.** Define named studies, testbenches, parameter
+   sets, conditions, corners, sweeps, measurements, specifications, and
+   execution policies in normal Python. Expand them deterministically into
+   explicit cases and preparation requests.
+2. **Preparation — `sidecar_edits` (exists, proven).** Copy an authoritative,
    already-working simulator input directory and apply typed, explicit,
    source-traced edits. The simulator-valid files remain authoritative; the
    edits are the reviewable record of intent. This is the project's strongest
    architectural commitment, and it lives in its own module so the commitment
    does not cap the rest of the vision. A working base can also be pure
    scaffolding — something that already runs, later filled with the real data.
-2. **Study definition and expansion.** Named studies, parameter sets, corners,
-   and sweeps expanded into materialized preparation requests.
 3. **Execution.** Headless launching of the expanded runs: local, parallel,
-   or farmed out; no GUI in the loop.
+   or farmed out through replaceable backends; no GUI in the loop.
 4. **Verification-flow dependencies.** Studies and steps declare the named
    artifacts they consume and produce (an extracted netlist, an operating
    point, a measured value), and the flow re-runs only what is stale — the
@@ -86,11 +125,40 @@ The module map, roughly in dependency order:
 5. **Measurement and specification evaluation.** Measures and pass/fail
    checks in Python, with results traceable to the runs and inputs that
    produced them.
+6. **Study record and reporting.** Persist the expanded plan, exact inputs,
+   tool identities, logs, raw-result references, measurements, limits, and
+   summaries as one navigable study record. Reports are projections of this
+   record, not the only copy of the result.
+
+The integrated layer composes these contracts into the CACE-like user
+experience: author once, inspect the expansion, execute, resume, evaluate, and
+understand why each result exists or is stale.
 
 The old build-worthiness checklist maps onto these modules: each item is
 judged inside the module that owns it, against that module's users and
 baseline, not as one monolithic test. Build-worthiness itself is answered —
 `sidecar_edits` already pays for itself in daily use.
+
+## First credible vertical slice
+
+The first integrated milestone should be deliberately smaller than CACE but
+exercise the whole architectural spine:
+
+1. author one OTA study in Python;
+2. expand process, voltage, and temperature conditions into explicit cases;
+3. materialize each case from an existing ngspice directory through
+   `sidecar_edits`;
+4. launch ngspice locally with bounded parallelism;
+5. extract one or two measurements and evaluate named limits;
+6. emit a provenance manifest and machine-readable study result;
+7. rerun without repeating cases whose declared inputs and evaluation code are
+   unchanged.
+
+The milestone is successful when the generated decks, commands, logs,
+measurements, limits, cache decisions, and their relationships can all be
+inspected without hidden framework state. Supporting every simulator, every
+CACE feature, a GUI, adaptive optimization, or a general workflow language is
+not required for this slice.
 
 ## Reproducibility
 
@@ -120,9 +188,12 @@ goal (explicit, inspectable reuse), not to today's implementation defaults.
 Existing tools are references, contributors of ideas, and sometimes candidate
 parts of the composition itself — their submodules may map directly onto ours.
 
-- **CACE** — closest in spirit. Its internals are thin and reimplementable,
-  and some naming is confusing, but its dependency handling across the whole
-  verification flow is excellent and belongs in this scope.
+- **CACE** — the closest product baseline and proof that integrated,
+  file-authored analog characterization is useful. Its conditions,
+  testbenches, execution, measurements, limits, reporting, and verification
+  dependencies should be studied feature by feature. We are building our own
+  Python-native, deck-first member of this category rather than treating CACE
+  as merely an external tool or copying its schema and terminology.
 - **Hdl21 / VLSIR** — Python-native circuits, generators, and parameters done
   well; strong inspiration for authoring ergonomics. VLSIR is an
   implementation detail, not part of this scope.

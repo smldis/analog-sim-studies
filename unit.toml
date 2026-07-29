@@ -1,0 +1,19 @@
+schema_version = 1
+
+[unit]
+id = "analog-sim-studies"
+name = "Analog Sim Studies"
+ontology = "ONTOLOGY.md"
+children = [
+    "sidecar-edits",
+    "spice-canonical",
+    "netlist-decomposition",
+]
+
+[workflows]
+test = ["python", "-m", "pytest", "-q", "integration-tests"]
+
+[docs]
+source = "docs"
+index = "index.md"
+resources = ["MANIFESTO.md"]

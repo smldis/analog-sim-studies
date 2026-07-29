@@ -106,11 +106,11 @@ For copied spreadsheet ranges:
 ```python
 waveforms = pwl.waveforms_from_text(
     """
-    #time	vin	vclk	ireset
-    0	0	0	
-    1n	0.2	1.2	
-    2n		0	1m
-    5n	1.2		0
+    #time\tvin\tvclk\tireset
+    0\t0\t0\t
+    1n\t0.2\t1.2\t
+    2n\t\t0\t1m
+    5n\t1.2\t\t0
     """,
 )
 ```

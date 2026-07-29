@@ -1,8 +1,11 @@
 .cargo-target/
 build/
-src/sidecar_edits/bin/
+sidecar-edits/src/sidecar_edits/bin/
 *.egg-info/
 prototype/sidecar_edits/out/
 __pycache__/
 docs/_build/
+sidecar-edits/docs/_build/
+spice-canonical/docs/_build/
+netlist-decomposition/docs/_build/
 sidecar_edits.edit.html

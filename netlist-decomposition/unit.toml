@@ -1,0 +1,14 @@
+schema_version = 1
+
+[unit]
+id = "netlist-decomposition"
+name = "Netlist Decomposition"
+ontology = "ONTOLOGY.md"
+children = []
+
+[workflows]
+test = ["python", "-m", "pytest", "-q", "tests"]
+
+[docs]
+source = "docs"
+index = "index.md"

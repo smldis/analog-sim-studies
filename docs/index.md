@@ -1,74 +1,20 @@
 # Analog Sim Studies
 
-Prototype tooling for building repeatable analog simulation runs from a base
-directory and a small Python sidecar.
-
-The renderer executes an edit file, copies the base tree, applies typed edit
-operations, and writes one or more concrete run directories. The suggested edit
-file name is `edits.py`, and the interface is plain Python while still providing
-source-location error reports.
+This is the project-wide composition guide. The manifesto defines the intended
+system; the root ontology and architecture note describe the implemented
+boundaries. Child documentation below is composed programmatically from the
+sources owned by each immediate unit.
 
 ```{toctree}
-:maxdepth: 2
-:caption: Contents
+:maxdepth: 3
+:caption: Composition
 
-user-guide
-examples
-api
-design/edits-api
-design/manifesto
+architecture
+manifesto
+vision/manifesto-challenges
+vision/manifesto-change-catalog
+_composed-children
 ```
 
-## Minimal Example
-
-```python
-from sidecar_edits import edits
-
-BASE_DIR = "base"
-
-EDITS = [
-    edits.replace(
-        path="input.scs",
-        old="parameters corner=seed",
-        new="parameters corner=tt",
-    ),
-]
-```
-
-## Quick Start
-
-Install the package in editable mode:
-
-```bash
-python -m pip install -e .
-```
-
-Render the basic example:
-
-```bash
-sidecar-render examples/basic/edits.py /tmp/sidecar_example_run
-```
-
-This repository includes prebuilt HTML documentation under `docs/_build/html/`.
-Regenerate it only when updating the documentation:
-
-```bash
-python -m pip install -e ".[docs]"
-python -m sphinx -b html docs docs/_build/html
-```
-
-## Main Sections
-
-- [User Guide](user-guide.md): how to author an edit file, format parameters,
-  inject generated sources, and read errors.
-- [Examples](examples.md): runnable edit files included in the repository,
-  including Excel-backed PWL source generation.
-- [API Reference](api): generated signatures and docstrings for the edits API
-  and PWL table helpers.
-- [Design Notes](design/edits-api.md): implementation model and maintainer
-  constraints for the edits API.
-
-```{note}
-This project is intentionally small and text-first. It favors explicit,
-reviewable edits over a full simulator netlist model.
-```
+The generated child page is created by `python composition.py docs`; it is not
+maintained source.

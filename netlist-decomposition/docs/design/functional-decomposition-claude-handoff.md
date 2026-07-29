@@ -1,9 +1,10 @@
 # Claude Code Handoff: Paper-Aligned Transistor-Stack Decomposition
 
-You are working in:
+This handoff was executed from the Analog Sim Studies repository root. The
+decomposition unit now lives at:
 
 ```text
-/home/smldis/working/AI/analog-sim-studies
+netlist-decomposition/
 ```
 
 Upgrade the existing functional-block decomposition prototype so that its HL1
@@ -11,10 +12,9 @@ transistor classification and transistor-stack recognition follow Abel et al.
 (2021), *A Functional Block Decomposition Method for Automatic Op-Amp Design*,
 more faithfully.
 
-The paper is available locally at:
+The paper was supplied from a local Zotero library as:
 
 ```text
-/home/smldis/Zotero/storage/A43BWH38/
 Abel et al. - 2021 - A Functional Block Decomposition Method for Automatic Op-Amp Design.pdf
 ```
 
@@ -239,8 +239,7 @@ small fixture inside the test file and give a manual verification command.
 After tests pass, run the decomposition against:
 
 ```text
-/home/smldis/working/AI/sky130-analog-workspace/
-canonical-index/analog_frontend_hier_op.canonical.txt
+../sky130-analog-workspace/canonical-index/analog_frontend_hier_op.canonical.txt
 ```
 
 The corresponding canonical generation pipeline now supports an explicitly
@@ -254,8 +253,7 @@ sky130_fd_pr__pfet_01v8 -> pmos
 using:
 
 ```text
-/home/smldis/working/AI/sky130-analog-workspace/
-canonical/sky130_device_types.json
+../sky130-analog-workspace/canonical/sky130_device_types.json
 ```
 
 The existing OTA should at least identify:
@@ -290,9 +288,9 @@ Avoid claiming that the full Abel et al. decomposition is implemented.
 Run at minimum:
 
 ```bash
-cd /home/smldis/working/AI/analog-sim-studies
+cd netlist-decomposition
 python -m pytest -q tests/test_netlist_decomposition.py
-python -m pytest -q
+python -m pytest -q tests
 git diff --check
 ```
 

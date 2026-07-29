@@ -2,7 +2,7 @@
 
 Runs the real extraction pipeline from the sibling sky130-analog-workspace
 (no rendered-text parsing) and verifies the expectations recorded in
-design/functional-decomposition-abel2021.md:
+docs/design/functional-decomposition-abel2021.md:
 
     python scripts/verify_ota_decomposition.py [workspace-dir]
 
@@ -16,8 +16,8 @@ import sys
 from pathlib import Path
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT / "src"))
+UNIT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(UNIT_ROOT / "src"))
 
 from spice_canonical import canonical_netlist  # noqa: E402
 from netlist_decomposition import decompose, suppress_false_stacks  # noqa: E402
@@ -25,7 +25,9 @@ from netlist_decomposition import decompose, suppress_false_stacks  # noqa: E402
 
 def main() -> int:
     workspace = Path(
-        sys.argv[1] if len(sys.argv) > 1 else REPO_ROOT.parent / "sky130-analog-workspace"
+        sys.argv[1]
+        if len(sys.argv) > 1
+        else UNIT_ROOT.parents[1] / "sky130-analog-workspace"
     )
     netlist = canonical_netlist.from_file(
         workspace / "circuits" / "analog_frontend_hier_op.spice",

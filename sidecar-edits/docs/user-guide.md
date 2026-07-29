@@ -176,11 +176,8 @@ call chain.
 
 ## Local Documentation
 
-The repository includes prebuilt HTML documentation under `docs/_build/html/`.
-Open `docs/_build/html/index.html` directly to read it without installing the
-documentation toolchain.
-
-Regenerating the HTML is an optional maintainer step:
+Generated HTML is intentionally ignored. Build it reproducibly from the
+unit-owned source:
 
 ```bash
 python -m pip install -e ".[docs]"
@@ -192,3 +189,6 @@ Preview it with:
 ```bash
 python -m http.server --directory docs/_build/html 8000
 ```
+
+From the parent repository, `python composition.py docs` instead builds the
+root glue and all immediate child documentation into `build/docs/html/`.

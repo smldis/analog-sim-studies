@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "netlist-decomposition"
+version = "0.1.0"
+description = "Functional MOS block recognition over canonical SPICE circuits."
+requires-python = ">=3.10"
+dependencies = ["spice-canonical>=0.1.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

@@ -1,6 +1,6 @@
 # Catalog of Proposed Changes to the Manifesto
 
-This catalog proposes corrections to [the manifesto](../MANIFESTO.md), not new
+This catalog proposes corrections to [the manifesto](../manifesto.md), not new
 product goals. Each entry is deliberately separable so it can be accepted,
 rejected, or annotated without implying acceptance of the others.
 
@@ -116,7 +116,7 @@ rejected, or annotated without implying acceptance of the others.
    ([PyOPUS performance-evaluator tutorial](https://spiceopus.si/pyopus/download/0.11.1/docsrc/_build/html/tutorial.evaluation.02-evaluator.html)).
 
    **Annotation:** the proposed change is weird sometimes I would  use a base just to have something to start with that execute without errors already, but later filled with the actual data to be used. we should avoid inserting these limit in the manifesto now at this early phase otherwise we risk missing opportunities. This concept of scoping and opportunitism  could be added to the manifesto, but i would try to avoid polluting the actual sections that should target clarity over verboseness. Maybe a final thoughs section or some other alternative to it fits the job.
-   
+
    For Pyopus i really like the concept, we should avoid it due to licensing poisoning, if we would want to look at the source code we should ask the mantainer if he could consider releasing under APACHE2 / MIT.
 
 5. **Qualify “templates” in favor of typed edits and small harnesses**

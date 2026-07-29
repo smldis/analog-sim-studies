@@ -1,298 +1,94 @@
 # Analog Sim Studies
 
-The design note for this package lives in [MANIFESTO.md](MANIFESTO.md).
-The graph-oriented Eldo/ngspice extraction format is specified in
-[design/canonical-netlist-representation.md](design/canonical-netlist-representation.md).
+Analog Sim Studies is a composition root for small, independently useful analog
+design tools. The governing direction is [MANIFESTO.md](MANIFESTO.md), while
+[ONTOLOGY.md](ONTOLOGY.md) records the responsibilities implemented here.
 
-## Layout
+## Owned units
 
-- `src/sidecar_edits/` contains the simulation-input preparation package
-- `src/netlist_decomposition/` contains structural functional-block tagging
-- `examples/basic/` contains a small runnable edit-file example
-- `examples/apply_patch/` contains the fuller example with `apply_patch`
-- `examples/param_matrix/` contains a named parameter-set plus matrix example
-- `examples/pwl_excel/` contains an Excel-backed PWL source generation example
-- `tests/` contains the pytest coverage for the current behavior
-- `design/` contains the project note and high-level intent
+- [`sidecar-edits/`](sidecar-edits/) prepares simulation directories through a
+  typed Python edit API and owns its examples and Sphinx user/API guide.
+- [`spice-canonical/`](spice-canonical/) extracts a canonical graph-oriented
+  representation from Eldo and ngspice netlists.
+- [`netlist-decomposition/`](netlist-decomposition/) recognizes functional MOS
+  blocks and explicitly depends on `spice-canonical`.
 
-## Install From A Fresh Workspace
+These stable capability names are direct children instead of entries in a
+generic `src`, `components`, or `packages` bucket. Each child owns its source,
+packaging, tests, docs, scripts, README, and ontology. Root `docs/` and
+`integration-tests/` contain only composition glue, project-wide material, and
+cross-unit checks.
 
-Requirements:
+## Fresh developer setup
 
-- Python 3.10 or newer
-- a C compiler available as `cc`
-- `patch` and an installed `apply_patch` executable on `PATH` for `examples/apply_patch/`
-
-Clone the repository, activate any virtual environment you want to use, then
-install the package:
+Python 3.10 or newer and a C compiler available as `cc` are required. From a
+fresh checkout:
 
 ```bash
-git clone git@github.com:smldis/analog-sim-studies.git
-cd analog-sim-studies
 python3 -m venv ../eda-venv
 . ../eda-venv/bin/activate
-python -m pip install --upgrade pip setuptools wheel
-python -m pip install -e .
+python -m pip install --upgrade pip
+python -m pip install -r requirements-dev.txt
 ```
 
-The virtual environment does not need to live inside this repository. Once it is
-activated, use `python`, `pip`, and `sidecar-render` directly. The editable
-install points the CLI at the source under `src/sidecar_edits/`, so Python
-source changes are picked up without reinstalling. The native `extract_subckts`
-helper is compiled into `src/sidecar_edits/bin/` on first use when it is missing.
-If you change the C helper in `src/sidecar_edits/native/`, remove the old helper
-or reinstall before running again.
+There is deliberately no root Python distribution, so `pip install -e .` is
+replaced by the explicit child bootstrap above. It installs the three editable
+distributions together and preserves the imports `sidecar_edits`,
+`spice_canonical`, and `netlist_decomposition`, plus the `sidecar-render` and
+`spice-canonical` commands. Individual package installation is documented in
+each child README.
 
-If you do not want an editable install, use:
+## Recursive composition
+
+Every composition node uses the same small `unit.toml` contract: identity,
+ontology, immediate child paths, an optional owned test command, and an optional
+documentation source. [`composition.py`](composition.py) validates that contract
+without absolute paths, orders children by stable ID, and can operate on any
+node selected with `--root`.
 
 ```bash
-python -m pip install .
+python composition.py tree
+python composition.py test
+python composition.py docs
 ```
 
-## Run The Example
+`test` walks children postorder, running each child's owned tests before the
+root integration checks. Failures stop composition and retain the child's exit
+status. `docs` creates an ignored, generated Sphinx source view under `build/`;
+it links each immediate child's authored docs, adds the root-owned pages, and
+builds `build/docs/html/`. No child documentation is copied into maintained root
+source.
 
-With the virtual environment activated:
+This proves the convention at the root and one child level. The manifest and
+tree loader are recursive, but no generic plugin framework or nested repository
+machinery is introduced.
+
+## Common workflows
+
+Run a single unit in its owned context after the developer bootstrap:
 
 ```bash
-sidecar-render \
-  examples/basic/edits.py \
-  /tmp/sidecar_example_run
+cd spice-canonical
+python -m pytest -q tests
+python -m build --wheel
 ```
 
-The basic example copies `examples/basic/base/` into the output directory, then applies
-the declared edit steps. It uses `extract_subckts`, `copy_file`, and
-`replace`; other operations are listed as a comment in `examples/basic/edits.py`.
-
-The fuller example also exercises `extract_subckts`, `regex_replace`, `patch`,
-and `apply_patch`:
+Build all documentation:
 
 ```bash
-sidecar-render \
-  examples/apply_patch/edits.py \
-  /tmp/sidecar_apply_patch_run
+python composition.py docs
+python -m http.server --directory build/docs/html 8000
 ```
 
-Because this example defines one named parameter set, it renders
-`/tmp/sidecar_apply_patch_run_tt_1v2` by default.
+Run sidecar examples and native-helper flows from `sidecar-edits/`; run the
+canonical corpus verifier from `spice-canonical/`; and run decomposition
+dependency generation or OTA verification from `netlist-decomposition/`.
+Exact commands and external prerequisites live in the owning README.
 
-The parameter-set and matrix example renders all named process corners and all
-explicit voltage/temperature combinations:
+## Adding another unit
 
-```bash
-sidecar-render \
-  examples/param_matrix/edits.py \
-  /tmp/sidecar_matrix_run
-```
-
-That creates paths such as:
-
-```text
-/tmp/sidecar_matrix_run_tt/vdd_0p90_temp_c_m40/
-/tmp/sidecar_matrix_run_tt/vdd_1p20_temp_c_125/
-/tmp/custom_ss_sweep/vdd_0p90_temp_c_m40/
-```
-
-The Excel PWL example reads `waveforms/startup.xlsx`, creates
-`generated/pwl_sources.inc`, and appends an include statement to `input.scs`:
-
-```bash
-sidecar-render \
-  examples/pwl_excel/edits.py \
-  /tmp/sidecar_pwl_excel_run
-```
-
-The `apply_patch` operation uses the installed `apply_patch` executable from
-`PATH` by default. If it is missing, the renderer raises a package-level
-`EditError` with an installation hint; the example does not call
-`cargo` or define tool-specific environment variables.
-
-Every edit operation may include an optional `description`. It should describe
-the intended edit, for example `add run label to notes`, not the command or tool
-used to perform it. Required edits fail by default; set `optional: True` only
-when a skipped edit is acceptable.
-
-Edit operations are created through the `sidecar_edits.edits` namespace:
-
-```python
-from sidecar_edits import edits
-
-EDITS = [
-    edits.extract_subckts(
-        description="split reusable subcircuits from main netlist",
-        input="input.scs",
-        output_main="input_main.scs",
-        output_subckts="subckts.inc",
-    ),
-    edits.copy_file(
-        path="assets/model_override.scs",
-        to="include/model_override.scs",
-    ),
-    edits.write_file(
-        path="generated/pwl_sources.inc",
-        content="Vstim in 0 PWL(0 0 1n {vdd})\n",
-        description="generate PWL source include",
-    ),
-    edits.append_to_file(
-        path="input_main.scs",
-        content='include "generated/pwl_sources.inc"\n',
-        description="append generated PWL include",
-    ),
-    edits.insert_series_source_at_instance_net(
-        path="input_main.scs",
-        instance="X_SIDE_INJECT_001",
-        net="in",
-        internal_net="in__sidecar_inj",
-        source_line="Vinj {net} {internal_net} PULSE(0 1.2 0 10p 10p 4n 8n)",
-        description="inject pulse on unique instance input",
-    ),
-    edits.replace(
-        path="input_main.scs",
-        old='include "/seed/netlists/rc_filter.scs"',
-        new='include "{netlist_path}"',
-    ),
-]
-```
-
-These helpers are regular typed Python functions with docstrings, so editor
-autocomplete and `help(sidecar_edits.edits.replace)` can show the available
-arguments. Raw dictionary edit entries are not supported by the renderer.
-
-Parameters are defined inside the edit file, not assembled on the command line.
-The suggested filename is `edits.py`. For a single run, use inline common
-parameters:
-
-```python
-COMMON_PARAMS = {
-    "netlist_path": "/work/netlists/rc_filter_corner_tt.scs",
-}
-```
-
-For multiple named runs, add `PARAM_SETS`. Rendering all named groups is the
-default; use `--run <name>` one or more times to render a subset. By default,
-`sidecar-render edits.py /tmp/run` writes named groups next to the requested path
-as `/tmp/run_<name>`. A group can override that with `targetdir`.
-
-```python
-COMMON_PARAMS = {
-    "simulator_cmd": "spectre",
-}
-
-PARAM_SETS = [
-    {
-        "name": "tt_1v2",
-        "description": "typical corner at 1.2 V",
-        "params_file": "params.json",
-    },
-    {
-        "name": "ss_0v9",
-        "targetdir": "custom_ss_run",
-        "params": {"netlist_path": "/work/netlists/rc_filter_ss.scs", "vdd": "0.90"},
-    },
-]
-```
-
-To render every combination of a few explicit axes, add `PARAM_MATRIX`.
-`PARAM_MATRIX` is applied after each selected parameter set, so matrix values
-override common or set-specific values with the same key. Matrix combinations are
-rendered one level deeper:
-
-```python
-PARAM_MATRIX = {
-    "vdd": ["0.90", "1.20"],
-    "temp_c": [27, 125],
-}
-```
-
-For `sidecar-render edits.py /tmp/run --run tt_1v2`, the output layout is:
-
-```text
-/tmp/run_tt_1v2/vdd_0p90_temp_c_27/
-/tmp/run_tt_1v2/vdd_0p90_temp_c_125/
-/tmp/run_tt_1v2/vdd_1p20_temp_c_27/
-/tmp/run_tt_1v2/vdd_1p20_temp_c_125/
-```
-
-If the selected parameter set has `targetdir`, that directory replaces
-`/tmp/run_tt_1v2` as the parent directory. The matrix syntax intentionally only
-accepts lists; generate sweep lists directly in Python if needed.
-
-Path-like fields expand environment variables such as `$PDK_ROOT` and
-`${RUN_ROOT}`. This applies to `BASE_DIR`, `COMMON_PARAMS_FILE`, per-group
-`params_file`, the CLI output path, `targetdir`, edit target paths, `copy_file`
-source/destination paths, `extract_subckts` file fields, and command arguments.
-Replacement text is left as normal text, so simulator-side environment variables
-can still be preserved intentionally.
-
-Run the tests:
-
-```bash
-python -m pip install pytest
-python -m pytest -q
-```
-
-## Canonical Netlist Extraction
-
-Convert an Eldo netlist into the canonical net and device tables with:
-
-```bash
-spice-canonical input.spi --output canonical.txt
-```
-
-Select ngspice explicitly for its title, comment, control-block, and device
-syntax:
-
-```bash
-spice-canonical input.cir --format ngspice --output canonical.txt
-```
-
-Use `--strict` when unresolved subcircuits or unsupported proprietary devices
-should make extraction fail. The Python API is available from
-`spice_canonical.canonical_netlist`. File extraction recursively expands `.INCLUDE`
-and `.INC` directives, resolving relative paths from each including file.
-`.LIB` model libraries remain opaque. For model files referenced through
-`.INCLUDE`, use repeatable `--stop-include GLOB` boundaries and provide named
-pin signatures with `--external-subcircuits interfaces.json`. The JSON file
-maps external subcircuit names to pin arrays, for example
-`{"vendor_nfet": ["d", "g", "s", "b"]}`.
-
-To verify compatibility against checksum-pinned examples from the official
-ngspice repository, with ngspice installed:
-
-```bash
-python scripts/verify_ngspice_corpus.py
-```
-
-## Local Documentation
-
-The repository includes prebuilt static HTML documentation under
-`docs/_build/html/`. Open `docs/_build/html/index.html` directly to read it
-without installing documentation dependencies.
-
-Regenerating the documentation is an optional maintainer step. Install the
-documentation extras only when you need to rebuild the generated HTML:
-
-```bash
-python -m pip install -e ".[docs]"
-python -m sphinx -b html docs docs/_build/html
-```
-
-Preview the generated HTML with:
-
-```bash
-python -m http.server --directory docs/_build/html 8000
-```
-
-The Sphinx build imports project modules for API reference generation, so only
-run it from a trusted checkout. Normal package installation and test runs do not
-need the documentation extras.
-
-## Manual Build Flow
-
-For a build without installing into the environment:
-
-```bash
-python setup.py build_py
-PYTHONPATH=build/lib python -m sidecar_edits.render \
-  examples/basic/edits.py \
-  /tmp/sidecar_example_run_manual
-```
+Create a direct directory with `README.md`, `ONTOLOGY.md`, and `unit.toml`; keep
+its source, packaging, tests, docs, examples, and scripts there; then add only
+its relative directory name to this node's `unit.children`. Give the child its
+own workflow and docs contracts. Parent integration tests should exercise only
+the promoted cross-unit contract, never absorb the child's unit suite.

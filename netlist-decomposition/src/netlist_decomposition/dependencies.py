@@ -326,4 +326,9 @@ def render_dependency_table(
 
 
 def default_output_path() -> Path:
-    return Path(__file__).resolve().parents[2] / "design" / "functional-decomposition-dependencies.md"
+    return (
+        Path(__file__).resolve().parents[2]
+        / "docs"
+        / "design"
+        / "functional-decomposition-dependencies.md"
+    )

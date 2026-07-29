@@ -1,0 +1,7 @@
+-e ./spice-canonical
+-e ./netlist-decomposition
+-e ./sidecar-edits[docs]
+build
+pytest
+setuptools>=69
+wheel

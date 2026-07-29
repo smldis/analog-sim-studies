@@ -1,6 +1,6 @@
 # Catalog of Proposed Changes to the Manifesto
 
-This catalog proposes corrections to [the manifesto](manifesto.md), not new
+This catalog proposes corrections to [the manifesto](../MANIFESTO.md), not new
 product goals. Each entry is deliberately separable so it can be accepted,
 rejected, or annotated without implying acceptance of the others.
 

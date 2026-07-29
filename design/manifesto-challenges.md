@@ -1,6 +1,6 @@
 # Manifesto Challenges: Competitive and Architectural Analysis
 
-This note tests the claims in [the manifesto](manifesto.md) against existing
+This note tests the claims in [the manifesto](../MANIFESTO.md) against existing
 tools and against realistic analog-design practice. It is a companion analysis,
 not a replacement roadmap. The repository's current implemented scope is much
 narrower than the manifesto: `sidecar_edits` copies an existing simulator input

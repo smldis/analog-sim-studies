@@ -1,6 +1,6 @@
 # Analog Sim Studies
 
-The design note for this package lives in [design/manifesto.md](design/manifesto.md).
+The design note for this package lives in [MANIFESTO.md](MANIFESTO.md).
 The graph-oriented Eldo/ngspice extraction format is specified in
 [design/canonical-netlist-representation.md](design/canonical-netlist-representation.md).
 

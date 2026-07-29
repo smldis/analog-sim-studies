@@ -2,7 +2,7 @@
 
 This is a vision statement, not a description of what exists today. Where it
 says "is", read "aims to be". The implemented scope is currently much narrower
-(see [the challenges analysis](manifesto-challenges.md)); that gap is
+(see [the challenges analysis](design/manifesto-challenges.md)); that gap is
 intentional and is closed module by module.
 
 ## The vision

@@ -1,2 +1,2 @@
-```{include} ../../design/manifesto.md
+```{include} ../../MANIFESTO.md
 ```

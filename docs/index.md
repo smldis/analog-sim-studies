@@ -11,6 +11,7 @@ sources owned by each immediate unit.
 
 architecture
 manifesto
+vision/deferred-study-runtime-research
 vision/manifesto-challenges
 vision/manifesto-change-catalog
 _composed-children

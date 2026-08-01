@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -11,6 +12,17 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import composition
+
+
+DEVELOPMENT_STATE = re.compile(
+    r"^\*\*Development state:\*\*\s*`([^`]+)`\s*$", re.MULTILINE
+)
+
+
+def walk_units(unit: composition.Unit):
+    yield unit
+    for child in unit.children:
+        yield from walk_units(child)
 
 
 def write_unit(
@@ -108,6 +120,17 @@ def test_repository_tree_has_three_direct_units_and_no_root_src() -> None:
     assert not (ROOT / "src").exists()
     assert not (ROOT / "tests").exists()
     assert all(child.ontology.is_file() for child in unit.children)
+
+
+def test_every_ontology_node_is_a_prototype_with_adjacent_agent_guidance() -> None:
+    units = tuple(walk_units(composition.load_unit(ROOT)))
+
+    for unit in units:
+        ontology_text = unit.ontology.read_text(encoding="utf-8")
+        match = DEVELOPMENT_STATE.search(ontology_text)
+        assert match, f"{unit.ontology}: missing Development state marker"
+        assert match.group(1) == "prototype", unit.ontology
+        assert (unit.ontology.parent / "AGENTS.md").is_file(), unit.root
 
 
 def test_netlist_decomposition_consumes_canonical_contract() -> None:

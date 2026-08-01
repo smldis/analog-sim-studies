@@ -19,6 +19,13 @@ packaging, tests, docs, scripts, README, and ontology. Root `docs/` and
 `integration-tests/` contain only composition glue, project-wide material, and
 cross-unit checks.
 
+All current ontology nodes have development state `prototype`. Here prototype
+means a useful runnable form that lets the repository test hypotheses about its
+architecture, features, and boundaries and revise them from observed evidence;
+it does not mean careless or merely aspirational work. Each `ONTOLOGY.md`
+records that state and has an adjacent `AGENTS.md`, so filesystem instruction
+scope mirrors semantic scope.
+
 ## Fresh developer setup
 
 Python 3.10 or newer and a C compiler available as `cc` are required. From a
@@ -87,8 +94,11 @@ Exact commands and external prerequisites live in the owning README.
 
 ## Adding another unit
 
-Create a direct directory with `README.md`, `ONTOLOGY.md`, and `unit.toml`; keep
-its source, packaging, tests, docs, examples, and scripts there; then add only
-its relative directory name to this node's `unit.children`. Give the child its
-own workflow and docs contracts. Parent integration tests should exercise only
-the promoted cross-unit contract, never absorb the child's unit suite.
+Create a direct directory with `README.md`, `ONTOLOGY.md`, `AGENTS.md`, and
+`unit.toml`; keep its source, packaging, tests, docs, examples, and scripts
+there; then add only its relative directory name to this node's
+`unit.children`. Record development state in its ontology and keep its local
+agent guidance concise by inheriting project guidance and stating only the
+unit-specific boundary. Give the child its own workflow and docs contracts.
+Parent integration tests should exercise only the promoted cross-unit
+contract, never absorb the child's unit suite.

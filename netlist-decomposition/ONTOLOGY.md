@@ -6,6 +6,18 @@ Netlist Decomposition recognizes functional MOS structures in a canonical
 SPICE circuit using explicit tagging sets, dependency metadata, and composition
 passes aligned in part with Abel, Neuner, and Graeb (2021).
 
+## Mode of being
+
+**Development state:** `prototype`
+
+Its present runnable rules study whether explicit, inspectable structural
+evidence can support useful functional interpretations over the canonical
+netlist contract. Matches, false positives, missed structures, and dependency
+friction may justify revisions to rules, passes, the sibling contract, this
+unit's boundary, or its ontology. The current paper alignment and tag taxonomy
+are evidence-bearing implementations rather than a claim of completeness;
+changes should retain explainable outputs and proportionate regression tests.
+
 ## Current contracts
 
 - Python API: `netlist_decomposition`, including `decompose` and

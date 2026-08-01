@@ -22,7 +22,20 @@ Containment and traversal order do not imply inheritance or precedence.
 Ontologies state semantic responsibility and explicit contributions; manifests
 state executable composition contracts.
 
-To add a unit, give it a stable capability directory, README, ontology, manifest,
-and any locally owned source/test/docs trees. Declare its directory in its
-parent's `unit.children`, then add only cross-unit behavior to the parent's
-integration area.
+Every current ontology also records `Development state: prototype`. Prototype
+is the repository's self-study mode: each useful runnable unit tests hypotheses
+about its architecture, features, and boundary, and observed consequences may
+revise both implementation and ontology. This favors learning and vertical
+slices without relaxing inspectability, explicit contracts, proportionate
+tests, reversibility, or honest limitations.
+
+Each ontology node owns an adjacent `AGENTS.md`; its filesystem scope therefore
+mirrors the ontology's semantic scope. The root file holds shared project
+guidance, while child files inherit it and add only their unit-specific
+ownership boundary.
+
+To add a unit, give it a stable capability directory, README, ontology,
+concise adjacent `AGENTS.md`, manifest, and any locally owned source/test/docs
+trees. Record its development state, declare its directory in its parent's
+`unit.children`, then add only cross-unit behavior to the parent's integration
+area.

@@ -6,6 +6,18 @@ SPICE Canonical extracts a deterministic structural view of Eldo and ngspice
 decks: circuits, devices, nets, hierarchy, and diagnostics suitable for graph
 consumers. The simulator deck remains authoritative.
 
+## Mode of being
+
+**Development state:** `prototype`
+
+Its runnable parser studies how much deterministic, graph-oriented structure
+can be exposed across real Eldo and ngspice inputs while leaving the simulator
+deck authoritative and unsupported meaning visible in diagnostics. Corpus
+friction, consumer needs, and parsing failures are evidence for changing the
+representation, syntax boundary, or ontology. Compatibility should grow from
+concrete decks and consumers, with inspectable output and focused tests, not
+from an attempt at speculative or exhaustive dialect coverage.
+
 ## Current contracts
 
 - Python API: `spice_canonical.canonical_netlist`.

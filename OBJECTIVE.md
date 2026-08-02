@@ -18,3 +18,7 @@ execution, direct LSF as the primary remote path, pooled LSF as a complementary
 path, and the distinction between transient execution handles and durable
 records. Do not implement code during this run and do not propose changes to
 the protected project manifesto.
+
+Preserve everything in the current main before
+`## Active development inquiry: rebuild ASS Flow` byte-for-byte. Proposals
+may modify only that section and its descendants.

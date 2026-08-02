@@ -12,8 +12,8 @@ design tools. The governing direction is [MANIFESTO.md](MANIFESTO.md), while
   representation from Eldo and ngspice netlists.
 - [`netlist-decomposition/`](netlist-decomposition/) recognizes functional MOS
   blocks and explicitly depends on `spice-canonical`.
-- [`study-flow/`](study-flow/) experiments with an ASS-owned preparation and
-  artifact contract executed through local Dask or Dask Jobqueue on LSF.
+- [`study-flow/`](study-flow/) experiments with generic operation, attempt, and
+  artifact contracts executed through local Dask or Dask Jobqueue on LSF.
 
 These stable capability names are direct children instead of entries in a
 generic `src`, `components`, or `packages` bucket. Each child owns its source,
@@ -92,8 +92,8 @@ python -m http.server --directory build/docs/html 8000
 Run sidecar examples and native-helper flows from `sidecar-edits/`; run the
 canonical corpus verifier from `spice-canonical/`; and run decomposition
 dependency generation or OTA verification from `netlist-decomposition/`. Run
-the bounded Dask map-reduce experiment with `ass-flow-demo`. Exact commands and
-external prerequisites live in the owning README.
+the domain-neutral Dask map-reduce experiment with `ass-flow-demo`. Exact
+commands and external prerequisites live in the owning README.
 
 ## Adding another unit
 

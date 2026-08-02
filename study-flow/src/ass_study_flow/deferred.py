@@ -1,4 +1,4 @@
-"""Named seams that the prototype deliberately leaves unresolved."""
+"""Named seams that the generic prototype deliberately leaves unresolved."""
 
 from __future__ import annotations
 
@@ -16,9 +16,9 @@ class DeferredCapability:
 
 DEFERRED_CAPABILITIES = (
     DeferredCapability(
-        "real-operation-adapters",
-        "Replace simulation and measurement placeholders.",
-        "How should Sidecar, simulators, parsers, and CACE-shaped operations bind?",
+        "real-operation-bindings",
+        "Replace demonstration bindings with independently owned operations.",
+        "How should ASS components expose callable operations without a global plugin framework?",
     ),
     DeferredCapability(
         "durable-reconciliation",
@@ -28,31 +28,31 @@ DEFERRED_CAPABILITIES = (
     DeferredCapability(
         "artifact-identity-staleness",
         "Identify every meaningful input and published artifact.",
-        "Which code, PDK, model, environment, and configuration changes stale work?",
+        "Which code, data, environment, and configuration changes make work stale?",
     ),
     DeferredCapability(
         "evidence-promotion",
-        "Separate completed attempts from accepted engineering evidence.",
-        "Which validators and actors may promote a result?",
+        "Separate completed operation outputs from accepted engineering evidence.",
+        "Which validators and actors may promote an output?",
     ),
     DeferredCapability(
         "executor-routing",
-        "Choose local, direct LSF, or Dask execution per invocation.",
-        "When is a persistent Dask worker inferior to one visible LSF job?",
+        "Choose controller, direct batch, or Dask execution per invocation.",
+        "When is a persistent worker inferior to one scheduler-visible job?",
     ),
     DeferredCapability(
         "policy-and-control",
-        "Bound retries, cancellation, concurrency, licences, and budgets.",
+        "Bound retries, cancellation, concurrency, scarce resources, and budgets.",
         "Which controls belong to authored policy versus an executor adapter?",
     ),
     DeferredCapability(
         "adaptive-planning",
-        "Extend a study after inspecting explicit evidence.",
+        "Extend a flow after inspecting explicit evidence.",
         "How should new plan increments retain their decision history?",
     ),
     DeferredCapability(
-        "domain-profiles",
-        "Add analog and CACE vocabulary without narrowing the generic envelope.",
-        "Which fields belong in StudySpec and which in a characterization profile?",
+        "operation-discovery",
+        "Resolve stable operation identities across composed ASS components.",
+        "When does direct Python binding become insufficient for discovery and versioning?",
     ),
 )

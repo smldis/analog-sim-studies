@@ -3,10 +3,10 @@
 ## Purpose and scope
 
 Study Flow is a runnable experiment in applying a replaceable Dask execution
-substrate to ASS-owned study intent. It materializes an inspectable local
-preparation, maps two small `simulate -> measure` flows, reduces their
-measurements, and preserves the resulting demonstration artifacts independently
-of live Dask Futures.
+substrate to an engine-neutral, inspectable plan. It records one local
+preparation, maps an injected chain of ordinary Python operations over two
+generic work items, reduces their outputs, and preserves attempts and artifacts
+independently of live Dask Futures.
 
 The current backend boundary includes an in-process local Dask cluster and a
 configuration factory for Dask Jobqueue on LSF. This is evidence about a
@@ -17,43 +17,50 @@ engine.
 
 **Development state:** `prototype`
 
-Its present runnable form studies whether a locally authored dependency,
-derived task plan, mapped execution, reduction, and filesystem publication can
-remain intelligible while Dask supplies temporary scheduling. Running the same
-shape locally and on an available LSF farm should expose useful friction around
-networking, environments, attempt publication, and executor boundaries.
-Failures and awkwardness are evidence for revising the component or rejecting
-the dependency; the current data classes, graph shape, and backend API are not
-presumed final.
+Its present form studies whether authored inputs, port-declared operations,
+resolved invocations, execution attempts, and output artifacts remain
+intelligible while Dask supplies temporary scheduling. The same contract can
+run unrelated operation bindings without changing the executor. Running it on
+an available LSF farm should expose further friction around networking,
+environments, artifact publication, and executor boundaries.
+
+The graph shape remains deliberately bounded: one shared input, one mapped
+operation chain, and one reduction. The current contracts and backend API are
+not presumed final.
 
 ## Current contracts
 
-- Python API: `ass_study_flow`, including the demonstration specification,
-  local preparation, Dask submission, local execution, and LSF cluster
-  configuration.
-- CLI: `ass-flow-demo`, which runs the two-case demonstration locally by
-  default and can target an explicitly configured LSF cluster.
-- Authored input: a small immutable `StudySpec`; the reference instance has
-  exactly two cases and is snapshotted as `study-spec.json` for each run.
-- Derived plan: `plan.json`, materialized before Dask work is submitted.
-- Materialized outputs: one study-spec snapshot, one preparation manifest,
-  per-attempt simulation and measurement JSON, and one reduced `summary.json`.
-- Executor state: Dask Futures and LSF identifiers are transient operational
-  details and do not replace those files.
+- Python model: `FlowSpec`, `WorkItemSpec`, `OperationSpec`, resolved
+  `InvocationSpec`, `ArtifactRef`, append-only `AttemptRecord`, `PreparedFlow`,
+  and `CompletedFlow`.
+- Python execution: `prepare_flow`, injected operation bindings passed to
+  `submit_prepared`, explicit local/LSF flow runners, and convenience demo
+  runners.
+- CLI: `ass-flow-demo`, which runs the two-item neutral demonstration locally
+  by default and can target an explicitly configured LSF cluster.
+- Authored input: frozen contract envelopes with JSON-compatible shared and
+  per-item values, snapshotted as `flow-spec.json` for each run.
+- Derived plan: `plan.json`, materialized before mapped work and naming
+  operation identities, ports, dependencies, and placement roles without
+  naming an executor as semantic authority.
+- Materialized history: one shared-input artifact and preparation attempt,
+  per-operation output and attempt files, and one reduced `result.json`.
+- Executor state: `DaskExecutionHandles`, Futures, worker addresses, and LSF
+  identifiers are operational details and do not replace those files.
 
 ## Contribution to the parent
 
-The unit contributes a headless, inspectable experiment for local preparation
-followed by mapped and reduced Dask execution, plus a concrete LSF Jobqueue
-configuration seam.
+The unit contributes a headless experiment for compiling generic operation
+bindings into mapped and reduced Dask work, plus a concrete LSF Jobqueue
+configuration seam and inspectable attempt/artifact history.
 
 ## Exclusions
 
-It is not a complete study runtime, workflow language, simulator adapter,
-durable reconciler, cache, evidence authority, CACE implementation, or
-production cluster service. Its arithmetic operations stand in for real
-simulation and measurement. It does not claim that Dask workers are preferable
-to direct per-simulation LSF jobs.
+It is not a complete study runtime, workflow language, domain-operation
+registry, durable reconciler, cache, evidence authority, or production cluster
+service. It provides no built-in integration with a characterization system or
+other domain framework. Successful operation output remains an attempt result,
+not accepted engineering evidence.
 
 ## Child composition
 

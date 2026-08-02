@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ass-study-flow"
-version = "0.1.0"
-description = "A Dask and Jobqueue execution experiment for Analog Sim Studies."
+version = "0.2.0"
+description = "A generic Dask and Jobqueue execution experiment for Analog Sim Studies."
 requires-python = ">=3.10"
 dependencies = [
     "cryptography>=43",

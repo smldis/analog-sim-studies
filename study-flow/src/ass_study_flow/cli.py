@@ -78,10 +78,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         json.dumps(
             {
                 "run_id": completed.prepared.run_id,
-                "plan": str(completed.prepared.plan_path),
-                "summary": str(completed.summary.artifact_path),
-                "count": completed.summary.count,
-                "mean": completed.summary.mean,
+                "plan": str(completed.prepared.plan_ref.path),
+                "result": str(completed.result.path),
+                "attempts": len(completed.attempts),
             },
             indent=2,
             sort_keys=True,

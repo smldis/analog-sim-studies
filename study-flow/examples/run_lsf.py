@@ -15,4 +15,4 @@ settings = LsfClusterSettings(
     interface="replace-with-reachable-interface",
 )
 completed = run_lsf_demo(Path("/replace/with/shared/path"), settings)
-print(completed.summary.artifact_path)
+print(completed.result.path)

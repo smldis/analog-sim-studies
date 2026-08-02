@@ -50,8 +50,8 @@ any affected child ontology.
 - `spice-canonical` contributes canonical netlist extraction.
 - `netlist-decomposition` contributes functional block recognition over the
   canonical representation.
-- `study-flow` contributes a bounded local-preparation and Dask/Jobqueue
-  execution experiment with materialized plans and result artifacts.
+- `study-flow` contributes a bounded generic-operation and Dask/Jobqueue
+  execution experiment with materialized plans, attempts, and artifacts.
 
 These contributions compose into the larger vision. The study-flow experiment
 tests one execution seam but does not yet implement the full durable study

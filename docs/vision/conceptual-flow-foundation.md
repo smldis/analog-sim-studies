@@ -191,22 +191,20 @@ This keeps a shell, CI job, script, interface, or agent on the same public
 contracts while allowing Python-native extension where declarative data alone
 would be restrictive.
 
-## Generic core and domain profiles
+## Generic core and component-owned operations
 
 The generic foundation should own the lifecycle nouns, identity boundaries,
-publication rules, and adapter seams. It should not presume that every study
-is a characterization campaign.
-
-A CACE-compatible characterization profile may add analog parameters, corners,
-sweeps, simulator setup, measurements, units, plots, and specification limits.
-Other profiles may support comparisons, structural investigations, design
-changes, failure investigations, or work in which simulation is initially
-absent. Profiles add domain meaning; they do not replace the common lifecycle.
+publication rules, and executor seams. It should not presume one kind of study,
+operation, artifact, or result. Independently owned ASS components may supply
+ordinary Python operations, evaluators, and authored vocabulary for
+comparisons, structural investigations, design changes, failure investigations,
+or work in which simulation is absent. Those components add domain meaning;
+they do not replace the common lifecycle or become dependencies of its executor.
 
 The principal unresolved boundary is:
 
-> What belongs in the generic `StudySpec`, and what belongs in a domain profile
-> such as CACE?
+> What belongs in the generic `StudySpec`, and what remains owned by the
+> component that supplies a particular operation or evaluation?
 
 Answering this from abstraction alone would contradict the repository's
 prototype mode. A representative end-to-end study should expose which ideas

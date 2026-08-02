@@ -15,6 +15,10 @@ experiment using local Dask and a Dask Jobqueue configuration seam. That
 prototype tests the engine-independent contract below; it does not supersede
 the deferred engine decision.
 
+CACE remains documented below as historical comparative research. Integrating
+it is no longer in the scope of `study-flow`; the active prototype accepts
+neutral Python operation bindings without a characterization-system contract.
+
 ## Current conclusion
 
 Analog Sim Studies needs **workflow semantics**, but it does not currently need

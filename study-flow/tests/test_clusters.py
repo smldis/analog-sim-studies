@@ -22,7 +22,7 @@ def test_lsf_translation_is_isolated_and_secure_by_default(tmp_path) -> None:
         memory="4GB",
         walltime="01:30",
         interface="eth0",
-        job_script_prologue=("module load simulator",),
+        job_script_prologue=("module load python",),
         shared_temp_directory=str(tmp_path / "control"),
         local_directory=str(tmp_path / "workers"),
         log_directory=str(tmp_path / "logs"),
@@ -41,7 +41,7 @@ def test_lsf_translation_is_isolated_and_secure_by_default(tmp_path) -> None:
         "port": 0,
         "dashboard_address": "127.0.0.1:0",
     }
-    assert kwargs["job_script_prologue"] == ["module load simulator"]
+    assert kwargs["job_script_prologue"] == ["module load python"]
     assert kwargs["shared_temp_directory"] == str(tmp_path / "control")
 
 

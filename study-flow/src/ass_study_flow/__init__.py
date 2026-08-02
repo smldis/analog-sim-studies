@@ -1,44 +1,58 @@
-"""Dask and Jobqueue execution experiment for Analog Sim Studies."""
+"""Generic Dask and Jobqueue execution experiment for Analog Sim Studies."""
 
 from .clusters import LsfClusterSettings, create_lsf_cluster, lsf_cluster_kwargs
 from .contracts import (
-    CaseSpec,
-    MeasurementResult,
-    PreparedStudy,
-    SimulationAttempt,
-    StudySpec,
-    StudySummary,
-    demonstration_spec,
+    ArtifactRef,
+    AttemptRecord,
+    CompletedFlow,
+    FlowSpec,
+    InvocationSpec,
+    OperationContext,
+    OperationSpec,
+    PortBinding,
+    PreparedFlow,
+    WorkItemSpec,
 )
 from .deferred import DEFERRED_CAPABILITIES, DeferredCapability
-from .planning import prepare_study
+from .demonstration import demonstration_operations, demonstration_spec
+from .operations import OperationCallable, read_artifact_payload
+from .planning import prepare_flow
 from .runtime import (
-    CompletedDemo,
-    WorkflowHandles,
+    DaskExecutionHandles,
     complete,
     run_local_demo,
+    run_local_flow,
     run_lsf_demo,
+    run_lsf_flow,
     submit_prepared,
 )
 
 __all__ = [
-    "CaseSpec",
-    "CompletedDemo",
+    "ArtifactRef",
+    "AttemptRecord",
+    "CompletedFlow",
     "DEFERRED_CAPABILITIES",
+    "DaskExecutionHandles",
     "DeferredCapability",
+    "FlowSpec",
+    "InvocationSpec",
     "LsfClusterSettings",
-    "MeasurementResult",
-    "PreparedStudy",
-    "SimulationAttempt",
-    "StudySpec",
-    "StudySummary",
-    "WorkflowHandles",
+    "OperationCallable",
+    "OperationContext",
+    "OperationSpec",
+    "PortBinding",
+    "PreparedFlow",
+    "WorkItemSpec",
     "complete",
     "create_lsf_cluster",
+    "demonstration_operations",
     "demonstration_spec",
     "lsf_cluster_kwargs",
-    "prepare_study",
+    "prepare_flow",
+    "read_artifact_payload",
     "run_local_demo",
+    "run_local_flow",
     "run_lsf_demo",
+    "run_lsf_flow",
     "submit_prepared",
 ]

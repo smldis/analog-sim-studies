@@ -55,8 +55,11 @@ These contributions compose into the larger vision. Flow execution currently
 has no implementation unit: the retired `study-flow` prototype remains
 recoverable in Git history at `528c02f`, while
 [`docs/vision/ass-flow-rebuild-main.md`](docs/vision/ass-flow-rebuild-main.md)
-holds a new architectural inquiry. That root-owned inquiry contributes no
-runtime contract until a runnable child earns and declares one.
+holds the architectural inquiry. The root-owned
+[`prototypes/ass-flow-planning/`](prototypes/ass-flow-planning/) now contributes
+runnable evidence for immutable operation/flow definitions and inspectable
+static plans. It deliberately supplies no executor or runtime contract and is
+not a declared child; promotion requires a later boundary review.
 
 ## Exclusions
 

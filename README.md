@@ -93,6 +93,15 @@ dependency generation or OTA verification from `netlist-decomposition/`.
 Exact commands and external prerequisites live in the owning README. The
 retired flow experiment has no runnable command; its replacement inquiry is
 [`docs/vision/ass-flow-rebuild-main.md`](docs/vision/ass-flow-rebuild-main.md).
+A bounded, non-executing static-planning prototype now lives in
+[`prototypes/ass-flow-planning/`](prototypes/ass-flow-planning/). It is retained
+as implementation evidence rather than declared as a child unit. Its focused
+tests and simulator-free characterization example run from that directory:
+
+```bash
+python -m pytest -q
+PYTHONPATH=src python examples/characterization.py | python -m json.tool
+```
 
 ## Adding another unit
 

@@ -10,14 +10,16 @@ resume, stale-result detection, or shared-compute scheduling
 This note preserves research for a future runtime use case. It is not an
 implementation plan and does not select a workflow engine.
 
-Since this research snapshot, the repository has gained a bounded `study-flow`
-experiment using local Dask and a Dask Jobqueue configuration seam. That
-prototype tests the engine-independent contract below; it does not supersede
-the deferred engine decision.
+After this research snapshot, the repository built and then retired a bounded
+`study-flow` experiment using local Dask and a Dask Jobqueue configuration
+seam. The experiment exposed useful distinctions between transient handles,
+attempts, and artifacts, but its fixed graph and whole-run backend choice were
+not a suitable base to extend. The next hypothesis is recorded separately in
+[ASS Flow rebuild inquiry](ass-flow-rebuild-main.md); it does not retroactively
+turn this dated survey into an engine selection.
 
 CACE remains documented below as historical comparative research. Integrating
-it is no longer in the scope of `study-flow`; the active prototype accepts
-neutral Python operation bindings without a characterization-system contract.
+it is not a requirement of the next generic execution inquiry.
 
 ## Current conclusion
 

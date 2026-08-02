@@ -10,12 +10,14 @@ engine selection. The broader engine survey remains in
 [Deferred study-runtime and flow-engine findings](deferred-study-runtime-research.md).
 
 The current repository does not implement a complete durable study runtime.
-The bounded `study-flow` unit now exercises one local-preparation and
-Dask/Jobqueue execution shape, without claiming authority for the rest of the
-lifecycle. The manifesto distinguishes authoring, planning, execution,
-evaluation, decision, and preservation as responsibilities of a coherent study
-system. The hypothesis below gives those responsibilities a vocabulary that
-can be tested by runnable prototypes and revised from the resulting evidence.
+Its bounded `study-flow` experiment was retired after exposing the limits of a
+fixed preparation/map/reduce shape and whole-run backend selection. The code
+remains recoverable in Git history, while the next execution hypothesis is
+staged in [ASS Flow rebuild inquiry](ass-flow-rebuild-main.md). The manifesto
+distinguishes authoring, planning, execution, evaluation, decision, and
+preservation as responsibilities of a coherent study system. The hypothesis
+below gives those responsibilities a vocabulary that can be tested by runnable
+prototypes and revised from the resulting evidence.
 
 ## A flow is not a DAG
 

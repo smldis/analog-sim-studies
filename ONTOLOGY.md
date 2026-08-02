@@ -50,12 +50,13 @@ any affected child ontology.
 - `spice-canonical` contributes canonical netlist extraction.
 - `netlist-decomposition` contributes functional block recognition over the
   canonical representation.
-- `study-flow` contributes a bounded generic-operation and Dask/Jobqueue
-  execution experiment with materialized plans, attempts, and artifacts.
 
-These contributions compose into the larger vision. The study-flow experiment
-tests one execution seam but does not yet implement the full durable study
-lifecycle described by the manifesto.
+These contributions compose into the larger vision. Flow execution currently
+has no implementation unit: the retired `study-flow` prototype remains
+recoverable in Git history at `528c02f`, while
+[`docs/vision/ass-flow-rebuild-main.md`](docs/vision/ass-flow-rebuild-main.md)
+holds a new architectural inquiry. That root-owned inquiry contributes no
+runtime contract until a runnable child earns and declares one.
 
 ## Exclusions
 

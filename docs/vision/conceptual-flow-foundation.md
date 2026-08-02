@@ -9,11 +9,13 @@ It is not an implementation plan, a production specification, or a workflow
 engine selection. The broader engine survey remains in
 [Deferred study-runtime and flow-engine findings](deferred-study-runtime-research.md).
 
-The current repository does not implement a study runtime. Its manifesto does,
-however, distinguish authoring, planning, execution, evaluation, decision, and
-preservation as responsibilities of a coherent study system. The hypothesis
-below gives those responsibilities a vocabulary that can be enacted by a
-runnable prototype and revised from the resulting evidence.
+The current repository does not implement a complete durable study runtime.
+The bounded `study-flow` unit now exercises one local-preparation and
+Dask/Jobqueue execution shape, without claiming authority for the rest of the
+lifecycle. The manifesto distinguishes authoring, planning, execution,
+evaluation, decision, and preservation as responsibilities of a coherent study
+system. The hypothesis below gives those responsibilities a vocabulary that
+can be tested by runnable prototypes and revised from the resulting evidence.
 
 ## A flow is not a DAG
 

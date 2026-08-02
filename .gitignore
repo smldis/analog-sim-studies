@@ -1,5 +1,6 @@
 .cargo-target/
 build/
+dist/
 sidecar-edits/src/sidecar_edits/bin/
 *.egg-info/
 prototype/sidecar_edits/out/
@@ -8,4 +9,5 @@ docs/_build/
 sidecar-edits/docs/_build/
 spice-canonical/docs/_build/
 netlist-decomposition/docs/_build/
+study-flow/docs/_build/
 sidecar_edits.edit.html

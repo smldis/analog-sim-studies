@@ -12,6 +12,8 @@ design tools. The governing direction is [MANIFESTO.md](MANIFESTO.md), while
   representation from Eldo and ngspice netlists.
 - [`netlist-decomposition/`](netlist-decomposition/) recognizes functional MOS
   blocks and explicitly depends on `spice-canonical`.
+- [`study-flow/`](study-flow/) experiments with an ASS-owned preparation and
+  artifact contract executed through local Dask or Dask Jobqueue on LSF.
 
 These stable capability names are direct children instead of entries in a
 generic `src`, `components`, or `packages` bucket. Each child owns its source,
@@ -39,11 +41,11 @@ python -m pip install -r requirements-dev.txt
 ```
 
 There is deliberately no root Python distribution, so `pip install -e .` is
-replaced by the explicit child bootstrap above. It installs the three editable
+replaced by the explicit child bootstrap above. It installs the four editable
 distributions together and preserves the imports `sidecar_edits`,
-`spice_canonical`, and `netlist_decomposition`, plus the `sidecar-render` and
-`spice-canonical` commands. Individual package installation is documented in
-each child README.
+`spice_canonical`, `netlist_decomposition`, and `ass_study_flow`, plus the
+`sidecar-render`, `spice-canonical`, and `ass-flow-demo` commands. Individual
+package installation is documented in each child README.
 
 ## Recursive composition
 
@@ -89,8 +91,9 @@ python -m http.server --directory build/docs/html 8000
 
 Run sidecar examples and native-helper flows from `sidecar-edits/`; run the
 canonical corpus verifier from `spice-canonical/`; and run decomposition
-dependency generation or OTA verification from `netlist-decomposition/`.
-Exact commands and external prerequisites live in the owning README.
+dependency generation or OTA verification from `netlist-decomposition/`. Run
+the bounded Dask map-reduce experiment with `ass-flow-demo`. Exact commands and
+external prerequisites live in the owning README.
 
 ## Adding another unit
 

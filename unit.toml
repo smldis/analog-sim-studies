@@ -8,6 +8,7 @@ children = [
     "sidecar-edits",
     "spice-canonical",
     "netlist-decomposition",
+    "study-flow",
 ]
 
 [workflows]

@@ -1,6 +1,7 @@
 -e ./spice-canonical
 -e ./netlist-decomposition
 -e ./sidecar-edits[docs]
+-e ./study-flow
 build
 pytest
 setuptools>=69

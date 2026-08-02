@@ -10,6 +10,11 @@ resume, stale-result detection, or shared-compute scheduling
 This note preserves research for a future runtime use case. It is not an
 implementation plan and does not select a workflow engine.
 
+Since this research snapshot, the repository has gained a bounded `study-flow`
+experiment using local Dask and a Dask Jobqueue configuration seam. That
+prototype tests the engine-independent contract below; it does not supersede
+the deferred engine decision.
+
 ## Current conclusion
 
 Analog Sim Studies needs **workflow semantics**, but it does not currently need

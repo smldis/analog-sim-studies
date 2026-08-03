@@ -1,0 +1,19 @@
+{
+  "identity": "reference.ota_pvt.provisional_limits",
+  "version": 1,
+  "status": "provisional-reference-only",
+  "limits": {
+    "dc_gain_db": {
+      "minimum": 60.0,
+      "unit": "dB"
+    },
+    "gain_bandwidth_hz": {
+      "minimum": 1000000.0,
+      "unit": "Hz"
+    },
+    "phase_margin_deg": {
+      "minimum": 60.0,
+      "unit": "deg"
+    }
+  }
+}

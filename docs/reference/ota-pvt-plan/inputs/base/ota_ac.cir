@@ -1,0 +1,24 @@
+OTA PVT plan-only AC fixture
+* PVT point=seed process=seed vdd_v=seed temp_c=seed
+.param vdd_v=1.80
+.temp 27
+
+.model nch nmos level=1 vto=0.45 kp=200u
+.model pch pmos level=1 vto=-0.45 kp=100u
+
+.subckt ota_core in_p in_n out vdd vss
+M1 mirror in_p tail vss nch w=20u l=1u
+M2 out in_n tail vss nch w=20u l=1u
+M3 mirror mirror vdd vdd pch w=40u l=1u
+M4 out mirror vdd vdd pch w=40u l=1u
+ITAIL tail vss 100u
+.ends ota_core
+
+VDD vdd 0 {vdd_v}
+VINP in_p 0 dc={vdd_v/2} ac=0.5
+VINN in_n 0 dc={vdd_v/2} ac=-0.5
+XOTA in_p in_n out vdd 0 ota_core
+CL out 0 1p
+
+.ac dec 20 1 1g
+.end

@@ -107,6 +107,24 @@ ASS Flow owns no executor or runtime contract. Its historical sequential-flow
 convenience proposal is inactive and recorded only in the component
 [archive](ass-flow/docs/archive/sequential-flow-convenience.md).
 
+## Plan-only OTA/PVT reference
+
+[`docs/reference/ota-pvt-plan/`](docs/reference/ota-pvt-plan/) contains one
+root-owned cross-unit reference that exercises ASS Flow against realistic
+preparation, canonicalization, decomposition, simulation, measurement, and
+evaluation boundaries. It builds a validated, inspectable static Plan for three
+ordered PVT points; every declared operation refuses execution.
+
+The sibling-facing names are proposed adapter seams, not working integrations.
+The reference performs no preparation, parsing, simulation, measurement,
+evaluation, publication, or scheduling, and it does not add a fifth component
+or reusable OTA-study API. Build its Plan for inspection with:
+
+```console
+PYTHONPATH=ass-flow/src python docs/reference/ota-pvt-plan/ota_pvt_plan.py \
+  | python -m json.tool
+```
+
 ## Adding another unit
 
 Create a direct directory with `README.md`, `ONTOLOGY.md`, `AGENTS.md`, and

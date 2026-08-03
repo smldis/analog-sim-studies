@@ -43,6 +43,10 @@ any affected child ontology.
   units.
 - Root integration checks may verify explicit relationships such as
   `netlist-decomposition` consuming `spice-canonical`.
+- `docs/reference/ota-pvt-plan/` owns one representative, non-executing
+  cross-unit Plan declaration and its versioned input fixtures. It tests static
+  composition through public ASS Flow contracts without promoting its
+  analog-domain labels into a child API or claiming sibling adapters.
 
 ## Contributions from children
 
@@ -61,6 +65,12 @@ records the architectural inquiry that preceded the bounded planning work.
 The declared `ass-flow` child owns only static planning; its refusing
 `submit(...)` boundary confers no local, distributed, simulator, or study
 runtime authority.
+
+The root-owned OTA/PVT reference composes these capabilities only at the level
+of declared artifact and operation boundaries. Its Sidecar, canonicalization,
+and decomposition names are proposed adapter seams; its simulator, measurement,
+and evaluation operations are refusing stubs. The validated Plan is evidence of
+static expressiveness, not materialized evidence or an execution contract.
 
 ## Exclusions
 

@@ -1,0 +1,19 @@
+{
+  "identity": "reference.ota_pvt.ac_measurements",
+  "version": 1,
+  "analysis": "ac",
+  "metrics": [
+    {
+      "name": "dc_gain_db",
+      "unit": "dB"
+    },
+    {
+      "name": "gain_bandwidth_hz",
+      "unit": "Hz"
+    },
+    {
+      "name": "phase_margin_deg",
+      "unit": "deg"
+    }
+  ]
+}

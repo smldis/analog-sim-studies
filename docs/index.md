@@ -16,8 +16,14 @@ vision/ass-flow-rebuild-main
 vision/deferred-study-runtime-research
 vision/manifesto-challenges
 vision/manifesto-change-catalog
+reference/ota-pvt-plan/README
 _composed-children
 ```
 
 The generated child page is created by `python composition.py docs`; it is not
 maintained source.
+
+The OTA/PVT reference is root-owned composition evidence only. It declares an
+inspectable static Plan across child and unimplemented domain boundaries; it
+does not execute those boundaries or introduce adapters, runtime state, or a
+new component.

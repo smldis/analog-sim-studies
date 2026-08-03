@@ -300,17 +300,20 @@ not become a second graph scheduler or a database prerequisite by default.
 
 ### Evidence ladder, not an authorized roadmap
 
-The graduated sequence remains useful as ordered falsification evidence:
+The graduated sequence remains useful as ordered falsification evidence, with
+one prerequisite exposed by the completed domain reference:
 
-1. construct a representative static domain Plan (current root work order);
-2. lower a small arbitrary graph locally through Dask while preserving normalized
+1. **complete:** construct a representative static domain Plan;
+2. specify and test the minimal artifact/adapter handoff contract exposed by
+   that Plan, without expanding it into a general artifact store;
+3. lower a small arbitrary graph locally through Dask while preserving normalized
    invocation identity, policy, branching, and fan-in;
-3. compare Delayed and Futures descriptions before accepting `submit(...)`;
-4. exercise a fake command-compatible LSF attempt adapter, including both loss
+4. compare Delayed and Futures descriptions before accepting `submit(...)`;
+5. exercise a fake command-compatible LSF attempt adapter, including both loss
    windows and atomic manifest publication;
-5. only then run one real direct-LSF smoke test if the site contract supports
+6. only then run one real direct-LSF smoke test if the site contract supports
    reconciliation;
-6. add one Dask Jobqueue LSF pool and mixed topology only when a workload needs
+7. add one Dask Jobqueue LSF pool and mixed topology only when a workload needs
    warm workers or data locality.
 
 Each numbered item requires a new reviewed work order. Failure at one step may
@@ -347,12 +350,12 @@ attempt identity and reconciliation protocol.
 
 | Question | Current status | Evidence or trigger |
 | --- | --- | --- |
-| Static custom-flow composition | accepted as a prototype | Current tests and characterization show nested static branching/fan-in in one Plan. A root-owned OTA/PVT reference is the next domain-sized check. |
+| Static custom-flow composition | accepted with domain-sized evidence | The completed root-owned OTA/PVT reference expresses preparation forks, three ordered PVT branches, and two ordered fan-ins in one deterministic Plan without a second graph model. |
 | Sequential-flow convenience | archived/rejected from active scope | Reconsider only after repeated real workflows show the same stable-step editing burden. |
 | Result-dependent fallback/recovery | deferred | Compare reapplying a flow to committed explicit state with a visible conditional/recovery node when a concrete failure workflow requires it. Hidden controllers remain rejected. |
 | Authoring surfaces | planning accepted; submission unresolved | A bounded lowering experiment must compare normalized meaning before any working `submit(...)` surface is accepted. |
-| Typed state/artifact transition | provisional and unimplemented | Requires a real publisher/adapter use case that tests validation, undeclared output, and failed atomic commit. |
-| Local execution | selected first execution hypothesis; not authorized | After the domain Plan review, a bounded Dask lowering check must preserve normalized invocation meaning without LSF or durable runtime expansion. |
+| Typed state/artifact transition | selected next prerequisite; unimplemented | The OTA/PVT reference exposed the concrete missing seam: real values need address, codec, publication, accessibility, and handoff semantics. The next work order should isolate that minimal contract and its validation/failed-commit evidence. |
+| Local execution | selected first execution hypothesis; not authorized | After the minimal artifact/adapter handoff contract, a bounded Dask lowering check must preserve normalized invocation meaning without LSF or durable runtime expansion. |
 | Dask executor boundary | selected first kernel hypothesis; unvalidated | Local lowering and invocation-boundary preservation must be tested before accepting the dependency or public execution surface. |
 | Direct LSF lifecycle | authority split adopted; adapter unvalidated | Fake acceptance-to-receipt and terminal-to-manifest failure injections are required before farm use. |
 | Mixed local/direct/pool topology | deferred | Requires credible local lowering and direct-attempt ownership first. |
@@ -362,15 +365,20 @@ attempt identity and reconciliation protocol.
 
 ## Current evidence work order
 
-The root-owned `docs/reference/ota-pvt-plan/PLANNING.md` authorizes one static,
-non-executing cross-unit reference. It is deliberately outside this component
+The root-owned `docs/reference/ota-pvt-plan/PLANNING.md` work order is complete.
+Its static, non-executing cross-unit reference remains outside this component
 because OTA/PVT, simulator, measurement, and evaluation meaning are not part of
-ASS Flow's ontology. Its result may show either that Plan IR needs revision or
-that artifact/adapter contracts are the next prerequisite to execution.
+ASS Flow's ontology. It confirms that the current Plan IR is adequate for this
+fixed graph and exposes artifact/adapter handoff, rather than graph
+expressiveness, as the next prerequisite to execution.
 
-That reference does not authorize local lowering, Dask, LSF, sibling adapters,
-artifact publication, or a study runtime. A new reviewed work order is required
-after its evidence is assessed.
+The next work order should isolate the smallest generic contract that lets an
+adapter address, encode/decode, publish, and hand off a declared artifact. It
+must not silently expand into a full artifact store or defer execution
+indefinitely. Local Dask lowering remains the next execution experiment after
+that explicit handoff seam. The completed reference does not itself authorize
+that contract, local lowering, Dask, LSF, sibling adapters, publication, or a
+study runtime.
 
 ## Rules for the next development decision
 

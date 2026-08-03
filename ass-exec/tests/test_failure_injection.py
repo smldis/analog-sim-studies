@@ -54,6 +54,7 @@ def test_acceptance_to_receipt_loss_attaches_and_never_duplicates(tmp_path):
     assert result.state.handle["job_id"] == accepted_job_id
     assert len(store.jobs) == 1
     assert store.jobs[IDENTITY]["runs"] == 1
+    assert store.accepted == 1, "a second submission reached the substrate"
 
 
 def test_acceptance_to_receipt_loss_fails_loudly_without_discovery(tmp_path):
@@ -84,6 +85,7 @@ def test_acceptance_to_receipt_loss_fails_loudly_without_discovery(tmp_path):
 
     assert len(store.jobs) == 1
     assert store.jobs[IDENTITY]["runs"] == 1
+    assert store.accepted == 1, "a second submission reached the substrate"
 
 
 def test_a_positive_discovery_is_usable_even_without_authority(tmp_path):
@@ -110,6 +112,7 @@ def test_a_positive_discovery_is_usable_even_without_authority(tmp_path):
 
     assert result.disposition == "attached"
     assert len(store.jobs) == 1
+    assert store.accepted == 1, "a second submission reached the substrate"
 
 
 def test_terminal_to_manifest_loss_completes_by_attachment(tmp_path):
@@ -144,6 +147,7 @@ def test_terminal_to_manifest_loss_completes_by_attachment(tmp_path):
     assert result.manifest["outcome"] == "succeeded"
     assert result.state.phase == "terminal"
     assert store.jobs[IDENTITY]["runs"] == 1
+    assert store.accepted == 1, "the payload was resubmitted"
 
 
 def test_recovery_needs_no_knowledge_of_the_graph(tmp_path):
@@ -164,3 +168,15 @@ def test_recovery_needs_no_knowledge_of_the_graph(tmp_path):
     result = launch_or_attach(restarted, FakeBatchTransport(store), {})
 
     assert result.disposition == "attached"
+
+
+def test_the_fake_substrate_can_actually_observe_a_duplicate():
+    """Guard the guard: these injections are only evidence if they can fail."""
+
+    store = FakeBatchStore()
+    transport = FakeBatchTransport(store)
+    transport.submit(IDENTITY, BUNDLE)
+    transport.submit(IDENTITY, BUNDLE)
+
+    assert store.accepted == 2
+    assert store.jobs[IDENTITY]["runs"] == 2

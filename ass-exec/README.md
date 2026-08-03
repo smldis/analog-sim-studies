@@ -118,8 +118,9 @@ execute(
     lsf,
     {"command": ["ngspice", "-b", "corner_tt.spice"], "cwd": "run/tt"},
     durability=Durability.RECORDED,
-    identity=identity.rendered,
     root="attempts",
+    plan_id="ota-pvt",
+    invocation_id="corner-tt",
 )
 ```
 

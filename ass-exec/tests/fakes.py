@@ -19,11 +19,23 @@ class FakeBatchStore:
     def __init__(self) -> None:
         self.jobs: dict[str, dict[str, Any]] = {}
         self.next_job_id = 1000
+        self.accepted = 0
 
     def accept(self, identity: str) -> dict[str, Any]:
-        self.next_job_id += 1
-        job = {"job_id": str(self.next_job_id), "state": "pending", "runs": 0}
-        self.jobs[identity] = job
+        """Accept work, keeping any existing record for this identity.
+
+        Reusing the entry is what lets a duplicate submission be *observed*.
+        Replacing it — as this once did — reset the run counter, so the
+        no-duplication assertions held whether one or five jobs had been
+        created. A fake that cannot fail is not evidence.
+        """
+
+        self.accepted += 1
+        job = self.jobs.get(identity)
+        if job is None:
+            self.next_job_id += 1
+            job = {"job_id": str(self.next_job_id), "state": "pending", "runs": 0}
+            self.jobs[identity] = job
         return job
 
 

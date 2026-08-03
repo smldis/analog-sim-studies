@@ -41,7 +41,7 @@ altered by evidence), **deferred** (still wanted, not started), **dropped**
 | --- | --- |
 | Pooled LSF via `dask_jobqueue.LSFCluster` | A workload needing warm workers or data locality. `LSFPooledTransport` refuses today. |
 | Concurrency in the driver | `ass-run` executes one invocation at a time. Current preference is bounded concurrency here rather than adopting a scheduler, since file-based artifacts removed Dask's locality argument. Revisit if task counts or priority needs outgrow a thread pool. Note that with `bsub -I`, concurrency means one held client process per running job. |
-| One-scheduler mixed topology (labelled local, direct-gateway, pooled workers) | Requires pooled mode first; must be demonstrated, not assumed, since `LSFCluster` normally owns its own scheduler. |
+| One-scheduler mixed topology (labelled local, direct-gateway, pooled workers) | Requires pooled mode first; must be demonstrated, not assumed, since `LSFCluster` normally owns its own scheduler. See "Using Dask for both slots" below for why mixed, rather than wholly pooled, is the preferred shape. |
 | Delayed versus Futures comparison (evidence ladder 4) | Was to precede accepting `submit(...)`. Partly overtaken: `ass-exec` executes without Dask, so this now only matters if Dask becomes the driver. |
 | Real direct-LSF smoke test (evidence ladder 6) | Site access. `examples/lsf_preflight.py` is ready; not runnable now. |
 | Plugins and declarative flow configuration | A concrete multi-repository or non-Python authoring need. |
@@ -79,6 +79,41 @@ These fell out during direct development. None was rejected on merit.
   invariant. Three of its four parts now exist in some form; **`explicit_state`
   has never been revisited**, and the question of whether an operation has
   durable state distinct from its artifacts remains unexamined.
+
+## Using Dask for both readiness and placement
+
+Asked directly: what if Dask drives readiness *and* supplies the workers, via
+`LSFCluster`? It is a coherent architecture, and it is not recommended as the
+default.
+
+Structurally the two concerns do not merge so much as one collapses. With
+pooled workers the transport becomes almost trivial — Dask supplies the
+remoteness by placing the task on a distant worker, so what runs there is
+effectively in-process execution on a farm node. Durability is unaffected in
+either arrangement, because `execute` runs inside the task and `ass-exec` keeps
+owning identity, journals, reuse, and artifacts.
+
+What a wholly pooled arrangement costs:
+
+- **One visible LSF job per invocation**, which was a stated requirement. `bjobs`
+  shows workers, not corners: no per-invocation resource request, no
+  per-invocation `bkill`, no per-invocation accounting.
+- **Heterogeneous resources.** One pool profile is one worker shape, so a
+  large-memory corner and a small one share it and the difference is wasted.
+- **Licence accounting.** The sharpest cost in this domain. One job per
+  invocation lets LSF manage simulator licences through `rusage`, because LSF
+  knows the count. Under a pool the jobs LSF sees are workers, so licence
+  contention stops being visible to the scheduler that could arbitrate it.
+- **Failure isolation.** A crashing simulator takes a worker process rather
+  than a single job, and the recovery interacts with attempt retry semantics.
+
+Preferred shape: keep the two concerns separate and let policy choose per
+invocation, as the original design proposed (`local`, `lsf-direct`,
+`lsf-pool`). Direct for large, slow, heterogeneous, or licence-consuming work;
+pooled for many small homogeneous steps. This is what makes
+requested-versus-resolved-versus-observed placement necessary rather than
+merely tidy, and it is why that dropped concept should be recovered before
+pooled mode is built.
 
 ## New ideas raised during development
 

@@ -160,6 +160,26 @@ admission, `bjobs -J` lookup, and — the important one — whether a running jo
 actually disappears after its client is killed. If that check fails, the direct
 mode's design premise is wrong and needs revisiting.
 
+## Review findings and their resolution (2026-08-03)
+
+An adversarial review at `xhigh` over the eight unpushed commits returned 15
+findings; all are addressed. The distribution is the useful part: five in
+`lsf.py`, none at all in `planned.py`, `reuse.py`, `identity.py`, or
+`transport.py`.
+
+That is not chance. `lsf.py` was written against a fake this unit also wrote,
+from the same assumptions, so the fake agreed with the code's
+misunderstandings — `discover()` returned a handle shaped unlike `submit()`'s,
+and no test ever polled a discovered handle. The same pattern produced the
+worst finding: `FakeBatchStore.accept()` reset its own run counter, so the
+no-duplication assertions in the decisive failure injections could not fail,
+and this ledger cited them as evidence. Where feedback came from outside — a
+Plan document ASS Flow really produced, real process signals — the code was
+clean.
+
+**The standing lesson:** a fake authored alongside the code inherits its blind
+spots. Prefer evidence from something the unit did not write.
+
 ## Open
 
 - **Owner-bound enforcement — lease rejected, three layers proposed.** A

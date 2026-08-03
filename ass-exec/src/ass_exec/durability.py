@@ -18,6 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Mapping
+from uuid import uuid4
 
 from ass_exec.attempt import (
     AttemptError,
@@ -124,9 +125,15 @@ def execute(
     """
 
     if durability is Durability.EPHEMERAL:
-        handle = transport.submit(identity or "ephemeral", bundle)
+        # A per-call key. A shared constant let two concurrent ephemeral calls
+        # read each other's results back out of the transport.
+        key = identity or f"ephemeral-{uuid4().hex}"
+        handle = transport.submit(key, bundle)
         observation = transport.poll(handle)
         detail = dict(observation.detail or {})
+        forget = getattr(transport, "forget", None)
+        if forget is not None:
+            forget(key)
         return ExecutionResult(
             outcome=observation.state,
             value=detail.get("value"),

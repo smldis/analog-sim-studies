@@ -22,7 +22,9 @@ class FakeRunner:
     def __init__(self, result=None, bjobs=None):
         self.calls = []
         self.result = result or CommandResult(returncode=0, stdout="done")
-        self.bjobs = bjobs or CommandResult(returncode=1)
+        self.bjobs = bjobs or CommandResult(
+            returncode=255, stderr="Job <ass-abc> is not found"
+        )
 
     def __call__(self, argv, *, cwd=None, env=None, timeout=None):
         self.calls.append(list(argv))

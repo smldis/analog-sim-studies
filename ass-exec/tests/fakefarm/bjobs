@@ -14,9 +14,11 @@ def main(argv):
         if token == "-J" and index + 1 < len(argv):
             name = argv[index + 1]
     if not name or not STATE:
+        sys.stderr.write("bjobs: no job name given\n")
         return 255
     path = os.path.join(STATE, f"{name}.json")
     if not os.path.exists(path):
+        sys.stderr.write(f"Job <{name}> is not found\n")
         return 255
     with open(path) as handle:
         record = json.load(handle)

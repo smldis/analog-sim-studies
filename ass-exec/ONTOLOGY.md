@@ -51,7 +51,16 @@ its siblings are reused and the superseded results stay nameable.
   in a plain directory. State is derived by folding the record; nothing is
   inferred from a live object.
 - `submit_intent` is durably flushed before any transport call. `terminal` is
-  recorded only after the manifest is atomically visible.
+  recorded only after the manifest is atomically visible. Both the log's first
+  write and the manifest rename fsync the containing directory, so the entry
+  survives a crash and not only the bytes.
+- `journal.claim()` holds an attempt exclusively (advisory lock) across read,
+  intent, and submission. Without it two callers can both fold an unsubmitted
+  state and both submit. A second caller gets `ConcurrentClaim` rather than a
+  wait, because a duplicate submission is the defect being prevented.
+- A recorded cancellation blocks a later launch (`AttemptCancelled`), and a
+  record created from different inputs is refused at the journal boundary
+  (`StaleIdentity`) rather than only in `execute`.
 - `launch_or_attach(...)` resolves to exactly one of `claimed`, `attached`, or
   `completed`, or raises. `UnrecoverableAttempt` is a supported outcome, not a
   defect: it reports a substrate that cannot answer questions about its own
@@ -67,6 +76,13 @@ its siblings are reused and the superseded results stay nameable.
 - `reconcile(...)` publishes disagreement between the record and the substrate
   as the terminal outcome `unreconciled` rather than normalizing it into
   success or failure.
+- LSF handles carry a `kind`: `completed` for a finished `bsub -I` submission,
+  `live` for a job found by discovery. `poll` asks LSF about a live handle
+  rather than assuming absence, and a rejected submission raises
+  `SubmissionRefused` instead of being published as the work failing. A
+  `bjobs` that cannot answer raises rather than reporting "never accepted".
+- `CommandUnavailable` is indeterminate. Only a missing `bsub` becomes a
+  refusal, because only then is it certain nothing was accepted.
 - `ass_exec.lsf.LSFInteractiveTransport` submits one `bsub -I` job per attempt
   with `-J <identity>` and a mandatory `-W` walltime, and waits for it. LSF
   binds the job to the submitting client; the client stays in this process's

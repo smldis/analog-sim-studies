@@ -42,7 +42,7 @@ except ModuleNotFoundError:  # pragma: no cover - guidance, not logic
 
 from ass_exec.durability import Durability, execute
 from ass_exec.planned import plan_bundles
-from ass_exec.reuse import describe_staleness, stale_attempts
+from ass_exec.reuse import describe_staleness, scan_attempts, stale_attempts
 from ass_exec.transport import InProcessTransport
 
 PLAN_ID = "characterization"
@@ -153,6 +153,7 @@ def main():
         summary = [value for key, value in values.items() if "summary" in key]
         print(f"\n  final summary: {summary[-1] if summary else None}")
 
+        known = scan_attempts(root)
         superseded = [
             record
             for item in plan_bundles(second)
@@ -161,6 +162,7 @@ def main():
                 plan_id=PLAN_ID,
                 invocation_id=item.invocation_id,
                 current_digest=item.input_digest,
+                records=known,
             )
         ]
         print("\n  superseded but retained:")

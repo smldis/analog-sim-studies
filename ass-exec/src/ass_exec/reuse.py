@@ -33,6 +33,7 @@ from ass_exec.journal import AttemptJournal
 
 __all__ = [
     "AttemptRecord",
+    "describe_staleness",
     "IDENTITY_KEYS",
     "attempts_for",
     "input_digest",
@@ -130,19 +131,34 @@ def scan_attempts(root: str | Path) -> tuple[AttemptRecord, ...]:
 
 
 def attempts_for(
-    root: str | Path, *, plan_id: str, invocation_id: str
+    root: str | Path,
+    *,
+    plan_id: str,
+    invocation_id: str,
+    records: Iterable[AttemptRecord] | None = None,
 ) -> tuple[AttemptRecord, ...]:
-    """Every recorded attempt at one planned invocation, across input changes."""
+    """Every recorded attempt at one planned invocation, across input changes.
 
+    Pass ``records`` from a single `scan_attempts` when asking about many
+    invocations. Otherwise each question rescans and reparses every attempt
+    directory, which turns a sweep of n invocations into n full rescans.
+    """
+
+    source = scan_attempts(root) if records is None else records
     return tuple(
         record
-        for record in scan_attempts(root)
+        for record in source
         if record.plan_id == plan_id and record.invocation_id == invocation_id
     )
 
 
 def stale_attempts(
-    root: str | Path, *, plan_id: str, invocation_id: str, current_digest: str
+    root: str | Path,
+    *,
+    plan_id: str,
+    invocation_id: str,
+    current_digest: str,
+    records: Iterable[AttemptRecord] | None = None,
 ) -> tuple[AttemptRecord, ...]:
     """Prior results for this invocation that no longer describe current inputs.
 
@@ -153,7 +169,12 @@ def stale_attempts(
 
     return tuple(
         record
-        for record in attempts_for(root, plan_id=plan_id, invocation_id=invocation_id)
+        for record in attempts_for(
+            root,
+            plan_id=plan_id,
+            invocation_id=invocation_id,
+            records=records,
+        )
         if record.input_digest is not None and record.input_digest != current_digest
     )
 

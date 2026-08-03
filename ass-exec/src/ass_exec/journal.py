@@ -19,13 +19,17 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from contextlib import contextmanager
 from typing import Any, Iterator, Mapping
+import errno
+import fcntl
 import json
 import os
 
 __all__ = [
     "AttemptJournal",
     "AttemptState",
+    "ConcurrentClaim",
     "JournalError",
     "JournalEvent",
     "TERMINAL_OUTCOMES",
@@ -51,6 +55,14 @@ _EVENTS = frozenset(
 
 class JournalError(RuntimeError):
     """The durable record is missing, malformed, or internally contradictory."""
+
+
+class ConcurrentClaim(JournalError):
+    """Another caller holds this attempt right now.
+
+    Reported rather than waited on: a second submission of the same attempt is
+    the defect, so the honest response is to say who is already doing it.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,6 +105,26 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="microseconds")
 
 
+def _fsync_directory(path: Path) -> None:
+    """Persist a directory entry, not just a file's contents.
+
+    Without this, `os.replace` and the creation of `events.jsonl` are not
+    crash-durable: the data survives but the name pointing at it can be lost.
+    Both ordering rules above depend on the entry, not only the bytes.
+    """
+
+    try:
+        descriptor = os.open(path, os.O_RDONLY)
+    except (NotADirectoryError, FileNotFoundError):  # pragma: no cover
+        return
+    try:
+        os.fsync(descriptor)
+    except OSError:  # pragma: no cover - not every filesystem permits this
+        pass
+    finally:
+        os.close(descriptor)
+
+
 class AttemptJournal:
     """One attempt's durable directory: an event log plus a published manifest.
 
@@ -105,9 +137,41 @@ class AttemptJournal:
         self.directory = Path(root) / identity
         self.log_path = self.directory / "events.jsonl"
         self.manifest_path = self.directory / "manifest.json"
+        self.lock_path = self.directory / "claim.lock"
+        self._next_seq: int | None = None
 
     def exists(self) -> bool:
         return self.log_path.exists()
+
+    @contextmanager
+    def claim(self) -> Iterator[None]:
+        """Hold this attempt exclusively while deciding what to do with it.
+
+        Reading the record, recording intent, and submitting must be one
+        indivisible step. Without it two controllers -- or two threads of one
+        plan runner -- can both fold an unsubmitted state and both submit,
+        producing two real jobs for one attempt. An advisory lock on a file in
+        the attempt directory is enough: every writer goes through here.
+        """
+
+        self.directory.mkdir(parents=True, exist_ok=True)
+        descriptor = os.open(self.lock_path, os.O_CREAT | os.O_RDWR, 0o644)
+        try:
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError as error:
+                if error.errno not in (errno.EACCES, errno.EAGAIN):
+                    raise
+                raise ConcurrentClaim(
+                    f"attempt {self.identity} is already being launched by "
+                    f"another caller"
+                ) from error
+            yield
+        finally:
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_UN)
+            finally:
+                os.close(descriptor)
 
     def append(self, event: str, /, **data: Any) -> JournalEvent:
         """Durably append one event, flushing before returning.
@@ -119,8 +183,13 @@ class AttemptJournal:
         if event not in _EVENTS:
             raise JournalError(f"unknown journal event {event!r}")
         self.directory.mkdir(parents=True, exist_ok=True)
+        if self._next_seq is None:
+            # Counted once per journal instance rather than on every append,
+            # which made writing n events cost O(n^2) reads of the whole log.
+            self._next_seq = sum(1 for _ in self._raw_lines())
+        fresh_log = not self.log_path.exists()
         record = {
-            "seq": sum(1 for _ in self._raw_lines()),
+            "seq": self._next_seq,
             "at": _now(),
             "event": event,
             "data": data,
@@ -130,6 +199,9 @@ class AttemptJournal:
             handle.write(line + "\n")
             handle.flush()
             os.fsync(handle.fileno())
+        if fresh_log:
+            _fsync_directory(self.directory)
+        self._next_seq += 1
         return JournalEvent(record["seq"], record["at"], event, data)
 
     def _raw_lines(self) -> Iterator[str]:
@@ -150,12 +222,19 @@ class AttemptJournal:
                 raise JournalError(
                     f"attempt {self.identity} has a malformed journal line {index}"
                 ) from error
+            if not isinstance(record, dict) or not {"seq", "at", "event"} <= set(
+                record
+            ):
+                raise JournalError(
+                    f"attempt {self.identity} has a structurally invalid journal "
+                    f"line {index}: {line[:80]!r}"
+                )
             parsed.append(
                 JournalEvent(
                     seq=record["seq"],
                     at=record["at"],
                     event=record["event"],
-                    data=record.get("data", {}),
+                    data=record.get("data") or {},
                 )
             )
         return tuple(parsed)
@@ -249,6 +328,9 @@ class AttemptJournal:
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(temporary, self.manifest_path)
+        # The rename is only durable once the directory entry is persisted;
+        # otherwise a crash can leave a terminal record with no manifest.
+        _fsync_directory(self.directory)
         self.append("terminal", outcome=outcome, manifest=str(self.manifest_path))
         return document
 

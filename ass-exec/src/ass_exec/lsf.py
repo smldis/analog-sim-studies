@@ -29,8 +29,18 @@ import sys
 
 from ass_exec.transport import Observation, SubmissionRefused, TransportError
 
+
+class CommandUnavailable(TransportError):
+    """A required LSF command is not on PATH.
+
+    Indeterminate by default. Only the caller that was about to *submit* may
+    read it as a refusal; a missing `bjobs` says nothing about whether work was
+    accepted, and must never be reported as one.
+    """
+
 __all__ = [
     "CommandResult",
+    "CommandUnavailable",
     "LSFInteractiveTransport",
     "LSFPooledTransport",
     "SubprocessRunner",
@@ -44,6 +54,32 @@ class CommandResult:
     stderr: str = ""
 
 
+_PR_SET_PDEATHSIG = 1
+
+
+def _load_libc():
+    """Load libc once, at import, in the parent.
+
+    Deliberately not inside `preexec_fn`: that runs between fork and exec,
+    where only async-signal-safe calls are legal, and `CDLL` performs a dlopen
+    that takes the loader lock. If another thread held that lock at fork time
+    the child would hang forever, with the submitting thread blocked in
+    `subprocess.run`.
+    """
+
+    if sys.platform != "linux":
+        return None
+    try:
+        import ctypes
+
+        return ctypes.CDLL("libc.so.6", use_errno=True)
+    except OSError:  # pragma: no cover - unusual libc layout
+        return None
+
+
+_LIBC = _load_libc()
+
+
 def _bind_child_lifetime() -> Callable[[], None] | None:
     """Ask the kernel to signal our children when we die.
 
@@ -52,15 +88,15 @@ def _bind_child_lifetime() -> Callable[[], None] | None:
     without a chance to clean up.
     """
 
-    if sys.platform != "linux":
+    if _LIBC is None:
         return None
 
     def preexec() -> None:  # pragma: no cover - runs in the forked child
-        import ctypes
-
-        libc = ctypes.CDLL("libc.so.6", use_errno=True)
-        PR_SET_PDEATHSIG = 1
-        libc.prctl(PR_SET_PDEATHSIG, signal.SIGTERM)
+        # Failure must be loud. A silently unset PDEATHSIG degrades the
+        # owner-bound guarantee to "usually", and the orphan it leaves is an
+        # LSF job nobody is watching.
+        if _LIBC.prctl(_PR_SET_PDEATHSIG, signal.SIGTERM) != 0:
+            os._exit(127)
 
     return preexec
 
@@ -92,12 +128,62 @@ class SubprocessRunner:
                 preexec_fn=_bind_child_lifetime(),
             )
         except FileNotFoundError as error:
-            raise SubmissionRefused(f"{argv[0]!r} is not available") from error
+            raise CommandUnavailable(f"{argv[0]!r} is not available") from error
         return CommandResult(
             returncode=completed.returncode,
             stdout=completed.stdout or "",
             stderr=completed.stderr or "",
         )
+
+
+_SUBMISSION_ERROR_RETURNCODE = 255
+_NOT_FOUND_MARKERS = ("is not found", "No unfinished job found", "not found")
+_REJECTION_MARKERS = (
+    "Job not submitted",
+    "Bad queue name",
+    "Illegal option",
+    "User cannot use the queue",
+    "Too many jobs",
+    "Bad resource requirement",
+)
+
+
+def _is_submission_rejection(result: CommandResult) -> bool:
+    """Whether bsub refused the job rather than running it.
+
+    LSF reports submission errors with exit 255 and an explanatory message.
+    A payload that itself exits 255 is indistinguishable by exit code alone,
+    so a recognised rejection message is required as well — the ambiguity is
+    resolved toward "the work ran", because wrongly refusing a real result is
+    worse than one extra rerun.
+    """
+
+    if result.returncode != _SUBMISSION_ERROR_RETURNCODE:
+        return False
+    return any(marker in result.stderr for marker in _REJECTION_MARKERS)
+
+
+def _is_not_found(result: CommandResult) -> bool:
+    """Whether bjobs answered "no such job" rather than failing to answer."""
+
+    text = f"{result.stdout} {result.stderr}"
+    return any(marker in text for marker in _NOT_FOUND_MARKERS)
+
+
+def _state_from_bjobs(line: str) -> str:
+    """Map an LSF status word onto an observed state."""
+
+    tokens = line.split()
+    for token in tokens:
+        if token in ("PEND", "PSUSP", "WAIT"):
+            return "pending"
+        if token in ("RUN", "USUSP", "SSUSP"):
+            return "running"
+        if token == "DONE":
+            return "succeeded"
+        if token in ("EXIT", "ZOMBI"):
+            return "failed"
+    return "running"
 
 
 class LSFInteractiveTransport:
@@ -144,56 +230,97 @@ class LSFInteractiveTransport:
         return argv + list(command)
 
     def submit(self, identity: str, bundle: Mapping[str, Any]) -> Mapping[str, Any]:
-        """Submit and wait. With `-I` the call returns when the job is over."""
+        """Submit and wait. With `-I` the call returns when the job is over.
+
+        A `bsub` that rejects the submission must not be recorded as the work
+        failing: nothing ran, so the outcome belongs to the submission, not to
+        the payload. Recording it as a failure would publish a terminal result
+        for work that never started.
+        """
 
         argv = self.build_argv(identity, bundle)
-        result = self._run(
-            argv, cwd=bundle.get("cwd"), env=bundle.get("env")
-        )
-        self._last = {
+        try:
+            result = self._run(argv, cwd=bundle.get("cwd"), env=bundle.get("env"))
+        except CommandUnavailable as error:
+            # No bsub means nothing was accepted; this one really is a refusal.
+            raise SubmissionRefused(str(error)) from error
+
+        if _is_submission_rejection(result):
+            raise SubmissionRefused(
+                f"bsub rejected the submission (rc={result.returncode}): "
+                f"{result.stderr.strip()[:200]}"
+            )
+
+        return {
             "transport": self.name,
             "identity": identity,
+            "kind": "completed",
             "command": shlex.join(argv),
             "returncode": result.returncode,
             "stdout": result.stdout,
             "stderr": result.stderr,
         }
-        return dict(self._last)
 
     def discover(self, identity: str) -> Mapping[str, Any] | None:
         """Ask LSF whether a job with this name is still around.
 
         With owner-bound lifetime a match should be rare; it means a previous
-        run left something behind. The caller decides what to do about it.
+        run left something behind. A handle returned here describes a job that
+        is still *live* on the farm, which is a different thing from the
+        finished-job handle `submit` returns — `kind` distinguishes them so
+        `poll` cannot confuse the two.
         """
 
-        result = self._run(["bjobs", "-J", identity, "-noheader"])
-        if result.returncode != 0 or not result.stdout.strip():
+        try:
+            result = self._run(["bjobs", "-J", identity, "-noheader"])
+        except CommandUnavailable:
+            # We cannot ask. That is not the same as "nothing was accepted",
+            # and answering None here would licence a duplicate submission.
+            raise
+
+        if result.returncode == 0 and result.stdout.strip():
+            return {
+                "transport": self.name,
+                "identity": identity,
+                "kind": "live",
+                "observed": result.stdout.strip(),
+            }
+        if _is_not_found(result):
             return None
-        return {
-            "transport": self.name,
-            "identity": identity,
-            "observed": result.stdout.strip(),
-        }
+        raise TransportError(
+            f"bjobs could not answer for {identity} (rc={result.returncode}): "
+            f"{result.stderr.strip()[:200]}"
+        )
 
     def poll(self, handle: Mapping[str, Any]) -> Observation:
-        returncode = handle.get("returncode")
-        if returncode is None:
+        """Read the state of a handle, whichever kind it is."""
+
+        if handle.get("kind") == "completed" or "returncode" in handle:
+            returncode = handle["returncode"]
+            if returncode == 0:
+                return Observation("succeeded", {"stdout": handle.get("stdout", "")})
+            return Observation(
+                "failed",
+                {"returncode": returncode, "stderr": handle.get("stderr", "")},
+            )
+
+        # A live handle describes a job we attached to rather than ran, so its
+        # state has to be asked for. Reporting `absent` without asking is what
+        # published a running job as unreconciled.
+        identity = handle.get("identity")
+        if not identity:
+            raise TransportError("cannot poll a handle with no identity")
+        found = self.discover(identity)
+        if found is None:
             return Observation("absent")
-        if returncode == 0:
-            return Observation("succeeded", {"stdout": handle.get("stdout", "")})
-        return Observation(
-            "failed",
-            {
-                "returncode": returncode,
-                "stderr": handle.get("stderr", ""),
-            },
-        )
+        return Observation(_state_from_bjobs(found["observed"]), {"observed": found["observed"]})
 
     def cancel(self, handle: Mapping[str, Any]) -> None:
         identity = handle.get("identity")
         if not identity:
             raise TransportError("cannot cancel an attempt with no identity")
+        # A missing bkill is indeterminate, never a refusal: cancel intent has
+        # already been recorded and the job may well be running.
         self._run(["bkill", "-J", identity])
 
 

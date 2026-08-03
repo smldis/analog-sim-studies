@@ -28,8 +28,10 @@ from ass_exec.reuse import input_digest
 from ass_exec.transport import Observation, SubmissionRefused, Transport
 
 __all__ = [
+    "AttemptCancelled",
     "AttemptError",
     "AttemptSpent",
+    "StaleIdentity",
     "LaunchResult",
     "REUSABLE_OUTCOMES",
     "ReconciliationError",
@@ -72,6 +74,22 @@ class UnrecoverableAttempt(AttemptError):
 
 class ReconciliationError(AttemptError):
     """The durable record and the observed substrate state disagree."""
+
+
+class AttemptCancelled(AttemptError):
+    """Cancellation was recorded for this attempt; it must not be launched.
+
+    Recorded intent outlives the process that recorded it. Submitting anyway
+    would start work an operator has already stopped.
+    """
+
+
+class StaleIdentity(AttemptError):
+    """The stored result under this identity came from different inputs.
+
+    Only reachable when a caller supplies an identity by hand. A derived
+    identity cannot produce this, because different inputs land elsewhere.
+    """
 
 
 class AttemptSpent(AttemptError):
@@ -131,8 +149,24 @@ def launch_or_attach(
     ``claimed``  — nothing was accepted before; this call submits it once.
     """
 
+    with journal.claim():
+        return _launch_or_attach_locked(journal, transport, bundle)
+
+
+def _launch_or_attach_locked(
+    journal: AttemptJournal,
+    transport: Transport,
+    bundle: Mapping[str, Any],
+) -> LaunchResult:
     published = journal.read_manifest()
     state = journal.fold()
+    _require_matching_inputs(journal, state, bundle)
+
+    if state.cancel_requested and not state.is_terminal and published is None:
+        raise AttemptCancelled(
+            f"attempt {journal.identity} has a recorded cancellation "
+            f"({state.cancel_reason!r}) and will not be launched"
+        )
 
     if published is not None:
         if not state.is_terminal:
@@ -208,6 +242,35 @@ def launch_or_attach(
         raise
     journal.append("submit_receipt", handle=dict(handle))
     return LaunchResult("claimed", journal.fold())
+
+
+def _require_matching_inputs(
+    journal: AttemptJournal,
+    state: AttemptState,
+    bundle: Mapping[str, Any],
+) -> None:
+    """Refuse to reuse a record that was created from different inputs.
+
+    The guard lives here, where identity meets the journal, rather than only in
+    `execute`. Both entry points pass through this function, so a hand-supplied
+    identity cannot route around it.
+    """
+
+    created = next(
+        (event for event in state.events if event.event == "created"), None
+    )
+    if created is None:
+        return
+    recorded = created.data.get("input_digest")
+    if recorded is None or not bundle:
+        return
+    current = input_digest(bundle)
+    if recorded != current:
+        raise StaleIdentity(
+            f"attempt {journal.identity} was created from inputs {recorded} "
+            f"but this bundle digests to {current}. Derive the identity from "
+            f"plan_id/invocation_id so changed inputs get their own attempt."
+        )
 
 
 def request_cancel(

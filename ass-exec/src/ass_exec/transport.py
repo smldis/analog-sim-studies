@@ -148,3 +148,13 @@ class InProcessTransport:
         # Synchronous in-process work is already terminal by the time any
         # caller could cancel it. Recording the intent remains the caller's job.
         return None
+
+    def forget(self, identity: str) -> None:
+        """Drop a retained result once nobody can ask for it again.
+
+        Results are held so `poll` can answer after `submit`. Work that leaves
+        no record has no later reader, so retaining its value would only grow
+        the process for the lifetime of a run.
+        """
+
+        self._results.pop(identity, None)

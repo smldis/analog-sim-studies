@@ -6,6 +6,7 @@ import ass_flow
 from ass_flow import (
     AuthoringError,
     BindingError,
+    CollectionInputBinding,
     PlanningScopeError,
     artifact,
     flow,
@@ -23,51 +24,101 @@ CORNER_METRICS = artifact("corner-metrics")
 SUMMARY = artifact("characterization-summary")
 
 
-def test_characterization_example_is_one_valid_inspectable_graph(capsys):
-    normalized = characterization.build_characterization_plan()
-    nominal_only = characterization.build_characterization_plan(
-        include_extremes=False
+@pytest.mark.parametrize(
+    ("include_extremes", "expected_corners"),
+    [(False, ("tt",)), (True, ("tt", "ss", "ff"))],
+)
+def test_characterization_collection_fan_in_is_ordered_and_fully_keyed(
+    include_extremes, expected_corners
+):
+    normalized = characterization.build_characterization_plan(
+        include_extremes=include_extremes
     )
 
     assert normalized.validate() is normalized
     assert len(normalized.sources) == 1
-    assert len(normalized.invocations) == 4
-    assert len(normalized.edges) == 3
-    assert len(normalized.boundaries) == 4
+    assert len(normalized.invocations) == len(expected_corners) + 1
+    assert len(normalized.edges) == len(expected_corners)
+    assert len(normalized.boundaries) == len(expected_corners) + 1
+
     roots = [
         boundary for boundary in normalized.boundaries if boundary.parent_id is None
     ]
     assert len(roots) == 1
+    root = roots[0]
+    assert root.authored_key == "characterize-design"
     assert {
         boundary.parent_id
         for boundary in normalized.boundaries
         if boundary.parent_id is not None
-    } == {roots[0].id}
+    } == {root.id}
+    assert {boundary.authored_key for boundary in normalized.boundaries} == {
+        "characterize-design",
+        *(f"corner-{corner}" for corner in expected_corners),
+    }
+
+    summary = next(
+        invocation
+        for invocation in normalized.invocations
+        if invocation.authored_key == "reduce-characterization"
+    )
+    binding = summary.inputs[0]
+    assert isinstance(binding, CollectionInputBinding)
+    assert binding.cardinality == "collection"
+
+    invocations_by_id = {item.id: item for item in normalized.invocations}
+    bound_corners = []
+    producer_boundary_ids = []
+    for reference in binding.references:
+        producer = invocations_by_id[reference.invocation_id]
+        bound_corners.append(
+            next(item.value for item in producer.config if item.name == "corner")
+        )
+        assert producer.authored_key == "estimate-corner-metrics"
+        producer_boundary_ids.append(producer.boundary_id)
+    assert tuple(bound_corners) == expected_corners
+    assert len(set(producer_boundary_ids)) == len(expected_corners)
+    assert set(producer_boundary_ids) == {
+        boundary.id
+        for boundary in normalized.boundaries
+        if boundary.authored_key != "characterize-design"
+    }
+
+    positioned_edges = sorted(
+        normalized.edges, key=lambda edge: edge.target_member_index
+    )
+    assert [edge.target_member_index for edge in positioned_edges] == list(
+        range(len(expected_corners))
+    )
+    assert [edge.source for edge in positioned_edges] == list(binding.references)
+    assert all(edge.target_invocation_id == summary.id for edge in positioned_edges)
+    assert all(edge.id.startswith("edge:key:") for edge in positioned_edges)
+    assert all(item.authored_key is not None for item in normalized.invocations)
+    assert all(item.authored_key is not None for item in normalized.boundaries)
+
     assert {output.name for output in normalized.outputs} == {
-        "corners__ff",
-        "corners__ss",
-        "corners__tt",
+        *(f"corners__{corner}" for corner in expected_corners),
         "summary",
     }
     assert json.loads(normalized.to_json()) == normalized.to_data()
-    assert nominal_only.validate() is nominal_only
-    assert len(nominal_only.invocations) == 2
-    assert len(nominal_only.boundaries) == 2
-    assert [
-        binding.value
-        for invocation in nominal_only.invocations
-        for binding in invocation.config
-        if binding.name == "corner"
-    ] == ["tt"]
+
+
+def test_characterization_example_prints_canonical_json(capsys):
+    normalized = characterization.build_characterization_plan()
 
     characterization.main()
     printed = capsys.readouterr().out.strip()
     assert printed == normalized.to_json()
 
 
-def test_same_example_inputs_reconstruct_identical_data_and_ids():
-    first = characterization.build_characterization_plan(include_extremes=True)
-    second = characterization.build_characterization_plan(include_extremes=True)
+@pytest.mark.parametrize("include_extremes", [False, True])
+def test_same_example_inputs_reconstruct_identical_data_and_ids(include_extremes):
+    first = characterization.build_characterization_plan(
+        include_extremes=include_extremes
+    )
+    second = characterization.build_characterization_plan(
+        include_extremes=include_extremes
+    )
 
     assert first.to_data() == second.to_data()
     assert first.to_json() == second.to_json()
@@ -80,9 +131,13 @@ def test_same_example_inputs_reconstruct_identical_data_and_ids():
 def test_example_operation_bodies_are_never_executed():
     # Both public operation bodies raise unconditionally. Reaching a valid plan
     # is direct evidence that flow authoring recorded calls without running them.
-    normalized = characterization.build_characterization_plan()
+    full = characterization.build_characterization_plan()
+    nominal_only = characterization.build_characterization_plan(
+        include_extremes=False
+    )
 
-    assert len(normalized.invocations) == 4
+    assert len(full.invocations) == 4
+    assert len(nominal_only.invocations) == 2
 
 
 def test_nested_flow_failure_rolls_back_graph_and_all_id_counters():

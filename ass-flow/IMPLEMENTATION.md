@@ -2,7 +2,7 @@
 
 ## Status
 
-**Phase:** Phase 2 complete; Phase 3 review pending
+**Phase:** Phase 3 acceptance and boundary review complete
 
 **Authorized slice:** inspectable static planning only
 
@@ -38,6 +38,14 @@
 | --- | --- | --- | --- |
 | P2A | Collection-valued artifact inputs | complete | Public `artifacts(kind)` produces required ordered non-empty collection contracts; immutable bindings retain source/output artifact references in member order; every member has a positioned dependency edge; authoring and Plan validation reject invalid values and malformed positions; all 36 component tests pass |
 | P2B | Explicit stable authored identity | complete | Immutable operation policy/key views and keyed flow views preserve scoped authored keys in Plan IR; duplicate namespaces and rollback are validated; keyed IDs and fully keyed connecting edges survive unrelated unkeyed sibling insertion; all 49 component tests pass |
+
+## Phase 3 acceptance and boundary review
+
+| ID | Work | State | Evidence |
+| --- | --- | --- | --- |
+| P3.1 | Public characterization example | complete | The reducer declares `artifacts("corner-metrics")`; the root, per-corner flows, corner operations, and summary call use explicit scoped keys; nominal-only planning binds one real member and planning with extremes binds three distinct members |
+| P3.2 | Adversarial acceptance coverage | complete | Acceptance tests verify collection binding/edge order for one and three members, visible scoped keys, fully keyed connecting edges, repeat data/JSON identity, canonical stdout, and operation-body non-execution while retaining rollback, foreign-handle, no-runtime, mapping-canonicalization, and refusal coverage |
+| P3.3 | Independent source-boundary review | complete | Complete committed `src/ass_flow` inspection found immutable data/validation, explicit scoped graph capture, and the refusing `submit(...)` boundary; no execution, scheduler, transport, persistence, retry, publication, plugin, cache, or dynamic-replanning authority was found |
 
 ## File ownership during delegation
 
@@ -75,12 +83,6 @@ dialecticH run evidence.
 - retries, attempts, recovery, and durable publication: deferred;
 - dynamic or result-dependent replanning: deferred;
 - plugins and declarative flow configuration: deferred;
-
-## Later authorized review
-
-- Phase 3 acceptance/example/boundary review remains pending. The
-  characterization example, component ontology, README, and docs intentionally
-  retain their pre-Phase-3 state.
 
 ## Verification log
 
@@ -133,18 +135,36 @@ dialecticH run evidence.
 - Phase 2B composition (2026-08-03): the full four-child composition passed 49
   ASS Flow, 45 netlist-decomposition, 77 sidecar-edits, 28 spice-canonical, and
   7 root integration tests with the child source checkouts on `PYTHONPATH`.
+- Phase 3 focused evidence (2026-08-03): the updated acceptance file passed 10
+  parametrized cases and the complete component suite passed 52 tests. Both
+  nominal-only and nominal-plus-extremes plans validate and reconstruct
+  identical plain data and canonical JSON without executing operation bodies.
+- Phase 3 component verification (2026-08-03): characterization stdout passed
+  `python -m json.tool`; every package, test, and example module passed
+  `py_compile`; and `python -m build --wheel` produced
+  `ass_flow-0.1.0-py3-none-any.whl`.
+- Phase 3 composition (2026-08-03): the full four-child composition passed 52
+  ASS Flow, 45 netlist-decomposition, 77 sidecar-edits, 28 spice-canonical, and
+  7 root integration tests with all child source paths on `PYTHONPATH`.
+- Phase 3 docs (2026-08-03): aggregate staging included ASS Flow's current
+  index and inactive archive record and linked
+  `children/ass-flow/docs/index.md`. A full Sphinx build was unavailable because
+  Sphinx is not installed in the verification environment.
+- Phase 3 scope (2026-08-03): `git diff --check` passed; `ass-flow/src` has no
+  review changes; and sequential convenience has no occurrence in active
+  source, tests, or example. Remaining mentions are inactive archive/provenance
+  statements and explicit exclusions, not an API or backlog.
 
 ## Findings and changes to the plan
 
-- **Independent scope review — accept the bounded core.** The 1,118-line model
-  remains immutable contract/IR values, structured graph validation, and
-  deterministic serialization; the 820-line authoring layer remains public
-  declarations, explicit scoped capture with rollback, binding checks, and the
-  refusing `submit(...)` boundary. Their imports and behavior introduce no
+- **Independent scope review — accept the bounded core.** Complete inspection of
+  the current committed source finds immutable contract/IR values, structured
+  graph validation, deterministic serialization, public declarations, explicit
+  scoped capture with rollback, binding checks, and the refusing `submit(...)`
+  boundary. Its imports and behavior introduce no
   scheduler, transport, retry, persistence, plugin, publication, or execution
-  machinery. No evidence-backed removable production subsystem or concrete
-  blocker was found; line count alone does not justify weakening the explicit
-  invariants.
+  machinery. No accidental runtime authority or source defect was found, and no
+  production-hardening subsystem is present.
 - Authored keys are case-sensitive exact strings using the executor-neutral
   Plan-ID rule: an ASCII letter or digit followed by ASCII letters, digits,
   `.`, `_`, `:`, `/`, `@`, `+`, or `-`. A keyed invocation or boundary ID is
@@ -171,9 +191,9 @@ dialecticH run evidence.
   purity remains an authored discipline, not an enforced invariant.
 - Phase 2A demonstrates direct static collection fan-in without encoding
   references as configuration: a collection binding preserves authored member
-  order and produces correspondingly positioned dependency edges. The
-  characterization example intentionally retains its Phase 1 fixed three-input
-  reducer until the authorized Phase 3 update.
+  order and produces correspondingly positioned dependency edges. Phase 3 now
+  exercises that contract in the public characterization example for both one
+  and three distinct members.
 - **Historical conclusion (superseded).** The spike answered its decision
   question positively for static planning and initially recommended remaining
   outside `unit.toml` until a later boundary review. The user direction recorded
@@ -185,3 +205,27 @@ dialecticH run evidence.
   1 promotes the tested code without changing its prototype maturity. Phase 2
   addresses collection fan-in and explicit stable authored keys. The sequential
   convenience idea is archived and removed from active development scope.
+
+## Remaining limitations
+
+- Planning is static. Flow bodies execute as ordinary authored Python, can have
+  external side effects, and cannot branch on unavailable operation results.
+- Collection inputs are required non-empty authored sequences; they do not add
+  runtime discovery, dynamic graph expansion, or result-dependent replanning.
+- Only keyed nodes under stable keyed enclosing boundaries, and edges between
+  keyed invocations, have the demonstrated cross-edit identity promise. Unkeyed
+  boundaries and calls, external sources, and fallback edges remain
+  deterministic authored-order identities.
+- Keys remain Plan identity only. No cache, scheduler, attempt, runtime,
+  persistence, recovery, or sequential-editing semantics follow from them.
+- The component remains a prototype and owns no execution, Dask/LSF lowering,
+  retries, persistence, plugins, dynamic replanning, production hardening, or
+  complete study lifecycle.
+- The sequential convenience archive remains inactive historical provenance,
+  not a backlog.
+
+## Next decision question
+
+Is the normalized Plan IR sufficient for a separately owned executor-lowering
+interface without giving authoring hidden runtime authority? This review does
+not authorize or implement that interface.

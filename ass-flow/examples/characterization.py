@@ -2,7 +2,15 @@
 
 from __future__ import annotations
 
-from ass_flow import artifact, flow, input_artifact, operation, parameter, plan
+from ass_flow import (
+    artifact,
+    artifacts,
+    flow,
+    input_artifact,
+    operation,
+    parameter,
+    plan,
+)
 
 
 DESIGN = artifact("analog-design-description")
@@ -24,15 +32,11 @@ def estimate_corner_metrics(design, *, corner, temperature_c):
 
 @operation(
     name="example.reduce_characterization",
-    inputs={
-        "nominal": CORNER_METRICS,
-        "slow": CORNER_METRICS,
-        "fast": CORNER_METRICS,
-    },
+    inputs={"measurements": artifacts("corner-metrics")},
     outputs={"summary": SUMMARY},
 )
-def reduce_characterization(nominal, slow, fast):
-    """Describe fixed-shape fan-in over the three planned corner artifacts."""
+def reduce_characterization(measurements):
+    """Describe ordered fan-in over the planned corner artifacts."""
 
     raise AssertionError("operation bodies must not execute while planning")
 
@@ -41,7 +45,7 @@ def reduce_characterization(nominal, slow, fast):
 def characterize_one_corner(design, *, corner, temperature_c):
     """Reuse one operation declaration behind a visible per-corner boundary."""
 
-    return estimate_corner_metrics(
+    return estimate_corner_metrics.options(key="estimate-corner-metrics")(
         design,
         corner=corner,
         temperature_c=temperature_c,
@@ -52,34 +56,34 @@ def characterize_one_corner(design, *, corner, temperature_c):
 def characterize_design(design, *, include_extremes):
     """Use ordinary Python to select a static graph, then reduce its results."""
 
-    corners = {
-        "tt": characterize_one_corner(
-            design,
-            corner="tt",
-            temperature_c=27,
-        )
-    }
+    corners = {}
+    measurements = []
+
+    nominal = characterize_one_corner.options(key="corner-tt")(
+        design,
+        corner="tt",
+        temperature_c=27,
+    )
+    corners["tt"] = nominal
+    measurements.append(nominal)
+
     if include_extremes:
-        corners["ss"] = characterize_one_corner(
+        slow = characterize_one_corner.options(key="corner-ss")(
             design,
             corner="ss",
             temperature_c=125,
         )
-        corners["ff"] = characterize_one_corner(
+        fast = characterize_one_corner.options(key="corner-ff")(
             design,
             corner="ff",
             temperature_c=-40,
         )
-    else:
-        # The current core has scalar artifact inputs. Reusing the nominal
-        # handle keeps the reducer shape explicit when extremes are omitted.
-        corners["ss"] = corners["tt"]
-        corners["ff"] = corners["tt"]
+        corners["ss"] = slow
+        corners["ff"] = fast
+        measurements.extend((slow, fast))
 
-    summary = reduce_characterization(
-        nominal=corners["tt"],
-        slow=corners["ss"],
-        fast=corners["ff"],
+    summary = reduce_characterization.options(key="reduce-characterization")(
+        measurements
     )
     return {"corners": corners, "summary": summary}
 
@@ -92,7 +96,7 @@ def build_characterization_plan(*, include_extremes: bool = True):
             "inputs/two-stage-opamp.json",
             "analog-design-description",
         )
-        outputs = characterize_design(
+        outputs = characterize_design.options(key="characterize-design")(
             design,
             include_extremes=include_extremes,
         )

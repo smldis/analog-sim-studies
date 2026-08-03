@@ -14,11 +14,11 @@ any execution boundary.
 
 The current runnable API studies whether ordinary Python authoring can produce
 one deterministic, executor-neutral graph while retaining explicit contracts
-and nested flow structure. Its tests and simulator-free example provide
-evidence for the current boundary; limitations in identity and fan-in remain
-questions for the authorized later semantic phase, not capabilities claimed by
-this ontology. Changes should preserve inspectability, immutability, early
-validation, and the separation between planning and runtime authority.
+and nested flow structure. Its tests and simulator-free example now provide
+evidence for ordered collection fan-in and scoped authored Plan identity as
+well as the original scalar graph contracts. Changes should preserve
+inspectability, immutability, early validation, and the separation between
+planning and runtime authority.
 
 ## Current contracts
 
@@ -34,6 +34,20 @@ validation, and the separation between planning and runtime authority.
 - Plan IR is immutable, validates operation bindings and artifact dependencies,
   preserves nested flow boundaries, and provides deterministic plain-data and
   JSON inspection.
+- `artifacts(kind)` declares a required, non-empty ordered collection input.
+  Its binding retains member order and its dependencies contain one edge per
+  member with an explicit zero-based position.
+- Operation and flow call views may carry an explicit key. Keys share one
+  operation/flow namespace within their containing boundary and may be reused
+  only in distinct scopes. Keyed invocation and boundary IDs, and edges between
+  keyed invocations, derive from that scoped authored identity.
+- Keys are Plan identity only. They are never cache keys, scheduler keys,
+  attempt identities, runtime identities, or sequential slots.
+- Cross-edit stability is conditional: a keyed call beneath an unkeyed
+  enclosing boundary inherits that counter-derived boundary's instability.
+  External source IDs, unkeyed sources/invocations/boundaries, and fallback
+  edges involving an external source or unkeyed endpoint remain deterministic
+  authored-order identities and can change after earlier insertions.
 - `submit(...)` is a refusing boundary that raises `NotImplementedError`; it
   grants no executor contract.
 
@@ -48,10 +62,9 @@ contract is promoted through the parent composition node.
 ASS Flow does not own simulation meaning, operation execution, local or remote
 scheduling, Dask lowering, LSF transport, retries or attempts, persistence,
 artifact publication, recovery, plugins, dynamic or result-dependent
-replanning, or the complete study lifecycle. It does not provide sequential
-editing helpers. Current scalar artifact inputs and authored-order generated
-identities are documented limitations, not collection fan-in or cross-edit
-identity promises.
+replanning, production hardening, or the complete study lifecycle. It does not
+provide sequential editing helpers. The archived sequential convenience is
+inactive historical material, not an API or backlog.
 
 ## Child composition
 

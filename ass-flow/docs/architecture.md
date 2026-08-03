@@ -55,18 +55,18 @@ decisions remain outside this component.
 | Representative end-to-end reference | adapt into staged evidence | The current root-owned OTA/PVT Plan Reference tests authoring and planning first. It must not be described as end-to-end execution. |
 | Retired `study-flow` as the implementation base | discard | Its fixed graph and whole-run backend choice remain evidence, not compatibility constraints or code to revive. |
 | Generic arbitrary graph with per-invocation policy | adopt | Static arbitrary graphs and data-only policy resolution are implemented. Executable placement remains unresolved. |
-| Dask as the initial kernel | adopt as the first falsifiable execution hypothesis | Do not hide it behind a speculative generic engine interface, but do not make it a package dependency until a bounded lowering spike succeeds. |
+| Dask as the initial kernel | bounded Delayed experiment accepted | The non-reexported Delayed lowerer and optional exact dependency are retained as an instrument; this does not select a public execution kernel. |
 | Both Delayed and Futures | adapt | Compare them as lowerings of one normalized invocation contract. Do not create ambient, mode-dependent Python-call behavior. |
 | One operation with explicit `plan(...)` and `submit(...)` surfaces | partially adopt | The immutable operation and explicit planning surface are accepted. `submit(...)` remains refusing until lowering evidence shows whether one operation description can serve both timings honestly. |
 | Ambient-client detection | discard | A live client must never silently change a bare operation call into execution. |
-| Invocation wrapper and optimization boundary | defer with a mandatory spike | Preserve each authored invocation initially; test Dask fusion, annotation survival, keys, serialization, and policy revalidation before choosing a lowering. |
+| Invocation wrapper and optimization boundary | tested and narrowed | Raw lowering is one wrapper per Plan invocation. Installed default optimization preserved the three visible ancestor wrappers in the tested named-output closure; forced delayed fusion collapsed two while the result stayed correct. Optimization-invariant boundaries are not promised. |
 | Literal/artifact/ephemeral value classes | partially adopt as static Plan metadata | External source references are declared artifacts and operation-output references are ephemeral. Source address, codec, and assumed access scope are inspectable data; literals and runtime values still require a future lowering contract. |
 | Explicit materialization edges | adopt as a requirement when crossing execution environments | No automatic hidden transfer into direct LSF. The exact operation/schema is deferred until a real boundary needs it. |
 | Reusable custom flows and nested static composition | adopt | Implemented by `@flow`, explicit Plan scope, nested boundaries, branching, and ordered fan-in. |
 | Sequential stable-slot convenience | discard from active scope | Archived after explicit user direction; revisit only from repeated real editing friction. |
 | Hidden imperative `Flow.run()` controller | discard | Result-dependent work must remain a visible state transition/new Plan or a later explicit conditional contract. |
 | Result-dependent fallback/recovery | defer | Challenge "commit explicit state then reapply a flow" against a visible conditional/recovery node when an actual recovery case exists. |
-| Local execution | adopt as the first execution mode to test | It must need no LSF and should prove normalized invocation lowering and boundary preservation before remote modes. It is not authorized by the current reference work order. |
+| Local execution | bounded Delayed evidence only | Explicit synchronous computation demonstrates the named-output closure, but returned Delayed values cannot enforce local placement and no public execution surface is authorized. |
 | Direct LSF as one visible job per selected invocation | adopt as a required remote capability | Preserve this user-facing requirement. Reject implementations that merely allocate a Dask worker pool and call it direct execution. |
 | Named Dask worker executor as durable LSF owner | discard | A worker executor/Future cannot be the durable identity of an LSF job that outlives the worker. It may still be compared as a transport/capacity hook over a separate attempt protocol. |
 | Dask owns readiness; attempt protocol owns external LSF lifecycle | adopt the authority split, defer the exact adapter | Never let the adapter schedule successors or replay DAG readiness. Prove launch-or-attach, cancellation intent, reconciliation, and atomic terminal publication. |
@@ -102,7 +102,7 @@ The following direction remains applicable to ASS Flow:
 These are architectural constraints. Only the subset named by the ontology and
 public API is an implemented contract today.
 
-## Implemented and accepted prototype contract
+## Implemented and accepted bounded prototype contract
 
 The user-authorized planning work established this bounded component:
 
@@ -130,8 +130,13 @@ The user-authorized planning work established this bounded component:
 - `submit(...)` refuses with `NotImplementedError` and confers no runtime
   authority.
 
-This evidence accepts the static planning implementation as a prototype. It
-does not accept the execution architecture described later in the graduation.
+The static planning implementation is accepted as a prototype. In addition, a
+non-reexported experimental module now lowers a validated Plan from explicit
+operation/source registries to freshly namespaced Dask Delayed invocation and
+projection values. It does not compute them or expose `run`/`submit`; this
+lowering evidence is accepted for the bounded Phase 5 experiment after fresh
+independent review and final composition verification. It does not accept the
+wider execution architecture described later in the graduation.
 
 ## Revisions made by development evidence and user direction
 
@@ -147,10 +152,11 @@ trigger. Arbitrary Python composition remains the sole flow-authoring model.
 
 The graduation deliberately deferred the public boundary. Later reviewed
 implementation evidence and user direction promoted the planner to the direct
-child `ass-flow/`. The accepted boundary is narrow: this component owns static
-authoring and Plan IR only. Execution, attempt persistence, artifact
-publication, and the wider study lifecycle have not thereby been assigned to
-ASS Flow.
+child `ass-flow/`. The accepted parent-facing boundary remains static authoring
+and Plan IR. The child additionally owns one non-reexported Delayed lowering
+instrument solely to test Plan sufficiency. General execution, scheduling,
+attempt persistence, artifact publication, and the wider study lifecycle have
+not thereby been assigned to ASS Flow.
 
 ### Authored identity
 
@@ -212,12 +218,23 @@ behaviors and decide what additional runtime contract is necessary.
 
 ### Dask kernel
 
-Dask owning graph readiness, dependencies, routing, ordinary retries, and
-diagnostics is the first execution hypothesis to test, rather than one option
-hidden behind a new generic ASS engine interface. It is not yet a selected
-runtime dependency. A local lowering spike must test preservation of authored
-invocation boundaries, policy metadata, branching/fan-in, and explicit
-materialization without adding a second graph scheduler.
+Dask remains the first execution hypothesis to test, rather than one option
+hidden behind a new generic ASS engine interface. The current bounded spike
+uses only Delayed and makes Dask an exact optional dependency, not a base or
+public runtime dependency. It consumes Plan dependencies recursively instead of
+adding a second readiness graph, accepts only option-free `local` policy, and
+returns inspection handles without selecting or invoking a scheduler.
+
+The raw graph evidence maps every authored invocation one-to-one to a distinct
+freshly namespaced wrapper key; independent lowerings have disjoint keys so
+their differently bound results can share one compute without collision. For
+the tested summary closure on Dask 2026.7.1, installed default optimization
+preserved all three visible ancestor invocation wrappers. With
+`optimization.fuse.delayed=True`, two of those wrappers were fused away while
+the semantic result remained `(5, 80, (5, 10, 80))`. Therefore Plan identity
+and correctness cannot depend on optimized key survival. The returned Delayed
+collection also cannot enforce local placement; only the evidence command's
+explicit synchronous scheduler choice is local.
 
 The named-worker-executor hook remains a real Dask mechanism: a Worker accepts
 a mapping of named `concurrent.futures.Executor` instances, and the worker
@@ -363,40 +380,40 @@ attempt identity and reconciliation protocol.
 | Static custom-flow composition | accepted with domain-sized evidence | The completed root-owned OTA/PVT reference expresses preparation forks, three ordered PVT branches, and two ordered fan-ins in one deterministic Plan without a second graph model. |
 | Sequential-flow convenience | archived/rejected from active scope | Reconsider only after repeated real workflows show the same stable-step editing burden. |
 | Result-dependent fallback/recovery | deferred | Compare reapplying a flow to committed explicit state with a visible conditional/recovery node when a concrete failure workflow requires it. Hidden controllers remain rejected. |
-| Authoring surfaces | planning accepted; submission unresolved | A bounded lowering experiment must compare normalized meaning before any working `submit(...)` surface is accepted. |
+| Authoring surfaces | planning accepted; submission still refusing | The accepted bounded Delayed evidence does not authorize `submit(...)`. |
 | Typed state/artifact transition | declarative prerequisite accepted | Schema-2 Plans distinguish addressed artifact sources from ephemeral operation outputs and record codec/access assumptions. Independent review accepted the data-only boundary after one structured-validation defect was corrected. Resolution, codec execution, real access checking, publication, materialized outputs, and runtime values remain unimplemented. |
-| Local execution | selected first execution hypothesis; not authorized | A separately reviewed Dask lowering work order may now test normalized invocation meaning without LSF or durable runtime expansion; completion of the prerequisite did not authorize implementation. |
-| Dask executor boundary | selected first kernel hypothesis; unvalidated | Local lowering and invocation-boundary preservation must be tested before accepting the dependency or public execution surface. |
+| Local execution | bounded explicit-compute evidence accepted | The example computes with Dask's synchronous scheduler, but the returned Delayed graph cannot enforce placement and no general local execution API exists. |
+| Dask executor boundary | experimental Delayed lowering accepted | Raw invocation mapping is one-to-one and collision-safe per lowering; forced fusion can erase visible wrappers. The dependency is optional and the public boundary is still unaccepted. |
 | Direct LSF lifecycle | authority split adopted; adapter unvalidated | Fake acceptance-to-receipt and terminal-to-manifest failure injections are required before farm use. |
 | Mixed local/direct/pool topology | deferred | Requires credible local lowering and direct-attempt ownership first. |
 | Durable Plan/attempt/artifact projection | Plan only is implemented | Fresh-process attempt reconciliation must determine the minimal additional facts. |
-| Component boundary and name | accepted for static planning only | Revisit if executor/runtime responsibilities prove independently useful or cannot fit this ontology honestly. |
+| Component boundary and name | planning promoted; bounded local instrument retained | The parent still promotes planning only. Independent review accepted the non-reexported instrument as a fitting child-owned experiment without promoting general execution. |
 | Plugins and declarative flows | deferred | Require a concrete multi-repository or non-Python authoring need. |
 
 ## Current evidence work order
 
-The user-authorized
-`ASS-FLOW-WO-2026-08-03-ARTIFACT-HANDOFF` work order is recorded in
-`PLANNING.md`. It is complete: implementation and integration evidence pass,
-and independent source/boundary review returned `ACCEPT` after one malformed
-source-validation defect was corrected and reverified. It enriches static Plan declarations only: external sources
-become structured, addressed artifact references with explicit codec and
-assumed-access requirements, while every ordinary operation output remains an
-ephemeral reference.
+The completed user-authorized
+`ASS-FLOW-WO-2026-08-03-LOCAL-DASK-LOWERING` work order is recorded in
+`PLANNING.md`. P5.2 core evidence reached 23 focused and 86 total ASS Flow tests
+after two focused corrections. P5.3 added a command test and deterministic
+reuse of the public characterization Plan, bringing the accepted evidence to
+24 focused and 87 total tests.
 
-An initial review proposal to make publication mandatory on every output was
-rejected after rechecking the exact graduated main. That mechanism would have
-discarded the retained in-memory Dask composition hypothesis. Optional output
-materialization capability is declaration data only; it cannot publish or
-change an edge's value class. Final-output publication and cross-environment
-materialization remain visible decisions for later work orders.
+The example injects the Plan's single decoded source by source ID and binds the
+two exact operation identities to explicit callables. It therefore reads no
+declared address and never calls the refusing decorated operation bodies. It
+computes branching and ordered `tt`, `ss`, `ff` fan-in explicitly with the
+synchronous scheduler and optimization disabled. Canonical stdout excludes the
+fresh Dask namespace and reports only semantic named results, stable counts,
+and Plan IDs.
 
-The completed root-owned OTA/PVT Plan reference, now adapted to schema 2,
-supplies the acceptance graph without moving its domain meaning into ASS Flow.
-Local Dask lowering remains the next candidate execution experiment only under
-a new reviewed work order. Current passing evidence does not authorize Dask, LSF, sibling
-adapters, codec execution, address resolution, publication, materialized
-outputs, runtime values, or a study runtime.
+Packaging selects exact `dask==2026.7.1` only through the `dask` extra while
+base dependencies remain empty. Fresh Codex-high review found no actionable
+defect, and final component/root composition, isolated-wheel, import, example,
+compile, and scope checks passed. This bounded evidence does not authorize a
+working `submit(...)`, general execution, Delayed/Futures implementation,
+Distributed, LSF, placement enforcement, codec/address work, publication,
+persistence, or runtime-study ownership.
 
 ## Rules for the next development decision
 

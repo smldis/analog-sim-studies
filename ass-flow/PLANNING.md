@@ -759,5 +759,15 @@ Codex-high review rejected repeat-stable Dask keys because independently bound
 graphs with equal keys merged to the wrong value, and required explicit
 orphan/zero-output roots, tuple-order independence, fusion observations,
 ontology treatment, and non-circular packaging gates. The corrected contract
-uses fresh per-lowering namespaces and received `ACCEPT`. Implementation remains
-subject to the completion review above.
+uses fresh per-lowering namespaces and received `ACCEPT`.
+
+**Completion review:** Accepted on 2026-08-03. The delegated core and evidence
+passes produced 24 focused and 87 total ASS Flow tests, deterministic reuse of
+the public characterization Plan, and an optional-only Dask wheel gate. A fresh
+Codex-high full-diff review found no actionable defect and returned `ACCEPT`
+after independently probing key separation, default/forced fusion, ordering,
+source-I/O refusal, import isolation, wheel contents, and ontology scope. The
+coordinating session passed the complete 87/45/77/28/17 composition matrix,
+repeat example, compilation, isolated no-Dask installation, and diff/scope
+checks. The bounded hypothesis is accepted; `submit(...)`, Futures/Distributed,
+LSF, placement enforcement, and general execution remain unauthorized.

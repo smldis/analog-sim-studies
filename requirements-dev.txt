@@ -1,4 +1,4 @@
--e ./ass-flow
+-e ./ass-flow[dask]
 -e ./spice-canonical
 -e ./netlist-decomposition
 -e ./sidecar-edits[docs]

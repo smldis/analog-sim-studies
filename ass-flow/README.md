@@ -28,23 +28,39 @@ relevant enclosing boundary and endpoint to be keyed: unkeyed boundaries and
 calls, external sources, and fallback edges retain deterministic authored-order
 IDs that can change when earlier work is inserted.
 
-Install and test it from this directory with:
+Install the base planning package and run its planning-only evidence from this
+directory with:
 
 ```console
 python -m pip install -e .
-python -m pytest -q
-```
-
-The simulator-free example prints the normalized plan it authors:
-
-```console
 PYTHONPATH=src python examples/characterization.py | python -m json.tool
 ```
 
+The base distribution keeps `dependencies = []`: `import ass_flow` and the
+planning-only characterization command do not require Dask. To inspect the
+non-reexported local lowering experiment, select the exact optional dependency
+and run its simulator-free example explicitly:
+
+```console
+python -m pip install -e '.[dask]'
+python -m pytest -q
+PYTHONPATH=src python examples/local_dask_characterization.py \
+  | python -m json.tool
+```
+
+That example reuses the public characterization Plan, binds its two operation
+identities to explicit callables, injects the one already-decoded source value,
+and asks Dask to compute synchronously with optimization disabled. Its canonical
+stdout contains semantic results and stable Plan metadata, not the fresh Dask
+task namespace. The summary visibly retains the authored `tt`, `ss`, `ff`
+collection order.
+
 Flow bodies are ordinary authored Python used to construct a static plan;
-their freedom from side effects is an authoring discipline. ASS Flow has no
-executor or runtime authority: `submit(...)` refuses execution, and scheduling,
-local execution, Dask/LSF lowering, retries, persistence, recovery, plugins,
+their freedom from side effects is an authoring discipline. `submit(...)` still
+refuses execution. The explicit `ass_flow.experimental.local_dask` instrument
+only constructs Dask Delayed values; it does not compute, submit, choose or
+enforce a scheduler/placement, or provide a general execution API. Public Dask
+execution, Distributed/Futures, LSF, retries, persistence, recovery, plugins,
 dynamic replanning, production hardening, and result-dependent replanning are
 outside this unit. Address resolution, codec execution, actual access checks,
 publication, materialized operation outputs, and runtime artifact values are

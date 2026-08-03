@@ -10,6 +10,10 @@ any execution boundary. It also owns data-only declarations for addressed
 external sources: codec identity/options, materialization and access
 assumptions, fixed source/output reference value classes, and optional output
 materialization capability metadata.
+It also owns one non-reexported experimental instrument that lowers a validated
+Plan, explicit implementation registry, and injected decoded source mapping to
+inspectable Dask Delayed values. This instrument tests Plan sufficiency; it is
+not a public or general execution surface.
 
 ## Mode of being
 
@@ -18,16 +22,18 @@ materialization capability metadata.
 The current runnable API studies whether ordinary Python authoring can produce
 one deterministic, executor-neutral graph while retaining explicit contracts
 and nested flow structure. Its tests and simulator-free example now provide
-evidence for ordered collection fan-in, scoped authored Plan identity, and the
+evidence for ordered collection fan-in, scoped authored Plan identity, the
 static distinction between addressed artifact sources and ephemeral operation
-outputs. Changes should preserve
+outputs, and a bounded local Delayed lowering of those contracts. Changes
+should preserve
 inspectability, immutability, early validation, and the separation between
 planning and runtime authority.
 
 ## Current contracts
 
-- Distribution: `ass-flow`, independently installable on Python 3.10 or newer
-  with no runtime dependencies outside the standard library.
+- Distribution: `ass-flow`, independently installable on Python 3.10 or newer;
+  the base package has no dependencies, and the optional `dask` extra pins
+  `dask==2026.7.1` for the experimental instrument.
 - Python API: `ass_flow` exposes immutable planning model values and the
   `@operation`, `@flow`, `plan(...)`, `input_artifact(...)`, policy, and
   contract-authoring surfaces.
@@ -60,6 +66,17 @@ planning and runtime authority.
   External source IDs, unkeyed sources/invocations/boundaries, and fallback
   edges involving an external source or unkeyed endpoint remain deterministic
   authored-order identities and can change after earlier insertions.
+- Explicit module `ass_flow.experimental.local_dask` consumes a validated Plan,
+  exact `OperationIdentity`-keyed callables, and a complete source-ID mapping of
+  already-decoded values. Each lowering has a fresh Dask-key namespace and
+  returns immutable mappings for invocation tasks, named output projections,
+  and pre-optimization invocation keys. Neither package initializer imports or
+  reexports it.
+- The experimental lowerer accepts only option-free `local` policy and
+  resource-free used operations, builds no second readiness graph, performs no
+  source I/O or codec work, and has no compute, submit, persistence,
+  cancellation, publication, or scheduling method. Callers explicitly choose
+  whether and how to compute returned Delayed values.
 - `submit(...)` is a refusing boundary that raises `NotImplementedError`; it
   grants no executor contract.
 
@@ -71,14 +88,15 @@ contract is promoted through the parent composition node.
 
 ## Exclusions
 
-ASS Flow does not own simulation meaning, operation execution, local or remote
-scheduling, Dask lowering, LSF transport, retries or attempts, persistence,
-address resolution, codec execution, real accessibility checking, artifact
-publication, materialized operation outputs, runtime artifact values, recovery,
-plugins, dynamic or result-dependent replanning, production hardening, or the
-complete study lifecycle. It does not provide sequential editing helpers. The
-archived sequential convenience is inactive historical material, not an API or
-backlog.
+ASS Flow does not own simulation meaning, public or general operation
+execution, local or remote scheduling, placement enforcement, a working
+`submit(...)`, general Dask lowering, Dask Distributed/Futures, LSF transport,
+retries or attempts, persistence, address resolution, codec execution, real
+accessibility checking, artifact publication, materialized operation outputs,
+runtime artifact values, recovery, plugins, dynamic or result-dependent
+replanning, production hardening, runtime study ownership, or the complete
+study lifecycle. It does not provide sequential editing helpers. The archived
+sequential convenience is inactive historical material, not an API or backlog.
 
 ## Child composition
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-**Phase:** local Dask Delayed lowering core authorized
+**Phase:** local Dask Delayed lowering experiment complete
 
 **Authorized slice:** bounded local Delayed lowering experiment; no public
 submission or remote runtime
@@ -64,10 +64,10 @@ submission or remote runtime
 | ID | Work | Owner | State | Evidence |
 | --- | --- | --- | --- | --- |
 | P5.1 | Freeze Plan/implementation/source/Dask identity and ownership boundary | Coordinating session plus fresh Codex high review | complete | Initial `REVISE` exposed unsafe repeat-stable Dask keys and ambiguous orphan/root semantics; corrected work order uses collision-safe per-lowering keys, explicit roots, optimization probes, ontology treatment, and two-stage packaging; re-review returned `ACCEPT` |
-| P5.2 | Implement experimental Delayed lowering and focused refusal tests | Codex high (`local-dask-core`) | pending on P5.1 | Must preserve invocation wrappers, ordered bindings, exact output maps, explicit registries, and local-only policy |
-| P5.3 | Add simulator-free runnable evidence and honest documentation | Codex high (`local-dask-evidence`) | pending on P5.2 | Must demonstrate branching/fan-in without source I/O or decorated operation-body execution |
-| P5.4 | Independent execution/boundary review | Codex high (`local-dask-review`) | pending on P5.3 | Must challenge task identity, optimization claims, optional dependency isolation, and excluded runtime authority |
-| P5.5 | Full verification and completion decision | Coordinating session | pending on P5.4 | Component, root integration, composition, import isolation, wheel, example, and diff checks must pass before acceptance |
+| P5.2 | Implement experimental Delayed lowering and focused refusal tests | Codex high (`local-dask-core`) | complete | After two focused corrections, 23 focused / 86 total tests cover recursive tuple-order-independent lowering, one-to-one raw wrappers, explicit exact registries, injected sources, ordered bindings, exact output mappings, collision-safe namespaces, roots/orphans, runtime attribution, and refusal boundaries |
+| P5.3 | Add simulator-free runnable evidence and honest documentation | Codex high (`local-dask-evidence`) | complete | The public characterization Plan computes deterministically through explicit identity callables and one injected source; repeat command stdout and exact `tt`, `ss`, `ff` summary order are locked at 24 focused / 87 total tests, and the optional-dependency wheel gate passes |
+| P5.4 | Independent execution/boundary review | Codex high (`local-dask-review`) | complete | Fresh read-only full-diff review found no actionable defect and returned `ACCEPT`; it independently probed namespaced keys, fusion, ordering, no source I/O, import isolation, wheel metadata/source identity, and the experimental ownership boundary |
+| P5.5 | Full verification and completion decision | Coordinating session | complete | Final verification passed 24 focused / 87 component tests, full composition 87/45/77/28/17, repeat example output, import isolation, changed-Python compilation, optional-only wheel metadata and isolated no-Dask installation, scope, and diff checks |
 
 ## File ownership during delegation
 
@@ -96,6 +96,12 @@ dialecticH run evidence.
   materialization capability metadata.
 - Strict external-source authoring through `input_artifact(..., artifact=...,
   materialized_as=...)`; the former kind-only form is not retained.
+- A non-reexported `ass_flow.experimental.local_dask` instrument that lowers a
+  validated Plan from exact implementation and decoded-source mappings to
+  immutable Dask Delayed inspection handles under a fresh namespace.
+- One raw invocation wrapper per Plan invocation, exact output-map projection,
+  scalar and ordered-collection binding, fresh configuration thawing, retained
+  orphan/zero-output roots, and attributable execution-time failures.
 - An explicit `submit(...)` stub that refuses execution.
 
 ## Inactive historical material
@@ -107,8 +113,9 @@ dialecticH run evidence.
 ## Explicit runtime stubs and exclusions
 
 - `submit(...)` and executor integration: `NotImplementedError` boundary;
-- public/general Dask and all LSF lowering: deferred; the Phase 5 experimental
-  local Delayed work order remains under review;
+- public/general Dask execution, scheduling or placement enforcement,
+  Distributed/Futures, and all LSF lowering: deferred; the Phase 5 Delayed
+  instrument remains non-reexported and bounded to the accepted experiment;
 - retries, attempts, recovery, and durable publication: deferred;
 - address resolution, codec execution, real access checking, materialized
   operation outputs, and runtime artifact values: deferred outside ASS Flow;
@@ -212,6 +219,51 @@ dialecticH run evidence.
   core owner guarded that path and added the `artifact=None` regression. The
   reviewer independently proved `invalid_source_artifact`, retained valid-kind
   checking, reran all 63 component tests, and replaced `REVISE` with `ACCEPT`.
+- Phase 5 core evidence (2026-08-03): after two focused
+  corrections, 23 focused and 86 total ASS Flow tests passed on Dask 2026.7.1.
+  The tests cover shuffled Plan tuple order, exact registry/source preflight,
+  local-policy/resource refusal, branching/fan-in, aliases, multi/zero outputs,
+  orphans, configuration thawing, merged and repeated compute behavior,
+  collision-safe per-lowering namespaces, and attributable runtime failures.
+- Phase 5 runnable evidence (2026-08-03): the new local characterization
+  command ran twice with bytecode disabled and emitted byte-identical JSON. One
+  added command test brings the focused file to 24 tests and the component to
+  87; it verifies exact semantic named outputs, `tt`, `ss`, `ff` collection
+  order, stable Plan counts/IDs, a deliberately unreadable declared source
+  path, and the unconditional refusing authored bodies through successful use
+  of only explicit callables and injected data. It makes no runtime Python-type
+  enforcement claim.
+- Phase 5 optimization evidence (2026-08-03): the raw graph contains exactly
+  one distinct wrapper key for each of five adversarial Plan invocations. For
+  the named summary closure, installed default optimization visibly executed
+  all three ancestor wrappers; forced delayed fusion executed only one of those
+  wrapper keys, collapsing the other two while retaining the exact result
+  `(5, 80, (5, 10, 80))`.
+- Phase 5 optional packaging gate (2026-08-03): the wheel metadata reports
+  `Requires-Python: >=3.10`, `Provides-Extra: dask`, and only conditional
+  `Requires-Dist: dask==2026.7.1; extra == "dask"`. Installation with
+  `pip install --no-deps` in a fresh `/tmp` virtual environment left Dask
+  absent; `import ass_flow` and the original planning-only characterization
+  path succeeded, while explicit experimental-module import failed with the
+  short optional-dependency message. Installed Dask metadata also reports
+  Python `>=3.10`; all runtime evidence here is Python 3.14.6 only.
+- Phase 5 repository verification (2026-08-03): root integration passed 17
+  tests with absolute source-checkout `PYTHONPATH`, and full composition passed
+  87 ASS Flow, 45 Netlist Decomposition, 77 Sidecar Edits, 28 SPICE Canonical,
+  and 17 root integration tests with bytecode and pytest caches disabled. The
+  accepted experimental source, new example, and focused test compiled; the
+  example repeated byte-for-byte; wheel isolation passed; and scope/diff checks
+  were clean.
+- Phase 5 independent review and completion (2026-08-03): fresh Codex high
+  read the complete work order, implementation, tests, example, packaging,
+  ontology, and documentation and returned `ACCEPT` with no actionable finding.
+  Its read-only sandbox ran 22/24 focused and 85/87 component tests, with the
+  two temporary-directory cases replaced by independent in-process/subprocess
+  probes; it also reproduced five distinct raw invocation keys, three visible
+  default-optimized ancestors, one visible forced-fusion wrapper, equal semantic
+  results, disjoint lowering namespaces, short/unmasked import failures, no
+  source I/O, and inert root exports. The coordinating session separately ran
+  the complete writable-filesystem matrix and accepted P5.5.
 
 ## Findings and changes to the plan
 
@@ -258,6 +310,15 @@ dialecticH run evidence.
   materialization capabilities null. The fresh independent source/boundary
   review accepted this data-only boundary after its one validation finding was
   corrected and reverified.
+- Phase 5 confirms that independently bound graphs cannot safely share Dask
+  keys: equal keys can merge distinct values, so every lowering uses a fresh
+  opaque namespace. Tests prove disjoint wrapper keys and correct distinct
+  results when two lowerings share one explicit compute.
+- Raw Delayed inspection is one-to-one with Plan invocations, but optimized
+  execution is not. Current default optimization preserved the three visible
+  ancestor wrappers in the adversarial named-output closure; forced delayed
+  fusion collapsed two while the result remained correct. Dask keys are
+  transient inspection evidence, never Plan IDs or durable identity.
 - **Historical conclusion (superseded).** The spike answered its decision
   question positively for static planning and initially recommended remaining
   outside `unit.toml` until a later boundary review. The user direction recorded
@@ -285,7 +346,15 @@ dialecticH run evidence.
 - Source address, codec, and access data are declarations only. ASS Flow does
   not resolve addresses, execute codecs, verify accessibility, publish values,
   materialize operation outputs, or represent runtime artifact values.
-- The component remains a prototype and owns no execution, Dask/LSF lowering,
+- The returned Delayed collections do not enforce local placement. The lowerer
+  does not choose a scheduler, and only explicit synchronous computation with
+  optimization disabled is the accepted local recipe.
+- The experiment does not establish process/distributed serialization,
+  optimization-invariant wrapper visibility, live handles, cancellation,
+  retries, persistence, side-effect safety, runtime artifact-type enforcement,
+  or cross-compute exactly-once behavior. Separate compute calls re-execute.
+- The component remains a prototype and owns no public/general execution,
+  Distributed/Futures, LSF lowering, scheduling, placement enforcement,
   retries, persistence, plugins, dynamic replanning, production hardening, or
   complete study lifecycle.
 - The sequential convenience archive remains inactive historical provenance,
@@ -293,9 +362,9 @@ dialecticH run evidence.
 
 ## Next decision question
 
-The schema-2 source-handoff prerequisite is accepted. The next separately
-authorized experiment may ask whether the normalized Plan IR lowers locally
-through Dask without giving authoring hidden runtime authority. It must first
-freeze executor ownership, identity-to-task binding, injected source decoding,
-invocation-boundary visibility, local failure/cancellation behavior, and the
-explicit exclusions for publication, durability, retries, and LSF.
+Phase 5 answers the bounded Delayed-lowering question positively and is
+complete. The next executor question is a separately reviewed Delayed/Futures
+comparison focused on live handles, cancellation, placement visibility, and
+failure semantics. Phase 5 completion permits planning that work order but does
+not authorize its implementation, a working `submit(...)`, Distributed, LSF,
+or general execution.

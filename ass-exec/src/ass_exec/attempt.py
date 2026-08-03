@@ -8,7 +8,14 @@ them.
 ``launch_or_attach`` must resolve to exactly one of three dispositions, or fail
 loudly. The failure is not a defect: an unrecoverable attempt is a real
 property of a substrate that cannot answer questions about its own accepted
-work, and reporting it beats inventing a duplicate.
+work, and reporting it beats acting blindly.
+
+Under the current owner-bound lifetime decision, work is not meant to survive
+its caller, so the ``attached`` disposition and ``UnrecoverableAttempt`` are
+reachable only for a transport whose substrate keeps work after the submitter
+dies. Nothing here does today. They are retained because the distinction they
+encode — accepted, refused, or indeterminate — is exactly what an orphan-reaping
+path needs in order to know whether there is anything to kill.
 """
 
 from __future__ import annotations

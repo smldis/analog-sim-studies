@@ -27,6 +27,50 @@ authorization records, stop-condition recitals, and delegated review panes.
 
 This revision is recorded rather than drifted into, as the main requires.
 
+## Premise correction (2026-08-03, user direction)
+
+The unit was built on the architecture's lifetime asymmetry: an accepted batch
+job outlives the process that submitted it, so a transient handle cannot own
+its identity. **The user has stated the opposite as the design intent — a job
+is not supposed to outlive its owner, and a caller crash should take the work
+down with it.**
+
+This removes the premise of the graduated main's provisional decision that "an
+attempt protocol owns LSF." With owner-bound lifetime, the unsafe transition
+that argument was built to survive becomes a defect to prevent rather than a
+state to reconcile, and Dask owning the lifecycle is no longer unsound on
+lifetime grounds.
+
+**What the failure mode becomes.** Duplicate prevention is replaced by orphan
+prevention. The indeterminate-submission window still exists and still matters,
+but the correct response inverts: from "refuse to guess, wait to attach" to
+"discover it and kill it." Lookup by a pre-chosen unique identity is therefore
+still a required site capability, used for reaping rather than attaching, and
+identity uniqueness matters more than before because the action it enables is
+destructive.
+
+**What enforces it.** An expectation is not a mechanism; unenforced owner-bound
+lifetime is how orphans happen. `dask-jobqueue` already implements this for
+pooled workers via `--death-timeout` plus `bkill` on cluster close, so pooled
+mode should adopt it rather than rebuild it. Direct mode should borrow the same
+discipline. Enforcement must not depend on `bsub -I`: the manifesto forbids
+authority living in an interactive session, and a lease works identically for a
+terminal, a script, CI, or an agent.
+
+**What "resume" means here.** Not reattaching to running work, which no longer
+exists. The manifesto's actual requirement is to rerun from a clean environment
+without repeating results whose inputs remain valid. That is result reuse and
+staleness, and it is the durable record's real purpose in this design —
+evidence and reuse, not recovery.
+
+**Consequence for this unit.** Attempt identity, the append-only journal, atomic
+terminal publication, the refused/indeterminate distinction, and reconciliation
+all survive with changed justifications. The attach disposition and
+`UnrecoverableAttempt` are demoted: they are correct only for a transport that
+declares detached lifetime, and no such transport exists or is currently wanted.
+They are retained, unreachable by default, rather than deleted, because the
+distinction they encode is what makes the orphan-reaping path expressible.
+
 ## Settled by evidence in this unit
 
 | Question | Answer | Evidence |
@@ -42,34 +86,51 @@ The fourth row is the boundary result: because reconciliation reads no
 topology, this unit has not absorbed graph scheduling authority, and the
 architecture's rejection line 1 has not been crossed.
 
+## Settled by user direction
+
+- **Job lifetime is owner-bound.** Work must not outlive the caller that
+  launched it. Detached execution is not wanted.
+- **`bsub -J` and lookup by job name are available** at the target site.
+- **Minimal local invocations must not pay for durability.** Recording is a
+  declared property of work that leaves the process, not a tax on every call.
+
 ## Open
 
-- **Real batch transport.** Everything above is evidence against a fake
-  substrate. It establishes that the protocol is sound, not that any site
-  satisfies its precondition. The next question is empirical: are `bsub -J` and
-  lookup by job name available and authoritative at the target site?
-- **Bundle contract.** Bundles are plain mappings today. Whether they should be
-  derived from ASS Flow's Plan IR, and who materializes input values across the
-  boundary, is undecided. Deciding it early would couple two units before
-  either has earned the coupling.
-- **Which invocations pay for durability.** An in-memory Python task should not
-  need an attempt directory. The proposal on the table is that an operation
-  *declares* whether it is externally executable, so the distinction is
-  authored and visible rather than inferred from placement.
-- **Who drives readiness.** Dask remains the hypothesis for graph readiness,
-  but nothing in this unit depends on it. That is deliberate: the attempt
-  protocol should survive replacing the kernel.
+- **Lease enforcement.** Owner-bound lifetime needs a mechanism: a heartbeat the
+  job checks plus best-effort `bkill` on shutdown. Open questions are lease
+  location on shared storage, interval and grace period, and what a job does
+  when the lease is merely stale rather than absent. Not yet implemented.
+- **Orphan reaping.** After an indeterminate submission the correct action is
+  discover-and-kill. The protocol expresses this but no transport implements
+  it, and the destructive action deserves its own failure injection before any
+  real `bkill` is wired up.
+- **Result reuse and staleness.** The real resume path: rerun a flow and skip
+  invocations whose results are already published and whose inputs are
+  unchanged. This needs input identity, which needs a bundle contract, which is
+  the next real design question in this unit.
+- **Bundle contract.** Bundles are plain mappings today. Whether they derive
+  from ASS Flow's Plan IR, and who materializes input values across the
+  boundary, is undecided — but result reuse now pushes on it, since reuse is
+  only sound if input identity is part of the bundle.
+- **Pooled mode.** Adopt `dask-jobqueue` rather than rebuild it; it already
+  implements owner-bound worker lifetime. Not yet exercised here, and not
+  installed in the current environment.
+- **Who drives readiness.** Dask remains the hypothesis, and the lifetime
+  correction removes the main objection to it owning the lifecycle. Nothing in
+  this unit depends on that choice, which is worth preserving.
 - **Retry lineage.** `sequence` exists in the identity and is otherwise unused.
-  A retry creating a new attempt only after the prior one is terminal is the
-  intended rule; it is not yet implemented or tested.
 
 ## Would change our minds
 
-- A site where neither atomicity nor discovery is available, making the whole
-  direct-execution line unsupported there rather than merely unimplemented.
-- Reconciliation needing to know which nodes were ready, or needing a live
-  worker to prevent duplicates. Either would mean the boundary is wrong and the
-  engine question should be reopened.
-- Repeated real workflows in which the durable record is pure overhead because
-  nothing ever crashes. That would be evidence for narrowing the protocol to
-  externally executed work only, not for deleting it.
+- A workload that genuinely needs detached execution — an overnight sweep that
+  should survive closing a laptop. That would reinstate the lifetime asymmetry
+  for that mode only, and the demoted attach path exists so the change would be
+  a transport capability rather than a redesign.
+- A lease mechanism that cannot bound orphan lifetime under realistic network
+  or filesystem failure. That would make owner-bound lifetime an unenforceable
+  intent, and direct submission would need to be refused rather than trusted.
+- Reconciliation needing to know which nodes were ready. That would mean the
+  boundary is wrong and the engine question should be reopened.
+- Result reuse proving unsound in practice because input identity cannot be
+  captured honestly for simulator work. That would make rerun-everything the
+  correct default and reduce the record to pure provenance.

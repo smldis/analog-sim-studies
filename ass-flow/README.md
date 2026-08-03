@@ -41,5 +41,7 @@ outside this unit. The archived sequential-flow convenience is inactive
 historical material, not an active API or backlog.
 
 See [`ONTOLOGY.md`](ONTOLOGY.md) for the owned boundary,
-[`docs/index.md`](docs/index.md) for component documentation, and
+[`docs/architecture.md`](docs/architecture.md) for the graduated architecture
+adapted to current development status, [`docs/index.md`](docs/index.md) for the
+component documentation entry point, and
 [`IMPLEMENTATION.md`](IMPLEMENTATION.md) for current evidence and limitations.

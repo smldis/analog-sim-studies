@@ -2,8 +2,8 @@
 
 Inherit the project guidance from `../AGENTS.md`. Before work here, read
 `../MANIFESTO.md`, `../ONTOLOGY.md`, local `ONTOLOGY.md`, local `README.md`,
-local `unit.toml`, and both planning trackers, then inspect the relevant
-implementation and tests.
+local `unit.toml`, both planning trackers, and `docs/architecture.md`, then
+inspect the relevant implementation and tests.
 
 This unit owns executor-neutral operation/flow authoring, early graph
 validation, immutable normalized Plan IR, and its simulator-free evidence.

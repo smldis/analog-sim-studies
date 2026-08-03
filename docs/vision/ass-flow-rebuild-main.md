@@ -244,7 +244,16 @@ target.
 > context but must not be reconciled, pruned, restated, or edited during this
 > run.
 
-**Status:** dialecticH seed; no architecture in this document is accepted yet
+**Status:** historical pre-graduation dialecticH seed
+
+The later human-curated graduation is identified by source run
+`20260802-095704`, graduation `20260802-214949-a68fd038`, and main SHA-256
+`cd5c54e288bc5008b316650ec2a7a8920c645678ec4acf25f3d499e9fd69efc7`.
+Its ASS Flow concepts and the evidence produced by subsequent authorized work
+are classified in the component-owned
+[architecture and research ledger](../../ass-flow/docs/architecture.md). This
+older seed is retained as inquiry provenance, not as the current implementation
+contract.
 
 **Prior implementation:** retired prototype, recoverable from Git at `528c02f`
 

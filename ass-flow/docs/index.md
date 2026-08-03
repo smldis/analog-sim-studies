@@ -35,6 +35,13 @@ trackers.
 
 ```{toctree}
 :maxdepth: 1
+:caption: Architecture
+
+architecture
+```
+
+```{toctree}
+:maxdepth: 1
 :caption: Historical material
 
 archive/sequential-flow-convenience

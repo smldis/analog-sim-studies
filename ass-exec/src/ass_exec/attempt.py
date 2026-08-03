@@ -21,8 +21,14 @@ path needs in order to know whether there is anything to kill.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Mapping
 
+from ass_exec.artifacts import (
+    MissingOutput,
+    capture_outputs,
+    write_diagnostics,
+)
 from ass_exec.journal import AttemptJournal, AttemptState
 from ass_exec.reuse import input_digest
 from ass_exec.transport import Observation, SubmissionRefused, Transport
@@ -290,7 +296,12 @@ def request_cancel(
     return journal.fold()
 
 
-def reconcile(journal: AttemptJournal, transport: Transport) -> AttemptState:
+def reconcile(
+    journal: AttemptJournal,
+    transport: Transport,
+    *,
+    bundle_outputs: Mapping[str, Mapping[str, Any]] | None = None,
+) -> AttemptState:
     """Observe the substrate and publish a terminal manifest when one is due.
 
     Success requires both an acceptable external state and an atomically
@@ -340,5 +351,30 @@ def reconcile(journal: AttemptJournal, transport: Transport) -> AttemptState:
         )
         return journal.fold()
 
-    journal.publish_terminal(outcome=outcome, manifest=dict(observation.detail or {}))
+    detail = dict(observation.detail or {})
+    location = state.handle.get("workdir")
+    workdir = Path(location) if location else None
+    write_diagnostics(workdir, detail.get("stdout", ""), detail.get("stderr", ""))
+
+    if outcome == "succeeded":
+        try:
+            produced = capture_outputs(
+                bundle_outputs,
+                workdir=workdir,
+                stdout=detail.get("stdout", ""),
+                stderr=detail.get("stderr", ""),
+                value=detail.get("value"),
+            )
+        except MissingOutput as error:
+            # The work reported success but did not produce what it promised.
+            # That is a failed invocation, not a successful one with a gap.
+            journal.publish_terminal(
+                outcome="failed",
+                manifest={**detail, "error": str(error)},
+            )
+            return journal.fold()
+        if produced:
+            detail["artifacts"] = [item.as_data() for item in produced]
+
+    journal.publish_terminal(outcome=outcome, manifest=detail)
     return journal.fold()

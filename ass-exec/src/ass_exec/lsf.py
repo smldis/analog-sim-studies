@@ -239,8 +239,9 @@ class LSFInteractiveTransport:
         """
 
         argv = self.build_argv(identity, bundle)
+        workdir = bundle.get("workdir") or bundle.get("cwd")
         try:
-            result = self._run(argv, cwd=bundle.get("cwd"), env=bundle.get("env"))
+            result = self._run(argv, cwd=workdir, env=bundle.get("env"))
         except CommandUnavailable as error:
             # No bsub means nothing was accepted; this one really is a refusal.
             raise SubmissionRefused(str(error)) from error
@@ -255,6 +256,7 @@ class LSFInteractiveTransport:
             "transport": self.name,
             "identity": identity,
             "kind": "completed",
+            "workdir": workdir,
             "command": shlex.join(argv),
             "returncode": result.returncode,
             "stdout": result.stdout,

@@ -104,6 +104,36 @@ the same schema-2 document works. An invocation's digest changes exactly when
 its own declaration or any ancestor's does, which is what makes the edited
 corner and its reduction rerun while the untouched corners are reused.
 
+## Outputs that are files
+
+Most real commands write their answer to disk and print progress. Declare which
+files matter; the rest stays as unnamed evidence:
+
+```python
+execute(
+    lsf,
+    {
+        "command": ["ngspice", "-b", "corner_tt.spice"],
+        "outputs": {"raw": {"path": "corner_tt.raw"}},
+    },
+    durability=Durability.RECORDED,
+    root="attempts",
+    workspace_root="/nfs/studies/ota-pvt",
+    plan_id="ota-pvt",
+    invocation_id="corner-tt",
+)
+```
+
+The attempt runs in its own directory under `workspace_root`, and the manifest
+records each declared output's address, size, and modification time. On a shared
+filesystem that is the whole of materialization — the next invocation opens the
+same path, and nothing is copied. `result.address("raw")` gives it back.
+
+Standard output always lands in `stdout.log` as diagnostics. It becomes a result
+only if an operation declares `{"stream": "stdout"}`. A declared output that
+never appears fails the invocation rather than publishing a manifest that points
+at nothing.
+
 ## Running on LSF
 
 One selected invocation becomes one `bsub -I` job with its own name, resource

@@ -130,7 +130,11 @@ class InProcessTransport:
             )
         else:
             self._results[identity] = Observation("succeeded", {"value": value})
-        return {"transport": self.name, "identity": identity}
+        return {
+            "transport": self.name,
+            "identity": identity,
+            "workdir": bundle.get("workdir"),
+        }
 
     def discover(self, identity: str) -> Mapping[str, Any] | None:
         if identity in self._results:

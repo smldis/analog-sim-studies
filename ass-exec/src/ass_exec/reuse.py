@@ -48,6 +48,7 @@ IDENTITY_KEYS = (
     "arguments",
     "cwd",
     "inputs",
+    "outputs",
     "identity_env",
 )
 """Bundle keys that determine the result. Everything else is execution detail.

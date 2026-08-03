@@ -123,6 +123,22 @@ its siblings are reused and the superseded results stay nameable.
   takes the next sequence, and `accept_for_reuse(...)` durably records a human
   decision to keep one. `AttemptSpent` reports a terminal result that may not
   be reused.
+- Outputs are declared per invocation as `{"path": ...}` for a file the command
+  wrote itself, `{"stream": "stdout"}` for a tool whose result is what it
+  printed, or `{"value": True}` for an in-process return. Standard output is
+  always captured to `stdout.log` as diagnostics and is never the result unless
+  declared as one: a command that prints progress while writing its answer to
+  disk is the ordinary case.
+- Materializing an output records its address, size, and modification time; it
+  never moves bytes. On a shared filesystem the next invocation opens the same
+  path, so the durable fact is the address rather than a copy.
+- Each attempt runs in its own workspace, so a rerun after a failure cannot
+  overwrite the evidence of what the previous attempt produced. Only declared
+  outputs are recorded; anything else the command left behind stays as unnamed
+  evidence.
+- A declared output that does not exist after the work reports success fails
+  the invocation. Publishing a manifest without it would let downstream work
+  resolve an address to nothing.
 - `Durability` is declared per invocation, never inferred from placement.
   `EPHEMERAL` touches no filesystem, requires no identity or root, and reruns
   on every call. `RECORDED` runs the full protocol and completes from an
@@ -142,8 +158,10 @@ ASS Exec owns no graph. It does not decide readiness, order invocations,
 release successors, retry, or replan; those remain outside it, and the boundary
 is tested by reconciling an attempt from a record that carries no topology. It
 does not own Dask transports, worker pools, placement enforcement, policy
-resolution, artifact storage or addressing, codec execution, evidence
-promotion, or the study lifecycle. It reads a Plan document but neither
+resolution, codec execution, evidence promotion, or the study lifecycle. It records where
+outputs are but owns no artifact store, performs no transfer between
+filesystems, verifies no content digest, and does not garbage-collect
+workspaces. It reads a Plan document but neither
 produces nor validates one, and it resolves no declared address: derivation
 consumes only what the Plan already states.
 

@@ -15,7 +15,7 @@ what it is; the runtime does not guess from where a call happened to land.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Mapping
 from uuid import uuid4
@@ -27,6 +27,7 @@ from ass_exec.attempt import (
     launch_or_attach,
     reconcile,
 )
+from ass_exec.artifacts import workspace_for
 from ass_exec.identity import attempt_identity
 from ass_exec.journal import AttemptJournal
 from ass_exec.reuse import input_digest
@@ -45,6 +46,10 @@ class Durability(Enum):
     RECORDED = "recorded"
     """A full attempt directory: append-only events and a published manifest.
     Required for work that leaves the process."""
+
+
+def _artifacts_of(result: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
+    return {item["name"]: item for item in result.get("artifacts", [])}
 
 
 def _select_sequence(
@@ -92,6 +97,12 @@ class ExecutionResult:
     durability: Durability = Durability.EPHEMERAL
     disposition: str | None = None
     journal: AttemptJournal | None = None
+    artifacts: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
+
+    def address(self, name: str) -> str | None:
+        """Where one declared output landed, for a downstream invocation."""
+
+        return self.artifacts.get(name, {}).get("address")
 
 
 def execute(
@@ -105,6 +116,7 @@ def execute(
     invocation_id: str | None = None,
     unchecked_identity: bool = False,
     max_attempts: int = 20,
+    workspace_root: str | None = None,
 ) -> ExecutionResult:
     """Run one invocation at the declared durability level.
 
@@ -170,6 +182,14 @@ def execute(
         )
 
     journal = AttemptJournal(root, identity)
+
+    # Where the work runs and leaves its files. On a shared filesystem this is
+    # the whole of "materialization": the next invocation opens the same path.
+    declared_outputs = bundle.get("outputs")
+    if declared_outputs or workspace_root:
+        workdir = workspace_for(workspace_root or root, identity)
+        bundle = {**bundle, "workdir": str(workdir)}
+
     launched: LaunchResult = launch_or_attach(journal, transport, bundle)
     if launched.disposition == "completed":
         manifest = launched.manifest or {}
@@ -181,9 +201,10 @@ def execute(
             durability=durability,
             disposition="completed",
             journal=journal,
+            artifacts=_artifacts_of(result),
         )
 
-    state = reconcile(journal, transport)
+    state = reconcile(journal, transport, bundle_outputs=declared_outputs)
     published = journal.read_manifest() or {}
     result = dict(published.get("result", {}))
     return ExecutionResult(
@@ -193,4 +214,5 @@ def execute(
         durability=durability,
         disposition=launched.disposition,
         journal=journal,
+        artifacts=_artifacts_of(result),
     )

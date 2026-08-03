@@ -40,8 +40,21 @@ __all__ = [
     "stale_attempts",
 ]
 
-IDENTITY_KEYS = ("operation", "command", "arguments", "cwd", "inputs", "identity_env")
-"""Bundle keys that determine the result. Everything else is execution detail."""
+IDENTITY_KEYS = (
+    "operation",
+    "operation_version",
+    "command",
+    "arguments",
+    "cwd",
+    "inputs",
+    "identity_env",
+)
+"""Bundle keys that determine the result. Everything else is execution detail.
+
+``operation_version`` is here because a reimplemented operation may produce a
+different answer from the same inputs; omitting it would reuse results across a
+change in meaning.
+"""
 
 
 def input_digest(bundle: Mapping[str, Any]) -> str:

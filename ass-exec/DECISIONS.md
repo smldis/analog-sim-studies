@@ -106,6 +106,8 @@ distinction they encode is what makes the orphan-reaping path expressible.
 | Does placement belong in result identity? | No. Queue, walltime, cores and host are excluded, so retuning resources never invalidates a result. | `test_placement_does_not_participate_in_identity`. |
 | Can reuse return a result from different inputs? | No, once identity is content-addressed: changed inputs land on a different attempt. | `test_changed_inputs_do_not_reuse_the_old_result`. |
 | What happens to superseded results? | They are retained and nameable as stale, not overwritten. | `test_prior_results_are_named_as_superseded_not_discarded`. |
+| How should the two units couple? | Through the Plan document, not the package. Neither imports the other. | `planned.py` reads plain data; `test_the_real_ass_flow_example_plan_derives` runs against a Plan ASS Flow actually produced. |
+| Does staleness propagate transitively? | Yes. Editing one corner reruns it and its reduction while siblings are reused. | `test_a_changed_config_invalidates_only_its_own_branch_and_downstream`, and the end-to-end example. |
 
 The fourth row is the boundary result: because reconciliation reads no
 topology, this unit has not absorbed graph scheduling authority, and the
@@ -214,11 +216,15 @@ mode's design premise is wrong and needs revisiting.
   `dask_jobqueue.LSFCluster`, whose `death_timeout` and close-time `bkill`
   already give owner-bound worker lifetime. Not started; `dask-jobqueue` is not
   installed in this environment.
-- **Bundle contract.** Bundles are still plain mappings, but they now have a
-  declared identity-bearing subset (`IDENTITY_KEYS`). The open question narrows
-  to who fills `inputs`: an author by hand today, or ASS Flow from resolved
-  Plan edges. The latter is the natural next coupling, and it is now the only
-  thing standing between this unit and a real end-to-end slice.
+- **Cross-plan reuse.** Attempt identity includes `plan_id` and
+  `invocation_id`, so two plans doing identical work each compute it. Dropping
+  them would give a global content-addressed cache, which is more powerful and
+  riskier: an undeclared-input error would then leak between studies rather
+  than staying inside one. Deliberately conservative for now.
+- **Reuse depends on stable invocation IDs.** Keyed calls have stable scoped
+  IDs; unkeyed ones are authored-order and renumber when earlier work is
+  inserted, silently discarding reuse. This makes ASS Flow's authored keys
+  load-bearing for reuse, which was not their original purpose.
 - **Verifying declared inputs.** Reuse trusts the author's declaration. Whether
   the unit should ever hash actual input files, rather than accept a supplied
   digest, is undecided — it would catch undeclared dependencies but requires

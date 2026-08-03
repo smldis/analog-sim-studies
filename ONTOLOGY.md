@@ -59,15 +59,25 @@ any affected child ontology.
   invocation: identity chosen before submission, an append-only record, atomic
   terminal publication, and reconciliation. It owns no graph and decides no
   readiness.
+
+`ass-exec` consumes `ass-flow`'s schema-2 Plan **document**, not its package.
+The cross-unit contract is therefore the portable plain-data artifact: neither
+unit imports the other, and any producer of the same document composes equally
+well. `ass-flow` stays executor-neutral; `ass-exec` reads a Plan but neither
+produces nor validates one.
 - `sidecar-edits` contributes reviewable simulation-directory preparation.
 - `spice-canonical` contributes canonical netlist extraction.
 - `netlist-decomposition` contributes functional block recognition over the
   canonical representation.
 
 These contributions compose into the larger vision. Flow execution is now
-partly owned: `ass-exec` holds durable attempt identity and recovery, but no
-unit yet connects a Plan to an execution substrate, and no real batch or
-distributed transport exists. The retired `study-flow` prototype remains
+partly owned. `ass-flow` and `ass-exec` together deliver one runnable vertical
+slice — author a flow, plan it, execute it, edit one input, and rerun with
+unchanged work skipped and superseded results retained — demonstrated by
+`ass-exec/examples/planned_characterization.py`. No real batch or distributed
+transport has been exercised: direct `bsub -I` submission exists but has never
+contacted a cluster, and pooled execution refuses. The retired `study-flow`
+prototype remains
 recoverable in Git history at `528c02f`, while
 [`docs/vision/ass-flow-rebuild-main.md`](docs/vision/ass-flow-rebuild-main.md)
 records the architectural inquiry that preceded the bounded planning work.

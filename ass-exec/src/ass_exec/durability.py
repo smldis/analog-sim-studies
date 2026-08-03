@@ -61,6 +61,7 @@ def execute(
     root: str | None = None,
     plan_id: str | None = None,
     invocation_id: str | None = None,
+    unchecked_identity: bool = False,
 ) -> ExecutionResult:
     """Run one invocation at the declared durability level.
 
@@ -69,11 +70,15 @@ def execute(
     full attempt protocol and can complete from an existing manifest without
     rerunning the payload.
 
-    Passing ``plan_id`` and ``invocation_id`` instead of an explicit
-    ``identity`` derives a content-addressed one from the bundle's declared
-    inputs. That is the recommended form: reuse then cannot return a result
-    computed from different inputs, because different inputs land on a
-    different identity.
+    Pass ``plan_id`` and ``invocation_id``: the identity is then derived from
+    the bundle's declared inputs, and reuse cannot return a result computed
+    from different ones, because different inputs land on a different identity.
+
+    A bare ``identity`` is refused for recorded execution. Such an identity
+    says nothing about what produced the result under it, so reuse against it
+    can silently return stale work — the defect this argument exists to
+    prevent. Tests that deliberately construct crash states may opt out with
+    ``unchecked_identity=True``; production callers should not.
     """
 
     if durability is Durability.EPHEMERAL:
@@ -98,10 +103,19 @@ def execute(
                 input_digest=input_digest(bundle),
             ).rendered
 
-    if identity is None or root is None:
+    if root is None:
+        raise ValueError("recorded execution requires a root")
+    if identity is None:
         raise ValueError(
-            "recorded execution requires a root and either an explicit identity "
-            "or both plan_id and invocation_id"
+            "recorded execution requires both plan_id and invocation_id so the "
+            "identity can be derived from declared inputs"
+        )
+    if not (plan_id and invocation_id) and not unchecked_identity:
+        raise ValueError(
+            "a bare identity cannot make reuse sound: nothing ties it to the "
+            "inputs a stored result was computed from. Pass plan_id and "
+            "invocation_id, or unchecked_identity=True to construct a state "
+            "deliberately."
         )
 
     journal = AttemptJournal(root, identity)

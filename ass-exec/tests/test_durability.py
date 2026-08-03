@@ -1,7 +1,6 @@
 """Durability is declared, and the cheap level really is cheap."""
 
 from ass_exec.durability import Durability, ExecutionResult, execute
-from ass_exec.identity import attempt_identity
 from ass_exec.transport import InProcessTransport
 
 BUNDLE = {"operation": "double", "arguments": {"value": 21}}
@@ -32,15 +31,16 @@ def test_ephemeral_execution_needs_no_identity_or_root():
 
 
 def test_recorded_execution_leaves_a_readable_attempt(tmp_path):
-    identity = attempt_identity(plan_id="plan-1", invocation_id="inv-a").rendered
     result = execute(
         transport(),
         BUNDLE,
         durability=Durability.RECORDED,
-        identity=identity,
         root=str(tmp_path),
+        plan_id="plan-1",
+        invocation_id="inv-a",
     )
 
+    identity = result.journal.identity
     assert result.outcome == "succeeded"
     assert result.value == 42
     assert (tmp_path / identity / "events.jsonl").exists()
@@ -50,11 +50,11 @@ def test_recorded_execution_leaves_a_readable_attempt(tmp_path):
 def test_recorded_execution_reuses_a_published_result(tmp_path):
     runs = []
     shared = transport(runs)
-    identity = attempt_identity(plan_id="plan-1", invocation_id="inv-a").rendered
     common = {
         "durability": Durability.RECORDED,
-        "identity": identity,
         "root": str(tmp_path),
+        "plan_id": "plan-1",
+        "invocation_id": "inv-a",
     }
 
     first = execute(shared, BUNDLE, **common)

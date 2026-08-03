@@ -35,12 +35,29 @@ def test_rendered_form_survives_use_as_job_name_and_directory():
     "kwargs",
     [
         {"plan_id": "", "invocation_id": "inv"},
-        {"plan_id": "plan 1", "invocation_id": "inv"},
-        {"plan_id": "plan", "invocation_id": "inv/a"},
+        {"plan_id": "plan", "invocation_id": ""},
+        {"plan_id": "plan\x1fsplit", "invocation_id": "inv"},
+        {"plan_id": "plan", "invocation_id": "inv\nnewline"},
         {"plan_id": "plan", "invocation_id": "inv", "sequence": -1},
         {"plan_id": "plan", "invocation_id": "inv", "sequence": True},
     ],
 )
-def test_unusable_components_are_refused(kwargs):
+def test_ambiguous_components_are_refused(kwargs):
     with pytest.raises(IdentityError):
         attempt_identity(**kwargs)
+
+
+def test_ordinary_planner_ids_are_accepted():
+    """Planner IDs carry colons; only the rendered form must be name-safe."""
+
+    identity = attempt_identity(
+        plan_id="characterization",
+        invocation_id="invoke:key:9f2c4b1e",
+    )
+    assert identity.rendered.startswith("ass-")
+
+
+def test_components_cannot_be_confused_by_reassociation():
+    first = attempt_identity(plan_id="ab", invocation_id="c")
+    second = attempt_identity(plan_id="a", invocation_id="bc")
+    assert first.rendered != second.rendered

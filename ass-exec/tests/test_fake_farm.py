@@ -55,35 +55,36 @@ def test_a_failing_command_propagates_its_exit_status(farm, tmp_path):
 def test_the_submission_reaches_bsub_with_its_declared_shape(farm, tmp_path):
     import json
 
-    journal = AttemptJournal(tmp_path, "ass-farm-shape")
-    execute(
+    result = execute(
         farm,
         {"command": [sys.executable, "-c", "pass"]},
         durability=Durability.RECORDED,
-        identity="ass-farm-shape",
         root=str(tmp_path),
+        plan_id="plan-1",
+        invocation_id="inv-shape",
     )
 
-    recorded = json.loads(
-        (tmp_path / "farm" / "ass-farm-shape.json").read_text()
-    )
-    assert recorded["options"]["-J"] == "ass-farm-shape"
+    identity = result.journal.identity
+    recorded = json.loads((tmp_path / "farm" / f"{identity}.json").read_text())
+    assert recorded["options"]["-J"] == identity
     assert recorded["options"]["-W"] == "5"
     assert recorded["options"]["-q"] == "normal"
 
 
 def test_discovery_and_cancellation_reach_the_real_commands(farm, tmp_path):
-    execute(
+    result = execute(
         farm,
         {"command": [sys.executable, "-c", "pass"]},
         durability=Durability.RECORDED,
-        identity="ass-farm-live",
         root=str(tmp_path),
+        plan_id="plan-1",
+        invocation_id="inv-live",
     )
 
-    assert farm.discover("ass-farm-live") is not None
-    farm.cancel({"identity": "ass-farm-live"})
-    assert farm.discover("ass-farm-live") is None
+    identity = result.journal.identity
+    assert farm.discover(identity) is not None
+    farm.cancel({"identity": identity})
+    assert farm.discover(identity) is None
 
 
 def test_an_unknown_job_name_is_not_discovered(farm):

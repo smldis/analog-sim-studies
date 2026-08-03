@@ -118,8 +118,9 @@ def test_recorded_execution_over_lsf_reuses_a_published_result(tmp_path):
     lsf, _ = transport(runner=runner)
     common = {
         "durability": Durability.RECORDED,
-        "identity": "ass-abc",
         "root": str(tmp_path),
+        "plan_id": "plan-1",
+        "invocation_id": "inv-a",
     }
 
     first = execute(lsf, BUNDLE, **common)

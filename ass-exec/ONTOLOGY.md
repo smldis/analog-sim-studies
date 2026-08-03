@@ -30,9 +30,15 @@ They remain valid evidence about the protocol's behaviour in the indeterminate
 window, which owner-bound lifetime narrows but does not remove: a submission
 whose outcome is unknown may still have created work that needs killing.
 
-No real batch system is implemented, and no lease enforces owner-bound lifetime
-yet. The only working substrate is in-process execution, which is the honest
-degenerate case rather than a simulation of a remote one.
+Two substrates exist: in-process execution, the honest degenerate case where
+work cannot outlive its caller, and direct `bsub -I` submission, which has
+never contacted a real cluster. Pooled execution refuses.
+
+The unit now also studies whether content-addressed identity derived from a
+Plan document makes rerunning honest. `examples/planned_characterization.py`
+is the current evidence: three corners and a reduction run, rerun with nothing
+recomputed, then one corner retuned so that it and the reduction rerun while
+its siblings are reused and the superseded results stay nameable.
 
 ## Current contracts
 
@@ -81,6 +87,20 @@ degenerate case rather than a simulation of a remote one.
 - `stale_attempts(...)` names prior results for an invocation whose inputs have
   since changed. Superseded work is retained and explainable, never silently
   overwritten.
+- `ass_exec.planned.plan_bundles(...)` derives content-addressed bundles from a
+  schema-2 ASS Flow Plan **document**. The coupling is to the portable
+  plain-data artifact, not to the package: nothing imports `ass_flow`, and the
+  base distribution stays dependency-free. An invocation's digest changes
+  exactly when its own declaration or any ancestor's does, so reuse is
+  transitive and staleness propagates downstream.
+- Sources are identified by their declared address, codec, and artifact kind
+  rather than by authored-order source ID, so inserting an unrelated source
+  invalidates nothing.
+- `resolved_inputs` carries upstream values for execution and never
+  participates in identity: which values they are is already implied by the
+  declared input digests.
+- `execute(...)` refuses a bare `identity` for recorded work, because such an
+  identity says nothing about what produced the result stored under it.
 - `Durability` is declared per invocation, never inferred from placement.
   `EPHEMERAL` touches no filesystem, requires no identity or root, and reruns
   on every call. `RECORDED` runs the full protocol and completes from an
@@ -88,19 +108,22 @@ degenerate case rather than a simulation of a remote one.
 
 ## Contribution to the parent
 
-The unit contributes durable attempt identity, recovery, and terminal evidence
-to the repository's author-plan-execute-evaluate vision. It is the first unit
-to own any part of *execute*.
+The unit contributes durable attempt identity, terminal evidence, and sound
+reuse to the repository's author-plan-execute-evaluate vision. It is the first
+unit to own any part of *execute*, and with ASS Flow it now composes one
+runnable vertical slice: author a flow, plan it, execute it, edit one input,
+and rerun with unchanged work skipped and superseded results retained.
 
 ## Exclusions
 
 ASS Exec owns no graph. It does not decide readiness, order invocations,
 release successors, retry, or replan; those remain outside it, and the boundary
 is tested by reconciling an attempt from a record that carries no topology. It
-does not own LSF or Dask transports, worker pools, placement enforcement,
-policy resolution, artifact storage or addressing, codec execution, evidence
-promotion, or the study lifecycle. It does not consume Plan IR yet: bundles are
-currently plain mappings supplied by a caller.
+does not own Dask transports, worker pools, placement enforcement, policy
+resolution, artifact storage or addressing, codec execution, evidence
+promotion, or the study lifecycle. It reads a Plan document but neither
+produces nor validates one, and it resolves no declared address: derivation
+consumes only what the Plan already states.
 
 Owner-bound lifetime is enforced by `bsub -I` plus local process-group and
 `PR_SET_PDEATHSIG` discipline, not by any lease or heartbeat this unit owns.

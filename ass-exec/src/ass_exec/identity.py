@@ -18,6 +18,7 @@ import re
 __all__ = ["AttemptIdentity", "IdentityError", "attempt_identity"]
 
 _SAFE = re.compile(r"\A[A-Za-z0-9][A-Za-z0-9._-]*\Z")
+_SEPARATOR = "\x1f"
 _DIGEST_BYTES = 10
 
 
@@ -40,13 +41,21 @@ class AttemptIdentity:
 
 
 def _require_component(value: object, label: str) -> str:
+    """Components must be unambiguous, not printable-safe.
+
+    Only the *rendered* identity is used as a job name and directory, and that
+    is a generated hash. Components merely have to hash unambiguously, so
+    ordinary planner IDs like ``invoke:key:9f2c...`` are welcome. The one real
+    requirement is that no component can contain the field separator, which
+    would let two different pairs collide.
+    """
+
     if not isinstance(value, str) or not value:
         raise IdentityError(f"{label} must be a non-empty string")
-    if not _SAFE.match(value):
-        raise IdentityError(
-            f"{label} must match [A-Za-z0-9][A-Za-z0-9._-]* to remain usable as "
-            f"a job name and directory component; got {value!r}"
-        )
+    if _SEPARATOR in value:
+        raise IdentityError(f"{label} must not contain the field separator")
+    if any(character.isspace() and character != " " for character in value):
+        raise IdentityError(f"{label} must not contain control whitespace")
     return value
 
 
@@ -77,14 +86,16 @@ def attempt_identity(
     if input_digest is not None:
         _require_component(input_digest, "input_digest")
 
-    material = (
-        f"{plan_id}\x1f{invocation_id}\x1f{sequence}\x1f{input_digest or ''}".encode()
-    )
+    material = _SEPARATOR.join(
+        (plan_id, invocation_id, str(sequence), input_digest or "")
+    ).encode()
     digest = blake2b(material, digest_size=_DIGEST_BYTES).hexdigest()
+    rendered = f"ass-{digest}"
+    assert _SAFE.match(rendered)  # the generated form is what must be safe
     return AttemptIdentity(
         plan_id=plan_id,
         invocation_id=invocation_id,
         sequence=sequence,
-        rendered=f"ass-{digest}",
+        rendered=rendered,
         input_digest=input_digest,
     )

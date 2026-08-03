@@ -118,6 +118,10 @@ class InProcessTransport:
                 f"no implementation is bound for operation {operation!r}"
             )
         arguments = dict(bundle.get("arguments", {}))
+        # Resolved upstream values are execution detail, never identity: which
+        # values these are is already implied by the declared input digests, so
+        # including them again would only make identity depend on itself.
+        arguments.update(bundle.get("resolved_inputs", {}))
         try:
             value = implementation(**arguments)
         except Exception as error:  # deliberate: failure is a recordable outcome

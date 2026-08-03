@@ -75,6 +75,35 @@ between terminal status and recording it, and a site that cannot be asked
 whether it accepted anything. The first two must resolve to exactly one job and
 no rerun; the third must fail loudly rather than guess.
 
+## The end-to-end slice
+
+`plan_bundles(...)` turns an ASS Flow Plan document into content-addressed
+bundles, so a rerun skips what is unchanged. Run it:
+
+```console
+PYTHONPATH=src:../ass-flow/src python examples/planned_characterization.py
+```
+
+```
+First run — nothing is published yet
+  ran     corner-tt    23f06873c974
+  ran     corner-ss    29a9d0839b44
+  ran     corner-ff    9c5522647f21
+  ran     summary      9ce639729b3e
+
+Third run — ss retuned to 150C
+  reused  corner-tt    23f06873c974
+  ran     corner-ss    ee96c3bf59dc
+  reused  corner-ff    9c5522647f21
+  ran     summary      65a90b965369
+```
+
+The coupling is to the Plan *document*, not the package: nothing imports
+`ass_flow`, so the base distribution stays dependency-free and any producer of
+the same schema-2 document works. An invocation's digest changes exactly when
+its own declaration or any ancestor's does, which is what makes the edited
+corner and its reduction rerun while the untouched corners are reused.
+
 ## Running on LSF
 
 One selected invocation becomes one `bsub -I` job with its own name, resource

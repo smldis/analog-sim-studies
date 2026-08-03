@@ -98,6 +98,40 @@ architecture's rejection line 1 has not been crossed.
 - **Many similar jobs belong on a pooled `LSFCluster`**, not on many concurrent
   `-I` submissions.
 
+## What can and cannot be reproduced without a farm
+
+Splitting this honestly matters more than the totals, because "52 tests pass"
+otherwise implies confidence the suite has not earned.
+
+**Reproduced for real, locally:**
+
+- The subprocess layer end to end, through a fake `bsub`/`bjobs`/`bkill` on
+  PATH: argument construction, exit-status propagation, output capture,
+  discovery, and cancellation all run the real `SubprocessRunner`.
+- Our half of the owner-bound guarantee. `test_owner_bound.py` spawns a real
+  child, `SIGKILL`s its owner, and asserts the child dies. This is genuine
+  evidence about `PR_SET_PDEATHSIG`, and it covers the case a signal handler
+  cannot and a lease could only bound.
+
+**Not reproducible without LSF:**
+
+- LSF's own interactive lifetime guarantee — that the job dies when the `bsub`
+  client dies. This is IBM daemon behaviour, and the entire direct mode rests
+  on it.
+- Queue admission, scheduling, resource enforcement, and real `-W` termination.
+
+There is no free LSF to run against. OpenLava was a CLI-compatible fork but is
+unmaintained and legally clouded, so it is not a route we should take. A real
+scheduler in a container (Slurm, where `srun` has the same client-bound shape as
+`bsub -I`) could validate the *pattern* if the assumption ever looks doubtful;
+it would be evidence by analogy, not about LSF.
+
+`examples/lsf_preflight.py` closes the gap by deferring rather than pretending:
+run it once on a submit host and it checks command availability, interactive
+admission, `bjobs -J` lookup, and — the important one — whether a running job
+actually disappears after its client is killed. If that check fails, the direct
+mode's design premise is wrong and needs revisiting.
+
 ## Open
 
 - **Owner-bound enforcement — lease rejected, three layers proposed.** A

@@ -75,8 +75,19 @@ independently visible jobs and wrong for hundreds. Many similar jobs belong on
 a pooled `dask_jobqueue.LSFCluster`; `LSFPooledTransport` marks that boundary
 and currently refuses.
 
-No LSF behaviour here has been run against a real cluster — the tests use a
-fake `bsub`.
+The subprocess layer runs for real against a fake `bsub`/`bjobs`/`bkill` on
+PATH, and `tests/test_owner_bound.py` proves with real signals that a spawned
+child dies when its owner is `SIGKILL`ed. What no local test can establish is
+LSF's own guarantee that an interactive job dies with its client. Check that on
+a submit host when you have one:
+
+```console
+python examples/lsf_preflight.py --queue normal
+```
+
+It verifies command availability, interactive admission, `bjobs -J` lookup, and
+whether a running job actually disappears once its client is killed. If the
+last check fails, the direct mode's premise is wrong.
 
 Worker pools, placement enforcement, retries, and graph scheduling are outside
 this unit — see

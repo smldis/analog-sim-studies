@@ -93,10 +93,13 @@ promotion, or the study lifecycle. It does not consume Plan IR yet: bundles are
 currently plain mappings supplied by a caller.
 
 Owner-bound lifetime is enforced by `bsub -I` plus local process-group and
-`PR_SET_PDEATHSIG` discipline, not by any lease or heartbeat this unit owns. No
-LSF behaviour has been exercised against a real cluster: the direct transport's
-evidence comes from a fake `bsub`, and covers submission shape, refusal, exit
-mapping, and cancellation naming only.
+`PR_SET_PDEATHSIG` discipline, not by any lease or heartbeat this unit owns.
+The local half of that guarantee is demonstrated with real processes and
+signals; LSF's half — that an interactive job dies with its client — is assumed
+and unverified, and `examples/lsf_preflight.py` exists to check it on a real
+submit host. The subprocess layer is exercised end to end against a fake
+`bsub`/`bjobs`/`bkill` on PATH. Queue admission, scheduling, and resource
+enforcement are untested.
 
 The unit does not yet implement staleness. `RECORDED` reuse is keyed on attempt
 identity alone, so it will happily reuse a result whose inputs have since

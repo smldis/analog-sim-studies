@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+"""A fake `bjobs -J <name> -noheader`, reading the fake farm's state."""
+
+import json
+import os
+import sys
+
+STATE = os.environ.get("FAKE_LSF_STATE")
+
+
+def main(argv):
+    name = None
+    for index, token in enumerate(argv):
+        if token == "-J" and index + 1 < len(argv):
+            name = argv[index + 1]
+    if not name or not STATE:
+        return 255
+    path = os.path.join(STATE, f"{name}.json")
+    if not os.path.exists(path):
+        return 255
+    with open(path) as handle:
+        record = json.load(handle)
+    sys.stdout.write(f"9001 {os.environ.get('USER', 'user')} RUN normal {record['name']}\n")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

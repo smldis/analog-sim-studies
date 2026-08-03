@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from ass_flow import (
+    address,
     artifact,
     artifacts,
+    codec,
     flow,
     input_artifact,
+    materialization,
     operation,
     parameter,
     plan,
@@ -16,6 +19,12 @@ from ass_flow import (
 DESIGN = artifact("analog-design-description")
 CORNER_METRICS = artifact("corner-metrics")
 SUMMARY = artifact("characterization-summary")
+JSON_V1 = codec("json", version="1", encoding="utf-8")
+REPOSITORY_JSON = materialization(
+    codec=JSON_V1,
+    address_space="repository-relative",
+    access_scope="repository-checkout",
+)
 
 
 @operation(
@@ -93,8 +102,11 @@ def build_characterization_plan(*, include_extremes: bool = True):
 
     with plan() as draft:
         design = input_artifact(
-            "inputs/two-stage-opamp.json",
-            "analog-design-description",
+            address(
+                "repository-relative", "inputs/two-stage-opamp.json"
+            ),
+            artifact=DESIGN,
+            materialized_as=REPOSITORY_JSON,
         )
         outputs = characterize_design.options(key="characterize-design")(
             design,

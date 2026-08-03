@@ -11,11 +11,15 @@ from ass_flow import (
     InputBinding,
     PlanningScopeError,
     PlanValidationError,
+    address,
     artifact,
     artifacts,
+    codec,
     flow,
     input_artifact,
     local,
+    materializable,
+    materialization,
     named_policy,
     operation,
     parameter,
@@ -28,6 +32,20 @@ DECK = artifact("spice-deck")
 RAW = artifact("simulation-raw")
 REPORT = artifact("measurement-report")
 MEASUREMENT = artifact("measurement")
+TEST_CODEC = codec("test-data", encoding="utf-8")
+TEST_MATERIALIZATION = materialization(
+    codec=TEST_CODEC,
+    address_space="test-address-space",
+    access_scope="test-scope",
+)
+
+
+def _source(locator, artifact_contract):
+    return input_artifact(
+        address("test-address-space", locator),
+        artifact=artifact_contract,
+        materialized_as=TEST_MATERIALIZATION,
+    )
 
 
 def test_calls_outside_scope_are_actionable_and_operation_body_does_not_run():
@@ -47,12 +65,154 @@ def test_calls_outside_scope_are_actionable_and_operation_body_does_not_run():
         study(object())
 
     with plan() as draft:
-        result = study(input_artifact("input.spice", "spice-deck"))
+        result = study(_source("input.spice", DECK))
     normalized = draft.finish(outputs={"raw": result})
 
     assert calls == []
     assert len(normalized.invocations) == 1
     assert len(normalized.boundaries) == 1
+
+
+def test_external_sources_require_the_strict_structured_authoring_surface():
+    with plan() as draft:
+        with pytest.raises(TypeError, match="positional"):
+            input_artifact("legacy-uri", "spice-deck")
+        with pytest.raises(AuthoringError, match=r"address\(\.\.\.\)"):
+            input_artifact(
+                "legacy-uri",
+                artifact=DECK,
+                materialized_as=TEST_MATERIALIZATION,
+            )
+        deck = _source("input.spice", DECK)
+    normalized = draft.finish(outputs={})
+
+    assert deck.reference.value_class == "artifact"
+    assert normalized.sources[0].address.locator == "input.spice"
+
+
+def test_source_deduplication_uses_the_complete_immutable_declaration():
+    alternate_materialization = materialization(
+        codec=codec("test-data", variant="alternate"),
+        address_space="test-address-space",
+        access_scope="test-scope",
+    )
+    shared_address = address("test-address-space", "shared.data")
+
+    with plan() as draft:
+        first = input_artifact(
+            shared_address,
+            artifact=DECK,
+            materialized_as=TEST_MATERIALIZATION,
+        )
+        repeated = input_artifact(
+            shared_address,
+            artifact=DECK,
+            materialized_as=TEST_MATERIALIZATION,
+        )
+        different_kind = input_artifact(
+            shared_address,
+            artifact=RAW,
+            materialized_as=TEST_MATERIALIZATION,
+        )
+        different_materialization = input_artifact(
+            shared_address,
+            artifact=DECK,
+            materialized_as=alternate_materialization,
+        )
+    normalized = draft.finish(outputs={})
+
+    assert first is repeated
+    assert len(normalized.sources) == 3
+    assert different_kind.reference != first.reference
+    assert different_materialization.reference != first.reference
+
+
+def test_address_space_mismatch_fails_without_mutating_the_plan():
+    mismatched = materialization(
+        codec=TEST_CODEC,
+        address_space="other-address-space",
+        access_scope="test-scope",
+    )
+
+    with plan() as draft:
+        with pytest.raises(AuthoringError, match="address space must match"):
+            input_artifact(
+                address("test-address-space", "opaque/../locator"),
+                artifact=DECK,
+                materialized_as=mismatched,
+            )
+        accepted = _source("opaque/../locator", DECK)
+    normalized = draft.finish(outputs={})
+
+    assert accepted.reference.source_id == "source:0001"
+    assert normalized.sources[0].address.locator == "opaque/../locator"
+
+
+def test_output_materialization_capability_is_ephemeral_metadata_only():
+    def build(*, advertise_capability):
+        output = (
+            materializable(RAW, as_=TEST_MATERIALIZATION)
+            if advertise_capability
+            else RAW
+        )
+
+        @operation(
+            name="authoring.capability.produce",
+            inputs={"deck": DECK},
+            outputs={"raw": output},
+        )
+        def produce(deck):
+            raise AssertionError("must not run")
+
+        @operation(
+            name="authoring.capability.consume",
+            inputs={"raw": RAW},
+            outputs={"report": REPORT},
+        )
+        def consume(raw):
+            raise AssertionError("must not run")
+
+        with plan() as draft:
+            deck = _source("input.spice", DECK)
+            raw = produce(deck)
+            report = consume(raw)
+        return draft.finish(outputs={"report": report})
+
+    plain = build(advertise_capability=False)
+    capable = build(advertise_capability=True)
+    produced = capable.invocations[0]
+    consumed = capable.invocations[1]
+    capability = capable.operations[0].outputs[0].can_materialize_as
+
+    assert capability == TEST_MATERIALIZATION
+    assert consumed.inputs[0].reference.value_class == "ephemeral"
+    assert capable.outputs[0].reference.value_class == "ephemeral"
+    assert [item.id for item in capable.sources] == [item.id for item in plain.sources]
+    assert [item.id for item in capable.invocations] == [
+        item.id for item in plain.invocations
+    ]
+    assert [item.id for item in capable.edges] == [item.id for item in plain.edges]
+    assert capable.sources == plain.sources
+    assert capable.invocations == plain.invocations
+    assert capable.edges == plain.edges
+    assert capable.outputs == plain.outputs
+    assert produced.id == "invoke:0001"
+    assert len(capable.sources) == 1
+    assert not hasattr(capability, "locator")
+
+    capable_data = capable.to_data()
+    plain_data = plain.to_data()
+    assert capable_data["operations"][1]["outputs"][0][
+        "can_materialize_as"
+    ] == capable_data["sources"][0]["materialized_as"]
+    assert plain_data["operations"][1]["outputs"][0][
+        "can_materialize_as"
+    ] is None
+
+
+def test_materializable_declarations_are_rejected_for_operation_inputs():
+    with pytest.raises(AuthoringError, match=r"artifact\(\.\.\.\) or artifacts"):
+        operation(inputs={"deck": materializable(DECK, as_=TEST_MATERIALIZATION)})
 
 
 def test_options_are_immutable_and_policy_precedence_is_explicit():
@@ -80,7 +240,7 @@ def test_options_are_immutable_and_policy_precedence_is_explicit():
         call_view.policy = plan_default
 
     with plan(default_policy=plan_default) as draft:
-        deck = input_artifact("input.spice", "spice-deck")
+        deck = _source("input.spice", DECK)
         call_view(deck)
         simulate(deck)
         inherited(deck)
@@ -93,7 +253,7 @@ def test_options_are_immutable_and_policy_precedence_is_explicit():
     ]
 
     with plan() as local_draft:
-        deck = input_artifact("input.spice", "spice-deck")
+        deck = _source("input.spice", DECK)
         inherited(deck)
     local_plan = local_draft.finish(outputs={})
     assert local_plan.invocations[0].policy == local()
@@ -114,7 +274,7 @@ def test_repeated_planning_has_stable_source_invocation_edge_and_boundary_ids():
 
     def build():
         with plan() as draft:
-            result = study(input_artifact("input.spice", "spice-deck"))
+            result = study(_source("input.spice", DECK))
         return draft.finish(outputs={"report": result})
 
     first = build()
@@ -157,7 +317,7 @@ def test_collection_input_preserves_member_order_in_bindings_edges_and_json():
 
     def build():
         with plan() as draft:
-            deck = input_artifact("input.spice", "spice-deck")
+            deck = _source("input.spice", DECK)
             measurements = [
                 measure(deck, label=label) for label in ("ss", "tt", "ff")
             ]
@@ -217,10 +377,8 @@ def test_external_source_collection_member_gets_an_edge_without_scalar_regressio
 
     def build():
         with plan() as draft:
-            deck = input_artifact("input.spice", "spice-deck")
-            external = input_artifact(
-                "existing-measurement.json", "measurement"
-            )
+            deck = _source("input.spice", DECK)
+            external = _source("existing-measurement.json", MEASUREMENT)
             produced = measure(deck)
             report = summarize([external, produced])
         return draft.finish(outputs={"report": report})
@@ -237,9 +395,17 @@ def test_external_source_collection_member_gets_an_edge_without_scalar_regressio
         "source",
         "output",
     ]
+    assert [reference["value_class"] for reference in binding["references"]] == [
+        "artifact",
+        "ephemeral",
+    ]
     assert [edge["source"]["type"] for edge in data["edges"]] == [
         "source",
         "output",
+    ]
+    assert [edge["source"]["value_class"] for edge in data["edges"]] == [
+        "artifact",
+        "ephemeral",
     ]
     assert [edge["target_member_index"] for edge in data["edges"]] == [0, 1]
 
@@ -264,13 +430,13 @@ def test_collection_inputs_reject_invalid_authored_values_early():
         raise AssertionError("must not run")
 
     with plan() as foreign_draft:
-        foreign = measure(input_artifact("foreign.spice", "spice-deck"))
+        foreign = measure(_source("foreign.spice", DECK))
     foreign_draft.finish(outputs={"measurement": foreign})
 
     with plan() as draft:
-        deck = input_artifact("input.spice", "spice-deck")
-        existing_measurement = input_artifact(
-            "existing-measurement.json", "measurement"
+        deck = _source("input.spice", DECK)
+        existing_measurement = _source(
+            "existing-measurement.json", MEASUREMENT
         )
         measurement = measure(deck)
         multiple = split(deck)
@@ -324,7 +490,7 @@ def test_name_keyed_declaration_order_does_not_change_normalized_plan():
             raise AssertionError("must not run")
 
         with plan() as draft:
-            deck = input_artifact("input.spice", "spice-deck")
+            deck = _source("input.spice", DECK)
             left = produce(deck, corner="ss")
             right = produce(deck, corner="ff")
             combined = combine(
@@ -379,7 +545,7 @@ def test_nested_static_branch_and_fan_in_normalize_to_one_plan():
 
     with plan() as draft:
         result = study(
-            input_artifact("amplifier.spice", "spice-deck"), include_slow=True
+            _source("amplifier.spice", DECK), include_slow=True
         )
     normalized = draft.finish(outputs={"report": result})
 
@@ -403,7 +569,7 @@ def test_multiple_outputs_require_explicit_selection_but_are_inspectable():
         raise AssertionError("must not run")
 
     with plan() as draft:
-        deck = input_artifact("input.spice", "spice-deck")
+        deck = _source("input.spice", DECK)
         result = split(deck)
         assert result.declared_outputs == ("raw", "report")
         assert result.outputs["raw"] is result.raw
@@ -433,7 +599,7 @@ def test_invalid_bindings_and_flow_outputs_fail_during_planning():
         return "not an artifact"
 
     with plan() as draft:
-        deck = input_artifact("input.spice", "spice-deck")
+        deck = _source("input.spice", DECK)
         with pytest.raises(BindingError, match="missing config"):
             simulate(deck)
         with pytest.raises(BindingError, match="unexpected bindings"):
@@ -457,7 +623,7 @@ def test_foreign_references_and_finished_or_reused_sessions_are_rejected():
 
     first_draft = plan()
     with first_draft:
-        foreign = simulate(input_artifact("one.spice", "spice-deck"))
+        foreign = simulate(_source("one.spice", DECK))
     first_draft.finish(outputs={"raw": foreign})
 
     with plan() as second_draft:
@@ -510,7 +676,7 @@ def test_policy_and_key_options_compose_immutably_in_either_order():
         policy_then_key.key = "changed"
 
     with plan() as draft:
-        deck = input_artifact("input.spice", "spice-deck")
+        deck = _source("input.spice", DECK)
         policy_then_key(deck)
         key_then_policy(deck)
     normalized = draft.finish(outputs={})
@@ -566,7 +732,7 @@ def test_keyed_nested_flows_repeat_and_survive_an_unkeyed_sibling_insertion():
 
     def build(*, insert_sibling):
         with plan() as draft:
-            deck = input_artifact("input.spice", "spice-deck")
+            deck = _source("input.spice", DECK)
             if insert_sibling:
                 noise_flow(deck)
             report = outer.options(key="outer")(deck)
@@ -643,7 +809,7 @@ def test_duplicate_keys_share_one_operation_and_flow_namespace_per_scope():
         return produce.options(key="reused")(deck)
 
     with plan() as draft:
-        deck = input_artifact("input.spice", "spice-deck")
+        deck = _source("input.spice", DECK)
         produce.options(key="op-duplicate")(deck)
         with pytest.raises(AuthoringError, match="already used"):
             produce.options(key="op-duplicate")(deck)
@@ -688,7 +854,7 @@ def test_keyed_calls_and_edges_do_not_consume_unkeyed_counters():
         raise AssertionError("must not run")
 
     with plan() as draft:
-        deck = input_artifact("input.spice", "spice-deck")
+        deck = _source("input.spice", DECK)
         keyed_raw = produce.options(key="keyed-producer")(deck)
         consume.options(key="keyed-consumer")(keyed_raw)
         unkeyed_raw = produce(deck)
@@ -730,7 +896,7 @@ def test_duplicate_operation_rollback_does_not_leak_or_consume_counters():
         raise AssertionError("must not run")
 
     with plan() as draft:
-        deck = input_artifact("input.spice", "spice-deck")
+        deck = _source("input.spice", DECK)
         accepted(deck)
         accepted.options(key="reserved")(deck)
         with pytest.raises(AuthoringError, match="already used"):
@@ -775,7 +941,7 @@ def test_failing_keyed_flow_restores_keys_graph_and_every_unkeyed_counter():
         return produce(deck)
 
     with plan() as draft:
-        deck = input_artifact("input.spice", "spice-deck")
+        deck = _source("input.spice", DECK)
         with pytest.raises(RuntimeError, match="planned failure"):
             failing.options(key="boundary")(deck)
         keyed = success.options(key="boundary")(deck)
@@ -819,7 +985,7 @@ def test_invalid_authored_key_syntax_fails_before_graph_mutation(invalid_key):
         return produce(deck)
 
     with plan() as draft:
-        deck = input_artifact("input.spice", "spice-deck")
+        deck = _source("input.spice", DECK)
         with pytest.raises(AuthoringError, match="authored key"):
             produce.options(key=invalid_key)(deck)
         with pytest.raises(AuthoringError, match="authored key"):

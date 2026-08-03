@@ -2,7 +2,7 @@
 
 ## Status
 
-**Phase:** explicit materialized-source handoff work order planned; implementation queued
+**Phase:** explicit materialized-source handoff complete
 
 **Authorized slice:** static planning plus materialized-source declarations only
 
@@ -52,11 +52,11 @@
 | ID | Work | Owner | State | Evidence |
 | --- | --- | --- | --- | --- |
 | P4.1 | Freeze corrected three-value boundary and schema-2 acceptance contract | Coordinating session plus Codex high (`artifact-handoff-plan-review`) | complete | Exact graduated main recheck rejected mandatory publication on ordinary outputs; `PLANNING.md` records the corrected external-artifact/ephemeral-output split |
-| P4.2 | Add immutable codec, address, materialization, and value-class model | Codex high (`artifact-handoff-core`) | queued | Must remain data-only and leave graph/identity semantics unchanged |
-| P4.3 | Add strict authoring surface and focused component evidence | Codex high (`artifact-handoff-core`) | queued | Kind-only external sources must fail; output capability must remain ephemeral |
-| P4.4 | Adapt OTA/PVT sources and cross-unit evidence | Codex high (`artifact-handoff-evidence`) | blocked on P4.2-P4.3 | Four structured sources; unchanged graph topology and operation/flow versions |
-| P4.5 | Independent source/boundary review | Codex high (`artifact-handoff-review`) | blocked on P4.2-P4.4 | Must inspect the full diff and reject runtime/materialization leakage |
-| P4.6 | Full verification and completion decision | Coordinating session | blocked on P4.2-P4.5 | Component, root integration, composition, canonical JSON, and diff checks |
+| P4.2 | Add immutable codec, address, materialization, and value-class model | Codex high (`artifact-handoff-core`) | complete | Schema-2 model records canonical codec/options, opaque address, materialization/access assumptions, fixed artifact/ephemeral reference classes, and nullable output capability; the final 63-test component suite passes |
+| P4.3 | Add strict authoring surface and focused component evidence | Codex high (`artifact-handoff-core`) | complete | Public `address`, `codec`, `materialization`, `materializable`, and strict keyword-only source contract are covered; legacy kind-only sources fail and capable outputs remain ephemeral; the final 63-test component suite passes |
+| P4.4 | Adapt OTA/PVT sources and cross-unit evidence | Codex high (`artifact-handoff-evidence`) | implemented and verified | 10 focused tests prove four exact repository-relative source representations, schema 2, nullable output capability, artifact source references, 18 ephemeral operation-output edges, an ephemeral final evaluation, unchanged version-1 definitions/topology/IDs, canonical repetition, legacy/runtime refusal, and no-I/O/import boundaries |
+| P4.5 | Independent source/boundary review | Codex high (`artifact-handoff-review`) | complete | Full-diff review found one structured-validation leak for a malformed source artifact; the core owner added the defensive guard and regression, and independent re-review replaced `REVISE` with `ACCEPT` |
+| P4.6 | Full verification and completion decision | Coordinating session | complete | Final verification passed 63 component, 10 focused OTA/PVT, 17 root integration, and full composition 63/45/77/28/17; both examples emitted valid schema-2 JSON, changed Python compiled, the wheel built, and `git diff --check` passed |
 
 ## File ownership during delegation
 
@@ -79,6 +79,12 @@ dialecticH run evidence.
 - Optional authored keys on immutable operation and flow call views, with one
   operation/flow namespace per containing boundary, stable scoped Plan IDs,
   stable fully keyed connecting edges, and explicit canonical IR fields.
+- Schema-2 data-only declarations for external source addresses, codec
+  identity/options, materialization/access assumptions, artifact source
+  reference class, ephemeral output reference class, and optional output
+  materialization capability metadata.
+- Strict external-source authoring through `input_artifact(..., artifact=...,
+  materialized_as=...)`; the former kind-only form is not retained.
 - An explicit `submit(...)` stub that refuses execution.
 
 ## Inactive historical material
@@ -92,6 +98,8 @@ dialecticH run evidence.
 - `submit(...)` and executor integration: `NotImplementedError` boundary;
 - Dask and LSF lowering: deferred;
 - retries, attempts, recovery, and durable publication: deferred;
+- address resolution, codec execution, real access checking, materialized
+  operation outputs, and runtime artifact values: deferred outside ASS Flow;
 - dynamic or result-dependent replanning: deferred;
 - plugins and declarative flow configuration: deferred;
 
@@ -165,11 +173,38 @@ dialecticH run evidence.
   review changes; and sequential convenience has no occurrence in active
   source, tests, or example. Remaining mentions are inactive archive/provenance
   statements and explicit exclusions, not an API or backlog.
+- Phase 4 core verification (2026-08-03): the final ASS Flow suite passed 63
+  tests. Coverage includes immutable/canonical source materialization data,
+  strict source authoring and legacy rejection, source/output value classes,
+  nullable output capability, malformed Plan rejection, and unchanged graph
+  semantics. All changed package, component-test, example, OTA/PVT, and focused
+  integration Python modules passed `py_compile`.
+- Phase 4 OTA/PVT evidence (2026-08-03): 10 focused tests passed. The schema-2
+  reference retains 4 sources, 6 operations, 2 flows, 4 boundaries, 16
+  invocations, 18 edges, and 16 outputs; pins the previous source, invocation,
+  edge, and boundary IDs; declares exact directory-tree, Python-source/UTF-8,
+  and JSON/UTF-8 source representations; and proves artifact source references,
+  ephemeral operation-output edges/final output, canonical reconstruction,
+  legacy rejection, refusing bodies/submit, and guarded no-I/O/import behavior.
+- Phase 4 repository verification (2026-08-03): root integration passed 17
+  tests with absolute source-checkout `PYTHONPATH`. Final composition passed 63
+  ASS Flow, 45 Netlist Decomposition, 77 Sidecar Edits, 28 SPICE Canonical, and
+  17 root integration tests. Both the characterization and OTA/PVT command
+  outputs parsed as schema-2 JSON; their suites assert canonical repeated
+  data/JSON. All changed Python compiled, the wheel built, and
+  `git diff --check` passed.
+- Phase 4 independent review (2026-08-03): a fresh Codex high full-diff review
+  accepted the artifact/ephemeral discriminator and no-runtime boundary but
+  first found one medium structured-validation defect: a malformed source
+  artifact was recorded and then dereferenced, leaking `AttributeError`. The
+  core owner guarded that path and added the `artifact=None` regression. The
+  reviewer independently proved `invalid_source_artifact`, retained valid-kind
+  checking, reran all 63 component tests, and replaced `REVISE` with `ACCEPT`.
 
 ## Findings and changes to the plan
 
-- **Independent scope review — accept the bounded core.** Complete inspection of
-  the current committed source finds immutable contract/IR values, structured
+- **Phase 3 independent scope review — accepted the then-bounded core.** Complete
+  inspection of the committed source found immutable contract/IR values, structured
   graph validation, deterministic serialization, public declarations, explicit
   scoped capture with rollback, binding checks, and the refusing `submit(...)`
   boundary. Its imports and behavior introduce no
@@ -205,6 +240,12 @@ dialecticH run evidence.
   order and produces correspondingly positioned dependency edges. Phase 3 now
   exercises that contract in the public characterization example for both one
   and three distinct members.
+- Phase 4 implementation evidence distinguishes addressed external artifact
+  sources from ephemeral operation-output references without changing graph
+  identity. The OTA/PVT adaptation pins the prior IDs and keeps all output
+  materialization capabilities null. The fresh independent source/boundary
+  review accepted this data-only boundary after its one validation finding was
+  corrected and reverified.
 - **Historical conclusion (superseded).** The spike answered its decision
   question positively for static planning and initially recommended remaining
   outside `unit.toml` until a later boundary review. The user direction recorded
@@ -229,6 +270,9 @@ dialecticH run evidence.
   deterministic authored-order identities.
 - Keys remain Plan identity only. No cache, scheduler, attempt, runtime,
   persistence, recovery, or sequential-editing semantics follow from them.
+- Source address, codec, and access data are declarations only. ASS Flow does
+  not resolve addresses, execute codecs, verify accessibility, publish values,
+  materialize operation outputs, or represent runtime artifact values.
 - The component remains a prototype and owns no execution, Dask/LSF lowering,
   retries, persistence, plugins, dynamic replanning, production hardening, or
   complete study lifecycle.
@@ -237,6 +281,9 @@ dialecticH run evidence.
 
 ## Next decision question
 
-Is the normalized Plan IR sufficient for a separately owned executor-lowering
-interface without giving authoring hidden runtime authority? This review does
-not authorize or implement that interface.
+The schema-2 source-handoff prerequisite is accepted. The next separately
+authorized experiment may ask whether the normalized Plan IR lowers locally
+through Dask without giving authoring hidden runtime authority. It must first
+freeze executor ownership, identity-to-task binding, injected source decoding,
+invocation-boundary visibility, local failure/cancellation behavior, and the
+explicit exclusions for publication, durability, retries, and LSF.

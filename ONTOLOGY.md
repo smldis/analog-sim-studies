@@ -45,8 +45,11 @@ any affected child ontology.
   `netlist-decomposition` consuming `spice-canonical`.
 - `docs/reference/ota-pvt-plan/` owns one representative, non-executing
   cross-unit Plan declaration and its versioned input fixtures. It tests static
-  composition through public ASS Flow contracts without promoting its
-  analog-domain labels into a child API or claiming sibling adapters.
+  composition through public ASS Flow contracts: four repository-relative
+  sources are declared as addressed artifact references with explicit data-only
+  representation/access requirements, while all operation-output edges and the
+  final evaluation remain ephemeral. This does not promote its analog-domain
+  labels into a child API or claim sibling adapters.
 
 ## Contributions from children
 
@@ -70,7 +73,9 @@ The root-owned OTA/PVT reference composes these capabilities only at the level
 of declared artifact and operation boundaries. Its Sidecar, canonicalization,
 and decomposition names are proposed adapter seams; its simulator, measurement,
 and evaluation operations are refusing stubs. The validated Plan is evidence of
-static expressiveness, not materialized evidence or an execution contract.
+static expressiveness and an addressed-source/ephemeral-edge distinction, not
+evidence that addresses resolve, codecs execute, access succeeds, artifacts are
+published, outputs materialize, or any operation can run.
 
 ## Exclusions
 

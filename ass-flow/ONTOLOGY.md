@@ -6,7 +6,10 @@ ASS Flow owns generic, Python-authored definitions of operations and reusable
 static flows, plus the immutable normalized Plan IR produced by explicit
 planning scopes. It makes planned invocations, dependencies, nested flow
 boundaries, policies, artifact contracts, and named outputs inspectable before
-any execution boundary.
+any execution boundary. It also owns data-only declarations for addressed
+external sources: codec identity/options, materialization and access
+assumptions, fixed source/output reference value classes, and optional output
+materialization capability metadata.
 
 ## Mode of being
 
@@ -15,8 +18,9 @@ any execution boundary.
 The current runnable API studies whether ordinary Python authoring can produce
 one deterministic, executor-neutral graph while retaining explicit contracts
 and nested flow structure. Its tests and simulator-free example now provide
-evidence for ordered collection fan-in and scoped authored Plan identity as
-well as the original scalar graph contracts. Changes should preserve
+evidence for ordered collection fan-in, scoped authored Plan identity, and the
+static distinction between addressed artifact sources and ephemeral operation
+outputs. Changes should preserve
 inspectability, immutability, early validation, and the separation between
 planning and runtime authority.
 
@@ -34,6 +38,14 @@ planning and runtime authority.
 - Plan IR is immutable, validates operation bindings and artifact dependencies,
   preserves nested flow boundaries, and provides deterministic plain-data and
   JSON inspection.
+- `address(...)`, `codec(...)`, and `materialization(...)` declare opaque
+  source addresses, representation identity/options, and assumed access scope
+  as canonical data. Strict `input_artifact(...)` records an already-
+  materialized external source without resolving, reading, or decoding it.
+- External source references have inspectable value class `artifact`; ordinary
+  operation-output references have value class `ephemeral`. An optional output
+  `can_materialize_as` declaration advertises capability only and does not
+  change that output's value class or create an artifact.
 - `artifacts(kind)` declares a required, non-empty ordered collection input.
   Its binding retains member order and its dependencies contain one edge per
   member with an explicit zero-based position.
@@ -61,10 +73,12 @@ contract is promoted through the parent composition node.
 
 ASS Flow does not own simulation meaning, operation execution, local or remote
 scheduling, Dask lowering, LSF transport, retries or attempts, persistence,
-artifact publication, recovery, plugins, dynamic or result-dependent
-replanning, production hardening, or the complete study lifecycle. It does not
-provide sequential editing helpers. The archived sequential convenience is
-inactive historical material, not an API or backlog.
+address resolution, codec execution, real accessibility checking, artifact
+publication, materialized operation outputs, runtime artifact values, recovery,
+plugins, dynamic or result-dependent replanning, production hardening, or the
+complete study lifecycle. It does not provide sequential editing helpers. The
+archived sequential convenience is inactive historical material, not an API or
+backlog.
 
 ## Child composition
 

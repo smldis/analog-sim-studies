@@ -22,10 +22,13 @@ for source_root in (ASS_FLOW_SRC, SIDECAR_EDITS_SRC, REFERENCE_DIR):
 
 import ota_pvt_plan as reference  # noqa: E402
 from ass_flow import (  # noqa: E402
+    ArtifactSourceReference,
     BindingError,
     CollectionInputBinding,
     OutputReference,
     PlanValidationError,
+    address,
+    artifact,
     input_artifact,
     plain_data,
     plan,
@@ -41,12 +44,85 @@ EXPECTED_POINTS = (
     ("ff_1v98_m40c", "ff", 1.98, -40),
 )
 
-EXPECTED_SOURCE_URIS = (
-    "docs/reference/ota-pvt-plan/inputs/base",
-    "docs/reference/ota-pvt-plan/inputs/pvt_edits.py",
-    "docs/reference/ota-pvt-plan/inputs/measurement_definition.json",
-    "docs/reference/ota-pvt-plan/inputs/spec_limits.json",
+EXPECTED_SOURCES = (
+    (
+        "docs/reference/ota-pvt-plan/inputs/base",
+        "sidecar-base-directory",
+        "directory-tree",
+        {},
+    ),
+    (
+        "docs/reference/ota-pvt-plan/inputs/pvt_edits.py",
+        "sidecar-edit-file",
+        "python-source",
+        {"encoding": "utf-8"},
+    ),
+    (
+        "docs/reference/ota-pvt-plan/inputs/measurement_definition.json",
+        "ota-measurement-definition",
+        "json",
+        {"encoding": "utf-8"},
+    ),
+    (
+        "docs/reference/ota-pvt-plan/inputs/spec_limits.json",
+        "ota-specification-limits",
+        "json",
+        {"encoding": "utf-8"},
+    ),
 )
+
+EXPECTED_PLAN_IDS = {
+    "sources": (
+        "source:0001",
+        "source:0002",
+        "source:0003",
+        "source:0004",
+    ),
+    "invocations": (
+        "invoke:key:ade7d1fc983cd7d1de0f969a48ba67674a70ed65f8ae642f754cb7b000bc3056",
+        "invoke:key:57faa364282e74cb71f7b4323fb3e7e1cb6533966461b672d594bf8e3c96dc34",
+        "invoke:key:002b1df6a83a0da67c93806d8fdb3f77594b78695a848a3af739ff8ea2bb4794",
+        "invoke:key:7a6371d0425f94590fec6ba97c296e69b7a4728911ee0bfca36a2805b11f7bce",
+        "invoke:key:0998cd9979c2d926e7b73e5986591469f90514115d275486359998cdb35f6d44",
+        "invoke:key:5ec0097a93bc5fc201c8b0c86ee6ab3789ffe517a04823bdc6b34c96c9be2c27",
+        "invoke:key:503432b8fc4199eb541e4c91ebafdfcd8b8483d1b29941f168118b62f32dede9",
+        "invoke:key:5c4168e357eca0e5ac7d9e30cd3c196135e1bfdc00dd3446ff926dc00b826656",
+        "invoke:key:ed47cb970d0f7c431fce73919f56a14c632b5a580763c9174d17010d1c919c5b",
+        "invoke:key:331efb1126b6e471f4a8cf862fd48d63ae70abde44a7b11f56710ad4e09cb2e2",
+        "invoke:key:3855bc2b8eda94691cff9a0e05f9eefdfaff904008ccf11e5ad1ace2bc3d4548",
+        "invoke:key:bcdf25d8b52eb363ec36df3354cc72ac891fa0236121c53b8eda9d25ead24051",
+        "invoke:key:752a2699133ebc807ca0f22f77b238c6821c4970b5726e09125a2bc091e672ca",
+        "invoke:key:428a14c6331f575fb8fc75033c19cd4ce85033413c03a7e79a6682e5f050b80a",
+        "invoke:key:77ff1c490193e021960000397a8d334de9328e7c5d31de9ab620c092c9439d4f",
+        "invoke:key:18c7c892dfbbc936b64f43f8ecb98c18fe72384fd80b89ae23afaf2ad007cbe7",
+    ),
+    "boundaries": (
+        "flow:key:847c24bea984e47c92dceeb3ddcf69090b448d82c6cbc079e358eb5c6b670aff",
+        "flow:key:0be3465b4f3c395324c49c0e77dba8572778b5e7c8ab87a02092c845bc217454",
+        "flow:key:fbf7523c821af1d4d4e17ee4064ab98f8faa2bc56f0d5f09b5946e41b39673bd",
+        "flow:key:714e8a36431a7612f2ccbdaf8d9842221503344d6f8995d15d00d09121a7fec5",
+    ),
+    "edges": (
+        "edge:key:cc3d1357bf45133128c4952bf9af757b8006d963fcd89ad0d3e6f7f1eb637442",
+        "edge:key:8326a15c4ecfd7bef0bd7b5098ffd2ea99d0c77ff993c802128699707cc8d6a0",
+        "edge:key:49145308eb239a539dd25111f01ac9664b13cd2686ff322e569bd1574e5e4e9f",
+        "edge:key:894b3ff17ed2d0d3181d1443f46f43ba49c5653bdafcbc8941a76afc375f85a0",
+        "edge:key:c3cf24c2df6f653acd9365525c42975fb982dc6a2c9c10dbd34fa20bd8a81df4",
+        "edge:key:f5f6c4a09a3421badd9342d19884d9f6d9606cc5ce8c2cee29bd80c3af970448",
+        "edge:key:c6883362e8df754ad36a31eec418f99a1ed9a87b57b1a738b0dac6e59fd12cfb",
+        "edge:key:cacf3c256b2204123db8e9a6e080b4f6e209514e932ae40d79567ff913d9f5cb",
+        "edge:key:1d79a70b8d8d3242ae8a0fbe8cd836ebc2dbde4fca9f2705d5013621960a5da0",
+        "edge:key:1af419a5bda540c148df047acff7a8c387fc3eb49dd9a52bcb931f2eca05c111",
+        "edge:key:ed00d6a1bb40df8e8a0d702b840260a12e0ec45094d50311bb6dc94e895e8849",
+        "edge:key:d5ec85eb762cca234e1b8a71168d42f03ddbc9e6c33c8c6db72918c847ab6446",
+        "edge:key:05de609a27fff8168a281f3690ec330220485d1237f50325f3c4e3f993556cf0",
+        "edge:key:2db139c4ca11ff9730e9450791a39a348869b0c776d82db8324dd7376960edf9",
+        "edge:key:bb29cffeb6fd255740001833e0636f6d808d1ed55101a189135504eedabab162",
+        "edge:key:7ecbed98688d2f8908f86e017af54de51faf69def089436b339e46ae53e55672",
+        "edge:key:0a4af0642df6fc0a90f916583065513dac2a15924c8b25139c9c6d23104925a3",
+        "edge:key:2b32a4d33f548cdc778c0346a09bce0072bf3808bab6478662c80629411121f4",
+    ),
+}
 
 EXPECTED_OPERATION_CONTRACTS = {
     "reference.ota_pvt.prepare_run": {
@@ -62,7 +138,7 @@ EXPECTED_OPERATION_CONTRACTS = {
             "temp_c": (int, True),
             "vdd_v": (float, True),
         },
-        "outputs": {"run": "prepared-simulation-directory"},
+        "outputs": {"run": ("prepared-simulation-directory", None)},
         "resources": (("cpu_cores", 1, "count"),),
     },
     "reference.ota_pvt.canonicalize_deck": {
@@ -75,7 +151,7 @@ EXPECTED_OPERATION_CONTRACTS = {
             "spice_format": (str, True),
             "top_name": (str, True),
         },
-        "outputs": {"canonical": "canonical-netlist"},
+        "outputs": {"canonical": ("canonical-netlist", None)},
         "resources": (),
     },
     "reference.ota_pvt.decompose_ota": {
@@ -90,7 +166,7 @@ EXPECTED_OPERATION_CONTRACTS = {
             "vdd_nets": (list, True),
             "vss_nets": (list, True),
         },
-        "outputs": {"decomposition": "ota-functional-decomposition"},
+        "outputs": {"decomposition": ("ota-functional-decomposition", None)},
         "resources": (("cpu_cores", 1, "count"),),
     },
     "reference.ota_pvt.simulate_ac": {
@@ -106,7 +182,7 @@ EXPECTED_OPERATION_CONTRACTS = {
             "temp_c": (int, True),
             "vdd_v": (float, True),
         },
-        "outputs": {"raw": "simulator-raw-results"},
+        "outputs": {"raw": ("simulator-raw-results", None)},
         "resources": (
             ("cpu_cores", 1, "count"),
             ("memory_gib", 1, "GiB"),
@@ -119,7 +195,7 @@ EXPECTED_OPERATION_CONTRACTS = {
             "raw": ("simulator-raw-results", "scalar", True),
         },
         "config": {"point_id": (str, True)},
-        "outputs": {"measurements": "ota-point-measurements"},
+        "outputs": {"measurements": ("ota-point-measurements", None)},
         "resources": (),
     },
     "reference.ota_pvt.evaluate_pvt": {
@@ -134,7 +210,7 @@ EXPECTED_OPERATION_CONTRACTS = {
             "measurements": ("ota-point-measurements", "collection", True),
         },
         "config": {"point_ids": (list, True)},
-        "outputs": {"evaluation": "ota-pvt-evaluation"},
+        "outputs": {"evaluation": ("ota-pvt-evaluation", None)},
         "resources": (),
     },
 }
@@ -193,7 +269,10 @@ def _operation_contract(definition):
             for contract in definition.config
         },
         "outputs": {
-            contract.name: contract.artifact.kind
+            contract.name: (
+                contract.artifact.kind,
+                contract.can_materialize_as,
+            )
             for contract in definition.outputs
         },
         "resources": tuple(
@@ -207,6 +286,7 @@ def test_reference_has_the_exact_versioned_normalized_shape_and_named_outputs():
     normalized = reference.build_plan()
 
     assert normalized.validate() is normalized
+    assert normalized.schema_version == 2
     assert (
         len(normalized.sources),
         len(normalized.operations),
@@ -280,7 +360,135 @@ def test_every_boundary_and_invocation_is_keyed_with_stable_plan_identity():
         assert [item.id for item in getattr(first, field)] == [
             item.id for item in getattr(second, field)
         ]
+        assert tuple(item.id for item in getattr(first, field)) == (
+            EXPECTED_PLAN_IDS[field]
+        )
     assert all(edge.id.startswith("edge:key:") for edge in first.edges)
+
+
+def test_sources_declare_exact_data_only_representations_and_value_classes():
+    normalized = reference.build_plan()
+    serialized = normalized.to_data()
+
+    assert [
+        (
+            source.address.address_space,
+            source.address.locator,
+            source.artifact.kind,
+            source.materialized_as.address_space,
+            source.materialized_as.access_scope,
+            source.materialized_as.codec.name,
+            source.materialized_as.codec.version,
+            plain_data(source.materialized_as.codec.options),
+        )
+        for source in normalized.sources
+    ] == [
+        (
+            "repository-relative",
+            locator,
+            kind,
+            "repository-relative",
+            "repository-checkout",
+            codec_name,
+            "1",
+            options,
+        )
+        for locator, kind, codec_name, options in EXPECTED_SOURCES
+    ]
+    assert serialized["sources"] == [
+        {
+            "id": f"source:{index:04d}",
+            "address": {
+                "address_space": "repository-relative",
+                "locator": locator,
+            },
+            "artifact": {"kind": kind},
+            "materialized_as": {
+                "codec": {
+                    "name": codec_name,
+                    "version": "1",
+                    "options": options,
+                },
+                "address_space": "repository-relative",
+                "access_scope": "repository-checkout",
+            },
+        }
+        for index, (locator, kind, codec_name, options) in enumerate(
+            EXPECTED_SOURCES, start=1
+        )
+    ]
+
+    references = [
+        reference_value
+        for invocation in normalized.invocations
+        for binding in invocation.inputs
+        for reference_value in (
+            binding.references
+            if isinstance(binding, CollectionInputBinding)
+            else (binding.reference,)
+        )
+    ]
+    source_references = [
+        value for value in references if isinstance(value, ArtifactSourceReference)
+    ]
+    output_references = [
+        value for value in references if isinstance(value, OutputReference)
+    ]
+    serialized_references = [
+        reference_data
+        for invocation in serialized["invocations"]
+        for binding in invocation["inputs"]
+        for reference_data in (
+            binding["references"]
+            if binding["cardinality"] == "collection"
+            else (binding["reference"],)
+        )
+    ]
+    assert len(source_references) == 10
+    assert all(value.value_class == "artifact" for value in source_references)
+    assert len(output_references) == 18
+    assert all(value.value_class == "ephemeral" for value in output_references)
+    assert [
+        value["value_class"]
+        for value in serialized_references
+        if value["type"] == "source"
+    ] == ["artifact"] * 10
+    assert [
+        value["value_class"]
+        for value in serialized_references
+        if value["type"] == "output"
+    ] == ["ephemeral"] * 18
+    assert len(normalized.edges) == 18
+    assert all(isinstance(edge.source, OutputReference) for edge in normalized.edges)
+    assert all(edge.source.value_class == "ephemeral" for edge in normalized.edges)
+    assert all(
+        edge["source"]["value_class"] == "ephemeral"
+        for edge in serialized["edges"]
+    )
+    assert all(
+        output.can_materialize_as is None
+        for operation_definition in normalized.operations
+        for output in operation_definition.outputs
+    )
+    assert all(
+        output["can_materialize_as"] is None
+        for operation_definition in serialized["operations"]
+        for output in operation_definition["outputs"]
+    )
+    assert all(
+        output.reference.value_class == "ephemeral"
+        for output in normalized.outputs
+    )
+    final_reference = next(
+        output.reference for output in normalized.outputs if output.name == "evaluation"
+    )
+    assert final_reference.value_class == "ephemeral"
+    serialized_final = next(
+        output["reference"]
+        for output in serialized["outputs"]
+        if output["name"] == "evaluation"
+    )
+    assert serialized_final["value_class"] == "ephemeral"
 
 
 def test_each_point_forks_after_preparation_and_resolves_exact_pvt_config():
@@ -499,9 +707,22 @@ def test_refusing_bodies_are_not_needed_for_planning_and_submit_still_refuses():
 
 
 def test_authoring_and_plan_validation_reject_kind_config_order_and_position_defects():
+    with plan() as legacy_draft:
+        with pytest.raises(TypeError):
+            input_artifact("legacy-uri", "sidecar-base-directory")
+    assert legacy_draft.finish(outputs={}).sources == ()
+
     with plan() as draft:
-        base = input_artifact("base", "sidecar-base-directory")
-        edits = input_artifact("edits.py", "sidecar-edit-file")
+        base = input_artifact(
+            address("repository-relative", "base"),
+            artifact=artifact("sidecar-base-directory"),
+            materialized_as=reference.REPOSITORY_DIRECTORY_TREE,
+        )
+        edits = input_artifact(
+            address("repository-relative", "edits.py"),
+            artifact=artifact("sidecar-edit-file"),
+            materialized_as=reference.REPOSITORY_PYTHON_SOURCE,
+        )
         with pytest.raises(BindingError, match="expects float"):
             reference.prepare_run.options(key="wrong-config")(
                 base,
@@ -576,9 +797,13 @@ def test_authoring_and_plan_validation_reject_kind_config_order_and_position_def
 
 def test_fixture_paths_are_repository_relative_and_sidecar_values_match_points():
     normalized = reference.build_plan()
-    assert tuple(source.uri for source in normalized.sources) == EXPECTED_SOURCE_URIS
-    assert all(not Path(uri).is_absolute() and ".." not in Path(uri).parts for uri in EXPECTED_SOURCE_URIS)
-    assert all((ROOT / uri).exists() for uri in EXPECTED_SOURCE_URIS)
+    locators = tuple(source.address.locator for source in normalized.sources)
+    assert locators == tuple(source[0] for source in EXPECTED_SOURCES)
+    assert all(
+        not Path(locator).is_absolute() and ".." not in Path(locator).parts
+        for locator in locators
+    )
+    assert all((ROOT / locator).exists() for locator in locators)
 
     edit_path = REFERENCE_DIR / "inputs" / "pvt_edits.py"
     render_plan = load_editfile(edit_path)

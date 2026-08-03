@@ -46,7 +46,7 @@ decisions remain outside this component.
 
 | Graduated section or concept | Disposition | Current interpretation |
 | --- | --- | --- |
-| Vision and core commitments | adopt by reference | Headless authority, Python-native composition, and file portability govern the project. ASS Flow currently provides inspectable authored Plan data, not materialized evidence. |
+| Vision and core commitments | adopt by reference | Headless authority, Python-native composition, and file portability govern the project. ASS Flow provides inspectable authored Plan data, including declarations about materialized external sources, but does not produce materialized evidence. |
 | Study as the unit of work | adapt outside ASS Flow | Keep intent/context/actions/evidence/decisions as the wider system vocabulary; do not make the static planner own a `Study` object. |
 | Author/Plan/Execute/Evaluate/Decide/Preserve responsibilities | adopt as system decomposition | ASS Flow owns generic authoring and planning only. Later units or explicit adapters must own the other responsibilities. |
 | AI-assisted work and bounded autonomy | adopt | Agents use the same files and APIs and gain no route around validation, provenance, review, or authorization. Runtime permission remains external policy. |
@@ -60,7 +60,7 @@ decisions remain outside this component.
 | One operation with explicit `plan(...)` and `submit(...)` surfaces | partially adopt | The immutable operation and explicit planning surface are accepted. `submit(...)` remains refusing until lowering evidence shows whether one operation description can serve both timings honestly. |
 | Ambient-client detection | discard | A live client must never silently change a bare operation call into execution. |
 | Invocation wrapper and optimization boundary | defer with a mandatory spike | Preserve each authored invocation initially; test Dask fusion, annotation survival, keys, serialization, and policy revalidation before choosing a lowering. |
-| Literal/artifact/ephemeral value classes | adapt as a future lowering invariant | Current Plan IR has logical artifact kinds only. Address, codec, accessibility, and materialization belong to a later artifact/execution contract. |
+| Literal/artifact/ephemeral value classes | partially adopt as static Plan metadata | External source references are declared artifacts and operation-output references are ephemeral. Source address, codec, and assumed access scope are inspectable data; literals and runtime values still require a future lowering contract. |
 | Explicit materialization edges | adopt as a requirement when crossing execution environments | No automatic hidden transfer into direct LSF. The exact operation/schema is deferred until a real boundary needs it. |
 | Reusable custom flows and nested static composition | adopt | Implemented by `@flow`, explicit Plan scope, nested boundaries, branching, and ordered fan-in. |
 | Sequential stable-slot convenience | discard from active scope | Archived after explicit user direction; revisit only from repeated real editing friction. |
@@ -118,6 +118,11 @@ The user-authorized planning work established this bounded component:
   IR with deterministic data and JSON inspection;
 - planning validates required and unexpected bindings, configuration types,
   artifact kinds, collection membership/order, output ownership, and key scope;
+- schema-2 source declarations record opaque addresses, codec identity/options,
+  and assumed access scope; source references are artifacts and ordinary
+  operation-output references are ephemeral;
+- optional output materialization capability is inspectable declaration data
+  only and does not publish or change an output reference's value class;
 - `.options(policy=..., key=...)` is immutable; call policy outranks operation,
   Plan, and local defaults;
 - explicit scoped keys provide stable identities for fully keyed nodes and
@@ -196,11 +201,14 @@ serializable literal, an addressable artifact reference, or an ephemeral Dask
 value. It also required an explicit materialization operation before ephemeral
 data could cross into direct LSF.
 
-Current Plan IR declares logical artifact kinds but no codec, schema, address,
-checksum, accessibility rule, or publisher. Therefore this classification is
-not implemented and must not be inferred from artifact-kind equality. A real
-adapter or lowering work order must decide what extra contract is actually
-necessary.
+Current schema-2 Plan IR distinguishes addressed external artifact references
+from ephemeral operation-output references. It records opaque source addresses,
+codec contract identity/options, assumed access scope, and optional output
+materialization capability as canonical declaration data. It does not resolve
+addresses, execute codecs, check real accessibility, publish artifacts,
+materialize operation outputs, provide runtime artifact values, or record
+checksums/provenance. A real adapter or lowering work order must own those
+behaviors and decide what additional runtime contract is necessary.
 
 ### Dask kernel
 
@@ -304,10 +312,12 @@ The graduated sequence remains useful as ordered falsification evidence, with
 one prerequisite exposed by the completed domain reference:
 
 1. **complete:** construct a representative static domain Plan;
-2. specify and test the minimal artifact/adapter handoff contract exposed by
-   that Plan, without expanding it into a general artifact store;
-3. lower a small arbitrary graph locally through Dask while preserving normalized
-   invocation identity, policy, branching, and fan-in;
+2. **complete:** specify and test the
+   minimal declarative source-handoff contract exposed by that Plan, without
+   expanding it into a general artifact store or runtime adapter;
+3. after a separate reviewed work order, lower a small arbitrary
+   graph locally through Dask while preserving normalized invocation identity,
+   policy, branching, and fan-in;
 4. compare Delayed and Futures descriptions before accepting `submit(...)`;
 5. exercise a fake command-compatible LSF attempt adapter, including both loss
    windows and atomic manifest publication;
@@ -354,8 +364,8 @@ attempt identity and reconciliation protocol.
 | Sequential-flow convenience | archived/rejected from active scope | Reconsider only after repeated real workflows show the same stable-step editing burden. |
 | Result-dependent fallback/recovery | deferred | Compare reapplying a flow to committed explicit state with a visible conditional/recovery node when a concrete failure workflow requires it. Hidden controllers remain rejected. |
 | Authoring surfaces | planning accepted; submission unresolved | A bounded lowering experiment must compare normalized meaning before any working `submit(...)` surface is accepted. |
-| Typed state/artifact transition | selected next prerequisite; unimplemented | The OTA/PVT reference exposed the concrete missing seam: real values need address, codec, publication, accessibility, and handoff semantics. The next work order should isolate that minimal contract and its validation/failed-commit evidence. |
-| Local execution | selected first execution hypothesis; not authorized | After the minimal artifact/adapter handoff contract, a bounded Dask lowering check must preserve normalized invocation meaning without LSF or durable runtime expansion. |
+| Typed state/artifact transition | declarative prerequisite accepted | Schema-2 Plans distinguish addressed artifact sources from ephemeral operation outputs and record codec/access assumptions. Independent review accepted the data-only boundary after one structured-validation defect was corrected. Resolution, codec execution, real access checking, publication, materialized outputs, and runtime values remain unimplemented. |
+| Local execution | selected first execution hypothesis; not authorized | A separately reviewed Dask lowering work order may now test normalized invocation meaning without LSF or durable runtime expansion; completion of the prerequisite did not authorize implementation. |
 | Dask executor boundary | selected first kernel hypothesis; unvalidated | Local lowering and invocation-boundary preservation must be tested before accepting the dependency or public execution surface. |
 | Direct LSF lifecycle | authority split adopted; adapter unvalidated | Fake acceptance-to-receipt and terminal-to-manifest failure injections are required before farm use. |
 | Mixed local/direct/pool topology | deferred | Requires credible local lowering and direct-attempt ownership first. |
@@ -367,9 +377,11 @@ attempt identity and reconciliation protocol.
 
 The user-authorized
 `ASS-FLOW-WO-2026-08-03-ARTIFACT-HANDOFF` work order is recorded in
-`PLANNING.md`. It enriches static Plan declarations only: external sources
+`PLANNING.md`. It is complete: implementation and integration evidence pass,
+and independent source/boundary review returned `ACCEPT` after one malformed
+source-validation defect was corrected and reverified. It enriches static Plan declarations only: external sources
 become structured, addressed artifact references with explicit codec and
-accessibility requirements, while every ordinary operation output remains an
+assumed-access requirements, while every ordinary operation output remains an
 ephemeral reference.
 
 An initial review proposal to make publication mandatory on every output was
@@ -379,11 +391,12 @@ materialization capability is declaration data only; it cannot publish or
 change an edge's value class. Final-output publication and cross-environment
 materialization remain visible decisions for later work orders.
 
-The completed root-owned OTA/PVT Plan reference supplies the acceptance graph
-without moving its domain meaning into ASS Flow. Local Dask lowering remains
-the next execution experiment after this static source-handoff prerequisite.
-Neither the current work order nor its eventual passing evidence authorizes
-Dask, LSF, sibling adapters, publication, or a study runtime.
+The completed root-owned OTA/PVT Plan reference, now adapted to schema 2,
+supplies the acceptance graph without moving its domain meaning into ASS Flow.
+Local Dask lowering remains the next candidate execution experiment only under
+a new reviewed work order. Current passing evidence does not authorize Dask, LSF, sibling
+adapters, codec execution, address resolution, publication, materialized
+outputs, runtime values, or a study runtime.
 
 ## Rules for the next development decision
 

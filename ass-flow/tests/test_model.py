@@ -4,9 +4,11 @@ import json
 import pytest
 
 from ass_flow.model import (
+    ArtifactAddress,
     ArtifactContract,
     ArtifactSource,
     ArtifactSourceReference,
+    CodecContract,
     ConfigBinding,
     ConfigContract,
     CollectionInputBinding,
@@ -16,9 +18,11 @@ from ass_flow.model import (
     FlowDefinition,
     FlowIdentity,
     FrozenList,
+    FrozenObject,
     InputBinding,
     InputContract,
     Invocation,
+    MaterializationSpec,
     NamedOutput,
     OperationDefinition,
     OperationIdentity,
@@ -41,6 +45,22 @@ MERGE_ID = OperationIdentity("example.merge", "1")
 ROOT_FLOW_ID = FlowIdentity("example.study", "1")
 BRANCH_FLOW_ID = FlowIdentity("example.characterize", "1")
 
+JSON_CODEC = CodecContract(
+    "json", "1", {"encoding": "utf-8", "dialect": {"indent": None}}
+)
+REPOSITORY_JSON = MaterializationSpec(
+    JSON_CODEC, "repository-relative", "repository-checkout"
+)
+
+
+def source(identifier: str, locator: str, artifact: ArtifactContract) -> ArtifactSource:
+    return ArtifactSource(
+        identifier,
+        ArtifactAddress("repository-relative", locator),
+        artifact,
+        REPOSITORY_JSON,
+    )
+
 
 def branching_plan() -> Plan:
     simulate = OperationDefinition(
@@ -55,11 +75,11 @@ def branching_plan() -> Plan:
         inputs=(InputContract("left", RAW), InputContract("right", RAW)),
         outputs=(OutputContract("report", REPORT),),
     )
-    source = ArtifactSource("source:deck", "inputs/amplifier.spice", DECK)
+    deck_source = source("source:deck", "inputs/amplifier.spice", DECK)
     tt = Invocation(
         id="invoke:tt",
         operation=SIMULATE_ID,
-        inputs=(InputBinding("deck", ArtifactSourceReference(source.id)),),
+        inputs=(InputBinding("deck", ArtifactSourceReference(deck_source.id)),),
         config=(ConfigBinding("corner", "tt"),),
         policy=simulate.default_policy,
         boundary_id="flow:branches",
@@ -67,7 +87,7 @@ def branching_plan() -> Plan:
     ss = Invocation(
         id="invoke:ss",
         operation=SIMULATE_ID,
-        inputs=(InputBinding("deck", ArtifactSourceReference(source.id)),),
+        inputs=(InputBinding("deck", ArtifactSourceReference(deck_source.id)),),
         config=(ConfigBinding("corner", "ss"),),
         policy=simulate.default_policy,
         boundary_id="flow:branches",
@@ -85,7 +105,7 @@ def branching_plan() -> Plan:
     return Plan(
         operations=(simulate, merge),
         flows=(FlowDefinition(ROOT_FLOW_ID), FlowDefinition(BRANCH_FLOW_ID)),
-        sources=(source,),
+        sources=(deck_source,),
         invocations=(tt, ss, merged),
         edges=(
             DependencyEdge(
@@ -163,10 +183,8 @@ def collection_plan() -> Plan:
 
 def source_collection_plan() -> Plan:
     plan = collection_plan()
-    external = ArtifactSource(
-        "source:measurements",
-        "inputs/existing-measurements.json",
-        RAW,
+    external = source(
+        "source:measurements", "inputs/existing-measurements.json", RAW
     )
     merged = replace(
         plan.invocations[2],
@@ -211,6 +229,106 @@ def test_values_are_deeply_immutable_and_policies_are_only_data():
         policy.name = "changed"
     with pytest.raises(FrozenInstanceError):
         branching_plan().invocations[0].id = "changed"
+
+
+def test_materialization_values_are_deeply_immutable_canonical_data_only():
+    options = {"encoding": "utf-8", "features": ["z", {"enabled": True}]}
+    declared_codec = CodecContract("json", "2", options)
+    declared_address = ArtifactAddress(
+        "repository-relative", "inputs/../opaque.json"
+    )
+    declared_materialization = MaterializationSpec(
+        declared_codec, "repository-relative", "repository-checkout"
+    )
+    options["features"].append("mutated")
+
+    assert dict(declared_codec.options.items)["features"] == FrozenList(
+        ("z", FrozenObject((("enabled", True),)))
+    )
+    assert declared_address.locator == "inputs/../opaque.json"
+    assert declared_materialization.codec is declared_codec
+    with pytest.raises(FrozenInstanceError):
+        declared_address.locator = "normalized.json"
+    with pytest.raises(ContractError, match="artifact locator"):
+        ArtifactAddress("repository-relative", " bad ")
+    with pytest.raises(ContractError, match="artifact address space"):
+        ArtifactAddress("bad space", "opaque")
+
+    data = branching_plan().to_data()
+    assert data["schema_version"] == 2
+    assert data["sources"][0]["materialized_as"]["codec"] == {
+        "name": "json",
+        "version": "1",
+        "options": {"dialect": {"indent": None}, "encoding": "utf-8"},
+    }
+    assert data["sources"][0]["address"] == {
+        "address_space": "repository-relative",
+        "locator": "inputs/amplifier.spice",
+    }
+    assert data["operations"][0]["outputs"][0]["can_materialize_as"] is None
+    with pytest.raises(ContractError, match="schema_version must be 2"):
+        Plan(schema_version=1)
+
+    malformed_codec = replace(JSON_CODEC)
+    malformed_options = FrozenObject()
+    object.__setattr__(malformed_options, "items", (("bad", object()),))
+    object.__setattr__(malformed_codec, "options", malformed_options)
+    malformed_materialization = replace(REPOSITORY_JSON, codec=malformed_codec)
+    valid = branching_plan()
+    malformed_source = replace(
+        valid.sources[0], materialized_as=malformed_materialization
+    )
+    with pytest.raises(PlanValidationError) as caught:
+        replace(valid, sources=(malformed_source,)).validate()
+    assert "invalid_source_materialization" in {
+        issue.code for issue in caught.value.issues
+    }
+
+
+@pytest.mark.parametrize(
+    ("field", "replacement", "expected_code"),
+    [
+        ("address", None, "invalid_source_address"),
+        ("artifact", None, "invalid_source_artifact"),
+        ("materialized_as", None, "invalid_source_materialization"),
+        (
+            "address",
+            ArtifactAddress("other-space", "inputs/amplifier.spice"),
+            "source_address_space_mismatch",
+        ),
+    ],
+)
+def test_plan_independently_rejects_malformed_source_declarations(
+    field, replacement, expected_code
+):
+    valid = branching_plan()
+    malformed_source = replace(valid.sources[0])
+    object.__setattr__(malformed_source, field, replacement)
+    malformed = replace(valid, sources=(malformed_source,))
+
+    with pytest.raises(PlanValidationError) as caught:
+        malformed.validate()
+
+    assert expected_code in {issue.code for issue in caught.value.issues}
+
+
+def test_reference_value_classes_are_fixed_and_canonical():
+    source_reference = ArtifactSourceReference("source:deck")
+    output_reference = OutputReference("invoke:merge", "report")
+
+    assert source_reference.value_class == "artifact"
+    assert output_reference.value_class == "ephemeral"
+    with pytest.raises(FrozenInstanceError):
+        source_reference.value_class = "ephemeral"
+    data = branching_plan().to_data()
+    source_binding = next(
+        binding
+        for invocation in data["invocations"]
+        for binding in invocation["inputs"]
+        if binding["reference"]["type"] == "source"
+    )
+    assert source_binding["reference"]["value_class"] == "artifact"
+    assert data["outputs"][0]["reference"]["value_class"] == "ephemeral"
 
 
 def test_valid_nested_branching_and_fan_in_plan():

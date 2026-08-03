@@ -10,9 +10,11 @@ from types import MappingProxyType
 from typing import Any, Callable, Iterable, Mapping
 
 from .model import (
+    ArtifactAddress,
     ArtifactContract,
     ArtifactSource,
     ArtifactSourceReference,
+    CodecContract,
     CollectionInputBinding,
     ConfigBinding,
     ConfigContract,
@@ -24,6 +26,7 @@ from .model import (
     InputBinding,
     InputContract,
     Invocation,
+    MaterializationSpec,
     NamedOutput,
     OperationDefinition,
     OperationIdentity,
@@ -72,6 +75,24 @@ class ArtifactCollection:
         if not isinstance(self.artifact, ArtifactContract):
             raise ContractError(
                 "artifact collection must contain an ArtifactContract"
+            )
+
+
+@dataclass(frozen=True, slots=True)
+class _MaterializableArtifact:
+    """Output-only declaration carrying optional materialization capability."""
+
+    artifact: ArtifactContract
+    materialization: MaterializationSpec
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.artifact, ArtifactContract):
+            raise ContractError(
+                "materializable artifact must contain an ArtifactContract"
+            )
+        if not isinstance(self.materialization, MaterializationSpec):
+            raise ContractError(
+                "materializable as_ must be a MaterializationSpec"
             )
 
 
@@ -274,6 +295,34 @@ def artifacts(kind: str) -> ArtifactCollection:
     return ArtifactCollection(ArtifactContract(kind))
 
 
+def codec(name: str, version: str = "1", **options: Any) -> CodecContract:
+    """Declare a data-only codec contract with canonical immutable options."""
+
+    return CodecContract(name, version, options)
+
+
+def address(address_space: str, locator: str) -> ArtifactAddress:
+    """Declare an opaque external artifact address without resolving it."""
+
+    return ArtifactAddress(address_space, locator)
+
+
+def materialization(
+    *, codec: CodecContract, address_space: str, access_scope: str
+) -> MaterializationSpec:
+    """Declare representation and access assumptions without checking them."""
+
+    return MaterializationSpec(codec, address_space, access_scope)
+
+
+def materializable(
+    artifact_contract: ArtifactContract, *, as_: MaterializationSpec
+) -> _MaterializableArtifact:
+    """Advertise one output representation as capability metadata only."""
+
+    return _MaterializableArtifact(artifact_contract, as_)
+
+
 def parameter(value_type: type) -> Parameter:
     """Declare the literal Python type of an operation configuration value."""
 
@@ -284,7 +333,7 @@ def operation(
     *,
     inputs: Mapping[str, ArtifactContract | ArtifactCollection] | None = None,
     config: Mapping[str, Parameter] | None = None,
-    outputs: Mapping[str, ArtifactContract] | None = None,
+    outputs: Mapping[str, ArtifactContract | _MaterializableArtifact] | None = None,
     resources: Iterable[ResourceContract] = (),
     default_policy: Policy | None = None,
     policy: Policy | None = None,
@@ -305,7 +354,7 @@ def operation(
 
     input_items = _input_declaration_mapping(inputs)
     config_items = _declaration_mapping(config, "config", Parameter)
-    output_items = _declaration_mapping(outputs, "outputs", ArtifactContract)
+    output_items = _output_declaration_mapping(outputs)
     input_names = {item_name for item_name, _ in input_items}
     config_names = {item_name for item_name, _ in config_items}
     collisions = sorted(input_names & config_names)
@@ -352,8 +401,20 @@ def operation(
                 for item_name, declaration in config_items
             ),
             outputs=tuple(
-                OutputContract(item_name, contract)
-                for item_name, contract in output_items
+                OutputContract(
+                    item_name,
+                    (
+                        declaration.artifact
+                        if isinstance(declaration, _MaterializableArtifact)
+                        else declaration
+                    ),
+                    (
+                        declaration.materialization
+                        if isinstance(declaration, _MaterializableArtifact)
+                        else None
+                    ),
+                )
+                for item_name, declaration in output_items
             ),
             resources=resource_items,
             default_policy=selected_policy,
@@ -394,7 +455,10 @@ class PlanDraft:
         self._operations: dict[OperationIdentity, OperationDefinition] = {}
         self._flows: dict[FlowIdentity, FlowDefinition] = {}
         self._sources: list[ArtifactSource] = []
-        self._source_keys: dict[tuple[str, ArtifactContract], ArtifactValue] = {}
+        self._source_keys: dict[
+            tuple[ArtifactAddress, ArtifactContract, MaterializationSpec],
+            ArtifactValue,
+        ] = {}
         self._invocations: list[Invocation] = []
         self._edges: list[DependencyEdge] = []
         self._boundaries: list[FlowBoundary] = []
@@ -456,20 +520,38 @@ class PlanDraft:
         self._finished = True
         return normalized
 
-    def _input_artifact(self, uri: str, kind: str) -> ArtifactValue:
+    def _input_artifact(
+        self,
+        address_value: ArtifactAddress,
+        artifact_contract: ArtifactContract,
+        materialized_as: MaterializationSpec,
+    ) -> ArtifactValue:
         if self._finished:
             raise AuthoringError("this plan draft has already been finished")
-        contract = ArtifactContract(kind)
-        if not isinstance(uri, str) or not uri or uri != uri.strip():
-            raise AuthoringError("artifact URI must be a non-empty, trimmed string")
-        key = (uri, contract)
+        if not isinstance(address_value, ArtifactAddress):
+            raise AuthoringError("input artifact address must use address(...)")
+        if not isinstance(artifact_contract, ArtifactContract):
+            raise AuthoringError("input artifact contract must use artifact(...)")
+        if not isinstance(materialized_as, MaterializationSpec):
+            raise AuthoringError(
+                "input artifact materialized_as must use materialization(...)"
+            )
+        if address_value.address_space != materialized_as.address_space:
+            raise AuthoringError(
+                "input artifact address space must match materialized_as address space"
+            )
+        key = (address_value, artifact_contract, materialized_as)
         existing = self._source_keys.get(key)
         if existing is not None:
             return existing
         source_id = f"source:{self._next_source:04d}"
         self._next_source += 1
-        source = ArtifactSource(source_id, uri, contract)
-        value = ArtifactValue(ArtifactSourceReference(source_id), contract, self)
+        source = ArtifactSource(
+            source_id, address_value, artifact_contract, materialized_as
+        )
+        value = ArtifactValue(
+            ArtifactSourceReference(source_id), artifact_contract, self
+        )
         self._sources.append(source)
         self._source_keys[key] = value
         return value
@@ -848,10 +930,17 @@ def plan(*, default_policy: Policy | None = None) -> PlanDraft:
     return PlanDraft(default_policy)
 
 
-def input_artifact(uri: str, kind: str) -> ArtifactValue:
-    """Register an external artifact source in the active plan."""
+def input_artifact(
+    address_value: ArtifactAddress,
+    *,
+    artifact: ArtifactContract,
+    materialized_as: MaterializationSpec,
+) -> ArtifactValue:
+    """Register one explicit, already-materialized external artifact source."""
 
-    return _active_draft("input_artifact")._input_artifact(uri, kind)
+    return _active_draft("input_artifact")._input_artifact(
+        address_value, artifact, materialized_as
+    )
 
 
 def submit(*args: Any, **kwargs: Any) -> None:
@@ -919,6 +1008,27 @@ def _declaration_mapping(
         if not isinstance(declaration, expected):
             raise AuthoringError(
                 f"operation {label} {name!r} must use {expected.__name__}"
+            )
+    return tuple(sorted(items, key=lambda item: item[0]))
+
+
+def _output_declaration_mapping(
+    value: Mapping[str, ArtifactContract | _MaterializableArtifact] | None,
+) -> tuple[tuple[str, ArtifactContract | _MaterializableArtifact], ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, Mapping):
+        raise AuthoringError("operation outputs must be a mapping")
+    items = tuple(value.items())
+    for name, declaration in items:
+        if not isinstance(name, str) or not name.isidentifier():
+            raise AuthoringError(
+                "operation outputs names must be Python identifiers"
+            )
+        if not isinstance(declaration, ArtifactContract | _MaterializableArtifact):
+            raise AuthoringError(
+                f"operation outputs {name!r} must use artifact(...) or "
+                "materializable(...)"
             )
     return tuple(sorted(items, key=lambda item: item[0]))
 
@@ -1041,10 +1151,14 @@ __all__ = [
     "Parameter",
     "PlanDraft",
     "PlanningScopeError",
+    "address",
     "artifact",
     "artifacts",
+    "codec",
     "flow",
     "input_artifact",
+    "materializable",
+    "materialization",
     "operation",
     "parameter",
     "plan",

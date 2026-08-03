@@ -8,9 +8,12 @@ from ass_flow import (
     BindingError,
     CollectionInputBinding,
     PlanningScopeError,
+    address,
     artifact,
+    codec,
     flow,
     input_artifact,
+    materialization,
     operation,
     parameter,
     plan,
@@ -22,6 +25,20 @@ from examples import characterization
 DESIGN = artifact("analog-design-description")
 CORNER_METRICS = artifact("corner-metrics")
 SUMMARY = artifact("characterization-summary")
+JSON_CODEC = codec("json", encoding="utf-8")
+REPOSITORY_JSON = materialization(
+    codec=JSON_CODEC,
+    address_space="repository-relative",
+    access_scope="repository-checkout",
+)
+
+
+def _source(locator, artifact_contract):
+    return input_artifact(
+        address("repository-relative", locator),
+        artifact=artifact_contract,
+        materialized_as=REPOSITORY_JSON,
+    )
 
 
 @pytest.mark.parametrize(
@@ -36,6 +53,7 @@ def test_characterization_collection_fan_in_is_ordered_and_fully_keyed(
     )
 
     assert normalized.validate() is normalized
+    assert normalized.schema_version == 2
     assert len(normalized.sources) == 1
     assert len(normalized.invocations) == len(expected_corners) + 1
     assert len(normalized.edges) == len(expected_corners)
@@ -95,6 +113,11 @@ def test_characterization_collection_fan_in_is_ordered_and_fully_keyed(
     assert all(edge.id.startswith("edge:key:") for edge in positioned_edges)
     assert all(item.authored_key is not None for item in normalized.invocations)
     assert all(item.authored_key is not None for item in normalized.boundaries)
+    assert normalized.sources[0].address.address_space == "repository-relative"
+    assert normalized.sources[0].materialized_as.codec.name == "json"
+    assert normalized.sources[0].materialized_as.codec.options == JSON_CODEC.options
+    assert all(reference.value_class == "ephemeral" for reference in binding.references)
+    assert all(edge.source.value_class == "ephemeral" for edge in positioned_edges)
 
     assert {output.name for output in normalized.outputs} == {
         *(f"corners__{corner}" for corner in expected_corners),
@@ -174,7 +197,7 @@ def test_nested_flow_failure_rolls_back_graph_and_all_id_counters():
 
     with plan() as draft:
         result = rollback_study(
-            input_artifact("inputs/design.json", "analog-design-description")
+            _source("inputs/design.json", DESIGN)
         )
     normalized = draft.finish(outputs={"summary": result})
 
@@ -208,14 +231,12 @@ def test_foreign_source_only_and_incompatible_values_fail_before_finish_returns(
 
     with plan() as foreign_draft:
         foreign_result = estimate(
-            input_artifact("inputs/foreign.json", "analog-design-description")
+            _source("inputs/foreign.json", DESIGN)
         )
     foreign_draft.finish(outputs={"metrics": foreign_result})
 
     with plan() as local_draft:
-        local_source = input_artifact(
-            "inputs/local.json", "analog-design-description"
-        )
+        local_source = _source("inputs/local.json", DESIGN)
         with pytest.raises(BindingError, match="different plan"):
             summarize(foreign_result)
         with pytest.raises(BindingError, match="expects artifact kind"):
@@ -242,7 +263,7 @@ def test_no_run_or_ambient_execution_surface_and_submit_is_explicit():
     with pytest.raises(PlanningScopeError, match="active plan"):
         characterization.characterize_design(object(), include_extremes=True)
     with pytest.raises(PlanningScopeError, match="active plan"):
-        input_artifact("inputs/design.json", "analog-design-description")
+        _source("inputs/design.json", DESIGN)
     with pytest.raises(NotImplementedError, match="outside this planning spike"):
         submit(characterization.build_characterization_plan())
 
@@ -272,9 +293,7 @@ def _mapping_order_plan(*, reverse_inputs):
         raise AssertionError("must not run")
 
     with plan() as draft:
-        design = input_artifact(
-            "inputs/design.json", "analog-design-description"
-        )
+        design = _source("inputs/design.json", DESIGN)
         left = estimate(design, corner="ss")
         right = estimate(design, corner="ff")
         summary = reduce(left=left, right=right)

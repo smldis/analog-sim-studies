@@ -4,7 +4,16 @@ ASS Flow is the independently installable prototype for Python-native static
 operation and flow planning described in [`PLANNING.md`](PLANNING.md). It
 captures immutable definitions, explicit dependencies, nested flow boundaries,
 ordered collection fan-in, scoped authored keys, and deterministic,
-JSON-inspectable Plan IR without executing operation bodies.
+JSON-inspectable Plan IR without executing operation bodies. Schema-2 Plans
+can also declare an opaque address, codec contract, and assumed access scope
+for an already-materialized external source. Source references are classified
+as `artifact`; operation outputs remain `ephemeral`.
+
+Use `address(...)`, `codec(...)`, and `materialization(...)` with the strict
+`input_artifact(..., artifact=..., materialized_as=...)` surface to record that
+data-only source handoff. Optional output materialization capability is
+declaration metadata only: it neither publishes a value nor creates a
+materialized output.
 
 Use `artifacts(kind)` for a required, non-empty ordered collection input. The
 normalized binding preserves member order and emits one positioned dependency
@@ -37,7 +46,9 @@ their freedom from side effects is an authoring discipline. ASS Flow has no
 executor or runtime authority: `submit(...)` refuses execution, and scheduling,
 local execution, Dask/LSF lowering, retries, persistence, recovery, plugins,
 dynamic replanning, production hardening, and result-dependent replanning are
-outside this unit. The archived sequential-flow convenience is inactive
+outside this unit. Address resolution, codec execution, actual access checks,
+publication, materialized operation outputs, and runtime artifact values are
+also outside it. The archived sequential-flow convenience is inactive
 historical material, not an active API or backlog.
 
 See [`ONTOLOGY.md`](ONTOLOGY.md) for the owned boundary,

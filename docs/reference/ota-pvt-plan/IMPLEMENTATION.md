@@ -4,6 +4,9 @@
 
 **Phase:** work order complete
 
+**Follow-on:** schema-2 source-handoff adaptation complete and independently
+accepted
+
 **Authorized slice:** one root-owned, plan-only OTA/PVT reference
 
 **Runtime status:** explicitly unimplemented
@@ -22,6 +25,19 @@
 | R6 | Independent source and boundary review | complete | Fresh Codex high review found no graph, source-boundary, fixture, ontology, or scope defect; two low-severity regression-evidence findings were corrected and reverified |
 | R7 | Decide whether this evidence is sufficient to design executor lowering | complete | The Plan IR is adequate for this fixed graph, but real boundary values lack address, codec, publication, and handoff semantics; resolve the minimal artifact/adapter contract before local Dask lowering |
 
+The R1-R7 table is the closed historical record of
+`ASS-FLOW-WO-2026-08-03-OTA-PVT-PLAN`; its authorization was not reopened.
+
+## Follow-on schema-2 adaptation
+
+| ID | Work | State | Evidence |
+| --- | --- | --- | --- |
+| A1 | Declare four structured external sources through the strict public API | implemented and verified | Base uses repository-relative/repository-checkout/directory-tree; Sidecar edit uses Python-source/UTF-8; measurement definition and limits use JSON/UTF-8 |
+| A2 | Preserve logical contracts and graph identity | implemented and verified | Ten artifact declarations, six version-1 operations, two version-1 flows, policies, resources, configuration, topology, keys, pinned source/invocation/edge/boundary IDs, and 16 named outputs remain unchanged |
+| A3 | Prove the artifact/ephemeral split without output materialization | implemented and verified | Schema 2 has four artifact source declarations; all 18 operation-output edges and every named output, including final evaluation, are ephemeral; every output capability is null |
+| A4 | Preserve canonical and no-runtime boundaries | implemented and verified | 10 focused tests cover repeated data/JSON, exact representations, legacy rejection, refusing bodies/submit, source-import audit, and guarded no-I/O construction |
+| A5 | Independent Phase 4 acceptance | complete | Fresh full-diff review accepted the reference and data-only boundary after one ASS Flow malformed-source validation defect was corrected and independently reverified |
+
 ## Required implementation constraints
 
 - Every operation body raises `NotImplementedError` with plan-declaration-only
@@ -31,8 +47,9 @@
   boundaries, not working integration.
 - Every operation and flow call has an explicit scoped key.
 - The final operation uses two ordered collection artifact inputs.
-- Fixture paths are versioned external-source URIs; Plan construction performs
-  no file I/O.
+- Fixture paths are versioned repository-relative external-source addresses;
+  their codec and repository-checkout access declarations are data only, and
+  Plan construction performs no file I/O.
 - No child source, ontology, packaging, or active examples change.
 - The inactive sequential-flow convenience remains archived.
 
@@ -67,6 +84,16 @@
   It found no design or scope defect. Its two low-severity test-evidence
   findings were addressed by exhaustive operation/output assertions and wider
   no-I/O guards, then reverified by the focused and ASS Flow suites.
+- Follow-on A1-A5 verification (2026-08-03): the schema-2 focused suite passed
+  10 tests and the final ASS Flow suite passed 63. Root integration passed 17
+  tests with absolute source paths. Full composition passed 63 ASS Flow, 45
+  Netlist Decomposition, 77 Sidecar Edits, 28 SPICE Canonical, and 17 root
+  integration tests. All changed Python modules passed `py_compile`; both the
+  characterization and OTA/PVT stdout parsed as JSON, with canonical repeated
+  data/JSON locked by tests. Fresh independent review covered the full follow-on
+  diff, exposed one ASS Flow malformed-source validation leak, and returned
+  `ACCEPT` after the focused correction and regression were independently
+  reverified.
 
 ## Observed evidence
 
@@ -88,8 +115,10 @@
 
 ## Honest limitations
 
-- Artifact kinds remain labels without addresses, formats, schema validation,
-  checksums, publication, accessibility, or provenance.
+- Artifact kinds remain logical labels. External sources now carry opaque
+  repository-relative addresses plus codec and assumed-access declarations,
+  but no address is resolved, no codec executes, no real access is checked, and
+  no format/schema content is validated.
 - The sibling-facing names remain proposed adapter boundaries. Nothing prepares
   a directory, discovers a deck, constructs or serializes canonical/decomposition
   values, invokes a simulator, reads waveforms, measures results, or evaluates
@@ -98,8 +127,9 @@
   collateral, exhaustive PVT coverage, simulator evidence, or product criteria.
 - Keyed Plan identities are not executor, attempt, cache, content, or provenance
   identities. Source identity retains the current authored-order limitation.
-- There is still no executor, lowering, runtime state, caching, recovery,
-  publication, durable study lifecycle, or reusable OTA-study API.
+- There is still no executor, lowering, runtime value, materialized operation
+  output, caching, recovery, publication, durable study lifecycle, or reusable
+  OTA-study API.
 
 ## Evidence decision
 
@@ -107,10 +137,12 @@
   configuration and both ordered fan-ins without domain-specific support.
 - Every flow and invocation in this reference is keyed; external-source identity
   limitations remain explicit and unchanged.
-- The next smallest core question is the minimal artifact/adapter contract for
-  address, codec, publication, accessibility, and handoff across real operation
-  boundaries. A full artifact store is neither implied nor authorized.
-- Dask remains the first execution-kernel hypothesis after that prerequisite.
+- The declarative source-handoff prerequisite now distinguishes addressed
+  artifact sources from ephemeral operation outputs and records codec/access
+  assumptions. Independent Phase 4 acceptance is complete; no runtime
+  artifact/adapter contract has been accepted.
+- Dask remains the first execution-kernel hypothesis only under a separate
+  reviewed work order.
   Direct and pooled LSF concepts, separate attempt ownership, reconciliation,
   and the two mandatory receipt/manifest failure injections remain preserved
   research rather than discarded scope.
@@ -119,7 +151,8 @@
 
 - sibling ASS Flow adapters;
 - simulator and waveform integration;
-- materialized artifacts and serialization;
+- address resolution, codec execution, real access checking, publication,
+  materialized operation outputs, and runtime artifact values;
 - execution, lowering, scheduling, retries, attempts, recovery, and caching;
 - provenance, evidence promotion, decisions, and durable study lifecycle;
 - production hardening and generalized OTA-study APIs.

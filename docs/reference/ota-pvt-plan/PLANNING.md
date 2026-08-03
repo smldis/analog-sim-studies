@@ -43,7 +43,9 @@ meaning and a single reference does not justify a new permanent component.
 **Decision:** implement one bounded `OTA PVT Plan Reference` under
 `docs/reference/ota-pvt-plan/` and verify it through root integration tests.
 
-**Status:** authorized for plan-only implementation.
+**Historical implementation status:** completed under this authorization; the
+completion evidence is recorded at the end of this work order and in
+`IMPLEMENTATION.md`.
 
 The graduated main's initial planning work order has now been implemented and
 promoted as the `ass-flow` prototype. Its sequential convenience hypothesis was
@@ -285,3 +287,39 @@ handoff semantics. This is a prerequisite decision, not authorization to
 implement that contract or an executor. Local Dask lowering remains the first
 execution hypothesis after that prerequisite; the graduated Dask/LSF research
 and its failure-protocol requirements remain live.
+
+## Follow-on record: schema-2 source-handoff adaptation
+
+The original `ASS-FLOW-WO-2026-08-03-OTA-PVT-PLAN` authorization above remains
+completed historical evidence. It was not reopened. On 2026-08-03, the later
+`ASS-FLOW-WO-2026-08-03-ARTIFACT-HANDOFF` work order in
+`ass-flow/PLANNING.md` authorized this reference to serve as cross-unit
+acceptance evidence for the narrower schema-2 declarative source handoff.
+
+That follow-on permits only these changes here:
+
+- replace the four legacy kind-only source calls with strict public
+  `address(...)`, `codec(...)`, `materialization(...)`, `artifact(...)`, and
+  `input_artifact(..., artifact=..., materialized_as=...)` declarations;
+- describe the base directory as repository-relative, repository-checkout,
+  directory-tree data; the Sidecar edit file as repository-relative,
+  repository-checkout, Python-source with UTF-8; and the measurement definition
+  and limits as repository-relative, repository-checkout, JSON with UTF-8;
+- adapt focused evidence to schema 2 and nullable output capability while
+  retaining exact logical contract assertions;
+- prove source references are artifacts and all 18 operation-output edges plus
+  the final evaluation remain ephemeral.
+
+The ten logical artifact declarations, six operation versions, two flow
+versions, policies, resources, configuration, graph topology, authored keys,
+Plan IDs, and named outputs remain unchanged from the completed reference. No
+operation output declares `can_materialize_as`, because no real output codec is
+available. The Plan shape remains 4 sources, 6 operations, 2 flows, 4
+boundaries, 16 invocations, 18 edges, and 16 outputs.
+
+This adaptation records only address, representation, assumed access, and
+reference-class metadata. It stops short of address resolution, codec
+execution, real accessibility checks, publication, materialized operation
+outputs, runtime artifact values, adapters, or execution. Implementation,
+focused evidence, and independent Phase 4 acceptance are complete. Dask is
+only the next candidate under a separate reviewed work order.

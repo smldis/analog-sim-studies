@@ -210,6 +210,50 @@ class ArtifactContract:
 
 
 @dataclass(frozen=True, slots=True)
+class CodecContract:
+    """A data-only codec identity and its canonical declaration options."""
+
+    name: str
+    version: str
+    options: FrozenObject | Mapping[str, Any] = field(default_factory=FrozenObject)
+
+    def __post_init__(self) -> None:
+        _require_id(self.name, "codec name")
+        _require_id(self.version, "codec version")
+        frozen = freeze_data(self.options, label=f"codec {self.name} options")
+        if not isinstance(frozen, FrozenObject):
+            raise ContractError("codec options must be a mapping")
+        object.__setattr__(self, "options", frozen)
+
+
+@dataclass(frozen=True, slots=True)
+class ArtifactAddress:
+    """An opaque authored locator within an executor-neutral address space."""
+
+    address_space: str
+    locator: str
+
+    def __post_init__(self) -> None:
+        _require_id(self.address_space, "artifact address space")
+        _require_text(self.locator, "artifact locator")
+
+
+@dataclass(frozen=True, slots=True)
+class MaterializationSpec:
+    """Declared representation and accessibility assumptions, with no I/O."""
+
+    codec: CodecContract
+    address_space: str
+    access_scope: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.codec, CodecContract):
+            raise ContractError("materialization codec must be a CodecContract")
+        _require_id(self.address_space, "materialization address space")
+        _require_id(self.access_scope, "materialization access scope")
+
+
+@dataclass(frozen=True, slots=True)
 class InputContract:
     name: str
     artifact: ArtifactContract
@@ -252,11 +296,18 @@ class ConfigContract:
 class OutputContract:
     name: str
     artifact: ArtifactContract
+    can_materialize_as: MaterializationSpec | None = None
 
     def __post_init__(self) -> None:
         _require_name(self.name, "output name")
         if not isinstance(self.artifact, ArtifactContract):
             raise ContractError("output artifact must be an ArtifactContract")
+        if self.can_materialize_as is not None and not isinstance(
+            self.can_materialize_as, MaterializationSpec
+        ):
+            raise ContractError(
+                "output can_materialize_as must be a MaterializationSpec or None"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -386,32 +437,48 @@ class FlowDefinition:
 @dataclass(frozen=True, slots=True)
 class ArtifactSource:
     id: str
-    uri: str
+    address: ArtifactAddress
     artifact: ArtifactContract
+    materialized_as: MaterializationSpec
 
     def __post_init__(self) -> None:
         _require_id(self.id, "artifact source id")
-        _require_text(self.uri, "artifact source uri")
+        if not isinstance(self.address, ArtifactAddress):
+            raise ContractError("source address must be an ArtifactAddress")
         if not isinstance(self.artifact, ArtifactContract):
             raise ContractError("source artifact must be an ArtifactContract")
+        if not isinstance(self.materialized_as, MaterializationSpec):
+            raise ContractError(
+                "source materialized_as must be a MaterializationSpec"
+            )
+        if self.address.address_space != self.materialized_as.address_space:
+            raise ContractError(
+                "source address space must match its materialization address space"
+            )
 
 
 @dataclass(frozen=True, slots=True)
 class ArtifactSourceReference:
     source_id: str
+    value_class: str = field(default="artifact", init=False)
 
     def __post_init__(self) -> None:
         _require_id(self.source_id, "artifact source reference")
+        if self.value_class != "artifact":
+            raise ContractError("artifact source reference value_class is fixed")
 
 
 @dataclass(frozen=True, slots=True)
 class OutputReference:
     invocation_id: str
     output_name: str
+    value_class: str = field(default="ephemeral", init=False)
 
     def __post_init__(self) -> None:
         _require_id(self.invocation_id, "output invocation id")
         _require_name(self.output_name, "output reference name")
+        if self.value_class != "ephemeral":
+            raise ContractError("output reference value_class is fixed")
 
 
 ArtifactReference: TypeAlias = ArtifactSourceReference | OutputReference
@@ -574,7 +641,7 @@ class Plan:
     edges: tuple[DependencyEdge, ...] = ()
     boundaries: tuple[FlowBoundary, ...] = ()
     outputs: tuple[NamedOutput, ...] = ()
-    schema_version: int = 1
+    schema_version: int = 2
 
     def __post_init__(self) -> None:
         sequence_fields = (
@@ -590,12 +657,8 @@ class Plan:
             values = tuple(getattr(self, name))
             object.__setattr__(self, name, values)
             _require_instances(values, expected, f"plan {name}")
-        if (
-            isinstance(self.schema_version, bool)
-            or not isinstance(self.schema_version, int)
-            or self.schema_version < 1
-        ):
-            raise ContractError("plan schema_version must be a positive integer")
+        if self.schema_version != 2:
+            raise ContractError("plan schema_version must be 2")
 
     def validate(self) -> "Plan":
         issues: list[ValidationIssue] = []
@@ -624,6 +687,10 @@ class Plan:
             "duplicate_source_id",
             issue,
         )
+        for source_index, source in enumerate(self.sources):
+            _validate_source_declaration(
+                source, f"sources[{source_index}]", issue
+            )
         invocations = _unique_index(
             self.invocations,
             lambda value: value.id,
@@ -713,6 +780,14 @@ class Plan:
             _check_named_uniqueness(
                 operation.outputs, f"{path}.outputs", "duplicate_output_contract", issue
             )
+            for output_index, output in enumerate(operation.outputs):
+                if output.can_materialize_as is not None:
+                    _validate_materialization_declaration(
+                        output.can_materialize_as,
+                        f"{path}.outputs[{output_index}].can_materialize_as",
+                        "invalid_output_materialization",
+                        issue,
+                    )
             _check_named_uniqueness(
                 operation.resources,
                 f"{path}.resources",
@@ -1075,8 +1150,11 @@ class Plan:
             "sources": [
                 {
                     "id": value.id,
-                    "uri": value.uri,
+                    "address": _address_data(value.address),
                     "artifact": _artifact_data(value.artifact),
+                    "materialized_as": _materialization_data(
+                        value.materialized_as
+                    ),
                 }
                 for value in sorted(self.sources, key=lambda item: item.id)
             ],
@@ -1137,6 +1215,138 @@ def _check_named_uniqueness(values, path, code, issue):
         seen.add(value.name)
 
 
+def _valid_text(value: object) -> bool:
+    return isinstance(value, str) and bool(value) and value == value.strip()
+
+
+def _valid_id(value: object) -> bool:
+    return _valid_text(value) and _ID_PATTERN.fullmatch(value) is not None
+
+
+def _canonical_frozen_value(value: object) -> bool:
+    if value is None or isinstance(value, (bool, int, str)):
+        return True
+    if isinstance(value, float):
+        return math.isfinite(value)
+    if isinstance(value, FrozenList):
+        return isinstance(value.items, tuple) and all(
+            _canonical_frozen_value(item) for item in value.items
+        )
+    if isinstance(value, FrozenObject):
+        if not isinstance(value.items, tuple):
+            return False
+        entries = value.items
+        if not all(
+            isinstance(entry, tuple)
+            and len(entry) == 2
+            and isinstance(entry[0], str)
+            and _canonical_frozen_value(entry[1])
+            for entry in entries
+        ):
+            return False
+        keys = tuple(entry[0] for entry in entries)
+        return keys == tuple(sorted(keys)) and len(keys) == len(set(keys))
+    return False
+
+
+def _validate_materialization_declaration(
+    value: object,
+    path: str,
+    code: str,
+    issue,
+) -> bool:
+    if not isinstance(value, MaterializationSpec):
+        issue(code, path, "value is not a MaterializationSpec")
+        return False
+    valid = True
+    if not isinstance(value.codec, CodecContract):
+        issue(code, f"{path}.codec", "codec is not a CodecContract")
+        valid = False
+    else:
+        if not _valid_id(value.codec.name):
+            issue(code, f"{path}.codec.name", "codec name is not a valid identifier")
+            valid = False
+        if not _valid_id(value.codec.version):
+            issue(
+                code,
+                f"{path}.codec.version",
+                "codec version is not a valid identifier",
+            )
+            valid = False
+        if not isinstance(
+            value.codec.options, FrozenObject
+        ) or not _canonical_frozen_value(value.codec.options):
+            issue(
+                code,
+                f"{path}.codec.options",
+                "codec options are not canonical frozen JSON object data",
+            )
+            valid = False
+    if not _valid_id(value.address_space):
+        issue(
+            code,
+            f"{path}.address_space",
+            "address space is not a valid identifier",
+        )
+        valid = False
+    if not _valid_id(value.access_scope):
+        issue(
+            code,
+            f"{path}.access_scope",
+            "access scope is not a valid identifier",
+        )
+        valid = False
+    return valid
+
+
+def _validate_source_declaration(source: ArtifactSource, path: str, issue) -> None:
+    address_valid = isinstance(source.address, ArtifactAddress)
+    if not address_valid:
+        issue(
+            "invalid_source_address",
+            f"{path}.address",
+            "source address is not an ArtifactAddress",
+        )
+    else:
+        if not _valid_id(source.address.address_space):
+            issue(
+                "invalid_source_address",
+                f"{path}.address.address_space",
+                "address space is not a valid identifier",
+            )
+            address_valid = False
+        if not _valid_text(source.address.locator):
+            issue(
+                "invalid_source_address",
+                f"{path}.address.locator",
+                "locator is not non-empty trimmed opaque text",
+            )
+            address_valid = False
+
+    materialization_valid = _validate_materialization_declaration(
+        source.materialized_as,
+        f"{path}.materialized_as",
+        "invalid_source_materialization",
+        issue,
+    )
+    if not isinstance(source.artifact, ArtifactContract):
+        issue(
+            "invalid_source_artifact",
+            f"{path}.artifact",
+            "source artifact is not an ArtifactContract",
+        )
+    if (
+        address_valid
+        and materialization_valid
+        and source.address.address_space != source.materialized_as.address_space
+    ):
+        issue(
+            "source_address_space_mismatch",
+            path,
+            "source address space differs from its materialization address space",
+        )
+
+
 def _reference_kind(
     reference,
     sources,
@@ -1147,6 +1357,12 @@ def _reference_kind(
     issue,
 ):
     if isinstance(reference, ArtifactSourceReference):
+        if reference.value_class != "artifact":
+            issue(
+                "invalid_reference_value_class",
+                f"{path}.value_class",
+                "artifact source references have fixed value class 'artifact'",
+            )
         source = sources.get(reference.source_id)
         if source is None:
             issue(
@@ -1155,7 +1371,15 @@ def _reference_kind(
                 f"source {reference.source_id!r} is absent",
             )
             return None
+        if not isinstance(source.artifact, ArtifactContract):
+            return None
         return source.artifact.kind
+    if reference.value_class != "ephemeral":
+        issue(
+            "invalid_reference_value_class",
+            f"{path}.value_class",
+            "output references have fixed value class 'ephemeral'",
+        )
     invocation = invocations.get(reference.invocation_id)
     if invocation is None:
         issue(
@@ -1268,6 +1492,26 @@ def _artifact_data(value: ArtifactContract) -> dict[str, str]:
     return {"kind": value.kind}
 
 
+def _codec_data(value: CodecContract) -> dict[str, Any]:
+    return {
+        "name": value.name,
+        "version": value.version,
+        "options": plain_data(value.options),
+    }
+
+
+def _address_data(value: ArtifactAddress) -> dict[str, str]:
+    return {"address_space": value.address_space, "locator": value.locator}
+
+
+def _materialization_data(value: MaterializationSpec) -> dict[str, Any]:
+    return {
+        "codec": _codec_data(value.codec),
+        "address_space": value.address_space,
+        "access_scope": value.access_scope,
+    }
+
+
 def _policy_data(value: Policy) -> dict[str, Any]:
     return {"name": value.name, "options": plain_data(value.options)}
 
@@ -1293,7 +1537,15 @@ def _operation_data(value: OperationDefinition) -> dict[str, Any]:
             for item in sorted(value.config, key=lambda item: item.name)
         ],
         "outputs": [
-            {"name": item.name, "artifact": _artifact_data(item.artifact)}
+            {
+                "name": item.name,
+                "artifact": _artifact_data(item.artifact),
+                "can_materialize_as": (
+                    _materialization_data(item.can_materialize_as)
+                    if item.can_materialize_as is not None
+                    else None
+                ),
+            }
             for item in sorted(value.outputs, key=lambda item: item.name)
         ],
         "resources": [
@@ -1310,11 +1562,16 @@ def _operation_data(value: OperationDefinition) -> dict[str, Any]:
 
 def _reference_data(value: ArtifactReference) -> dict[str, str]:
     if isinstance(value, ArtifactSourceReference):
-        return {"type": "source", "source_id": value.source_id}
+        return {
+            "type": "source",
+            "source_id": value.source_id,
+            "value_class": value.value_class,
+        }
     return {
         "type": "output",
         "invocation_id": value.invocation_id,
         "output_name": value.output_name,
+        "value_class": value.value_class,
     }
 
 
@@ -1366,6 +1623,7 @@ def _named_outputs_data(values: tuple[NamedOutput, ...]) -> list[dict[str, Any]]
 
 
 __all__ = [
+    "ArtifactAddress",
     "ArtifactContract",
     "ArtifactInputBinding",
     "ArtifactReference",
@@ -1374,6 +1632,7 @@ __all__ = [
     "ConfigBinding",
     "ConfigContract",
     "CollectionInputBinding",
+    "CodecContract",
     "ContractError",
     "DependencyEdge",
     "FlowBoundary",
@@ -1384,6 +1643,7 @@ __all__ = [
     "InputBinding",
     "InputContract",
     "Invocation",
+    "MaterializationSpec",
     "ModelError",
     "NamedOutput",
     "NamedPolicyConstructor",

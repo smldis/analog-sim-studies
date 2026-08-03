@@ -96,10 +96,43 @@ architecture's rejection line 1 has not been crossed.
 
 ## Open
 
-- **Lease enforcement.** Owner-bound lifetime needs a mechanism: a heartbeat the
-  job checks plus best-effort `bkill` on shutdown. Open questions are lease
-  location on shared storage, interval and grace period, and what a job does
-  when the lease is merely stale rather than absent. Not yet implemented.
+- **Owner-bound enforcement — lease rejected, three layers proposed.** A
+  bespoke lease file was proposed and rejected: it reinvents, badly, what the
+  ecosystem already solves. Surveyed alternatives:
+
+  - *Existing control connection.* `dask-jobqueue` workers exit after
+    `death_timeout` (default 60s) when the scheduler is unreachable, and
+    `cluster.close()` `bkill`s the jobs. Parsl's high-throughput executor does
+    the same with manager-to-interchange heartbeats, and treats heartbeat
+    timeout — not direct termination by the executor — as the intended way
+    workers go away at shutdown. Effectively a lease, but carried on a channel
+    that must exist anyway. Only applies when the remote process is our own
+    agent, so it covers pooled mode and not one-`bsub`-per-task. Parsl's
+    recurring heartbeat defects (managers evicted for missed heartbeats,
+    scale-down broken by an over-aggressive result heartbeat) are the strongest
+    argument against hand-rolling this: the mechanism is fiddly even for
+    projects whose core competence it is.
+  - *Plain batch commands.* Parsl's `LSFProvider` is just `bsub` to submit,
+    `bjobs` for status, `bkill` to cancel — the same three primitives assumed
+    here, with no lease of its own.
+  - *Trap and kill.* Nextflow and Snakemake submit detached and cancel on
+    signal. Reported failure modes are consistent: cancelling the controller's
+    own cluster job orphans its children, SIGTERM frequently never reaches the
+    job, and a backgrounded controller leaks its subtree. Best effort only.
+  - *Batch walltime.* `bsub -W` lets LSF bound the job itself. Coarse, but
+    unconditional, and the only layer that survives the owner losing power.
+
+  **Proposed composition (not yet accepted):** mandatory `-W` resolved from
+  policy as the unconditional ceiling; SIGINT/SIGTERM trapped to `bkill -J
+  <attempt-id>` for the ordinary interactive path; reaping by identity at the
+  next launch to cover SIGKILL and power loss; pooled mode inheriting
+  `dask-jobqueue`'s behaviour unchanged. No lease file, no daemon, no shared
+  state beyond the attempt record. `bsub -I` stays available as an escape hatch
+  but is not the contract, since it binds the guarantee to an interactive
+  session.
+
+  This makes identity uniqueness load-bearing in a new way: reaping is
+  destructive, so `bkill -J` must be incapable of matching someone else's job.
 - **Orphan reaping.** After an indeterminate submission the correct action is
   discover-and-kill. The protocol expresses this but no transport implements
   it, and the destructive action deserves its own failure injection before any

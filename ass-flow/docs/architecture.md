@@ -417,6 +417,15 @@ persistence, or runtime-study ownership.
 
 ## Rules for the next development decision
 
+**Superseded on 2026-08-03.** The per-work-order allocation policy below was
+falsified on its own stated terms — repeated reviews added ceremony without
+changing scope across Phases 1–5. The observation and the replacement policy
+are recorded in [`../../ass-exec/DECISIONS.md`](../../ass-exec/DECISIONS.md).
+Development now proceeds against a living decision ledger with review at
+natural boundaries. The falsifiable framing, named discriminating observations,
+and the rule that passing tests accept only the stated evidence are retained.
+The paragraph below is kept as the superseded record.
+
 Choose the smallest reversible experiment that answers one live question.
 Before implementation, record an exact work-order identity, current evidence,
 files and contracts in scope, external resources, delegated choices, acceptance

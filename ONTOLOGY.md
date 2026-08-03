@@ -55,14 +55,20 @@ any affected child ontology.
 
 - `ass-flow` contributes generic Python-authored static operation/flow planning
   and immutable, deterministic Plan IR without executor or runtime authority.
+- `ass-exec` contributes the durable lifecycle of one attempt at one planned
+  invocation: identity chosen before submission, an append-only record, atomic
+  terminal publication, and reconciliation. It owns no graph and decides no
+  readiness.
 - `sidecar-edits` contributes reviewable simulation-directory preparation.
 - `spice-canonical` contributes canonical netlist extraction.
 - `netlist-decomposition` contributes functional block recognition over the
   canonical representation.
 
-These contributions compose into the larger vision. Flow execution still has
-no implementation unit: the retired `study-flow` prototype remains recoverable
-in Git history at `528c02f`, while
+These contributions compose into the larger vision. Flow execution is now
+partly owned: `ass-exec` holds durable attempt identity and recovery, but no
+unit yet connects a Plan to an execution substrate, and no real batch or
+distributed transport exists. The retired `study-flow` prototype remains
+recoverable in Git history at `528c02f`, while
 [`docs/vision/ass-flow-rebuild-main.md`](docs/vision/ass-flow-rebuild-main.md)
 records the architectural inquiry that preceded the bounded planning work.
 The declared `ass-flow` child owns only static planning; its refusing

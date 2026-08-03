@@ -43,6 +43,10 @@ any affected child ontology.
   units.
 - Root integration checks may verify explicit relationships such as
   `netlist-decomposition` consuming `spice-canonical`.
+- `docs/vision/open-concepts.md` registers every concept raised by the ASS Flow
+  rebuild inquiry with its current status, including concepts that fell out of
+  direct development without a decision. It spans both units, so it belongs at
+  the composition root rather than in either one.
 - `docs/reference/ota-pvt-plan/` owns one representative, non-executing
   cross-unit Plan declaration and its versioned input fixtures. It tests static
   composition through public ASS Flow contracts: four repository-relative

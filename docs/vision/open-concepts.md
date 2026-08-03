@@ -1,0 +1,94 @@
+# Open concepts from the ASS Flow rebuild inquiry
+
+The graduated inquiry raised more concepts than the units have implemented.
+Development since has been direct rather than work-order driven, which is
+faster but loses things quietly — this register exists so that nothing from
+the original study is dropped by silence rather than by decision.
+
+Status vocabulary: **realized** (built and evidenced), **changed** (carried but
+altered by evidence), **deferred** (still wanted, not started), **dropped**
+(fell out without a decision — the category this file exists to expose), and
+**rejected** (deliberately abandoned).
+
+## Realized
+
+| Concept | Where | Note |
+| --- | --- | --- |
+| Static custom-flow composition; one normalized inspectable Plan | `ass-flow` | Accepted with the OTA/PVT domain reference. |
+| Declarative source handoff: address, codec, access scope | `ass-flow` | Schema-2 Plan IR. |
+| Local Dask Delayed lowering (evidence ladder 3) | `ass-flow` experimental | Bounded instrument, not an execution API. |
+| Immutable bundle and stable attempt ID chosen before submission | `ass-exec` | `attempt_identity`, content-addressed. |
+| `launch_or_attach` claiming, attaching, or completing | `ass-exec` | Exactly three dispositions or a loud failure. |
+| Idempotent `request_cancel` recording intent before acting | `ass-exec` | Cancellation is intent, never established by return. |
+| Success requires observed terminal state *and* atomic publication | `ass-exec` | Disagreement publishes `unreconciled`. |
+| Both loss windows (evidence ladder 5) | `ass-exec` | Failure injections against a fake substrate. |
+| File-first sidecar: identities, append-only attempts, job ID, timestamps, diagnostics, manifest, artifact references | `ass-exec` | Deliberately not a workflow database. |
+| Out-of-place execution, declared artifacts, atomic publication | `ass-exec` | Per-attempt workspace; declared outputs only. |
+| Materialization before data crosses to an external substrate | `ass-exec` | On a shared store this is recording an address, not moving bytes. |
+
+## Changed by evidence
+
+| Concept | Original stance | Now |
+| --- | --- | --- |
+| Direct-LSF job lifetime | A job outlives its submitter, so a durable protocol must own its identity | User direction: work is owner-bound. `bsub -I` plus process-group and `PR_SET_PDEATHSIG`. The protocol survives with a changed justification. |
+| Dask as the kernel | Needed because Dask could not own external job identity | That objection is gone with owner-bound lifetime. Dask is now only a candidate for *readiness*, competing with a plain driver. |
+| Component boundary and name | One rebuilt "ASS Flow" | Split into `ass-flow` (planning) and `ass-exec` (attempts), coupled through the Plan document. Nothing yet owns "run the plan", so no unit is operator-facing "flow". Open. |
+| "Resume" | Reattaching to running work | Result reuse: rerun and skip work whose inputs are unchanged. |
+
+## Deferred, still wanted
+
+| Concept | Trigger to revisit |
+| --- | --- |
+| Pooled LSF via `dask_jobqueue.LSFCluster` | A workload needing warm workers or data locality. `LSFPooledTransport` refuses today. |
+| One-scheduler mixed topology (labelled local, direct-gateway, pooled workers) | Requires pooled mode first; must be demonstrated, not assumed, since `LSFCluster` normally owns its own scheduler. |
+| Delayed versus Futures comparison (evidence ladder 4) | Was to precede accepting `submit(...)`. Partly overtaken: `ass-exec` executes without Dask, so this now only matters if Dask becomes the driver. |
+| Real direct-LSF smoke test (evidence ladder 6) | Site access. `examples/lsf_preflight.py` is ready; not runnable now. |
+| Plugins and declarative flow configuration | A concrete multi-repository or non-Python authoring need. |
+| Artifact checksums and provenance | Deliberate: hashing multi-GB raw files every run is a real cost, and mtime plus size is the cheap staleness signal. Revisit if mtime proves unreliable on NFS. |
+
+## Dropped without a decision — recovered here
+
+These fell out during direct development. None was rejected on merit.
+
+- **Requested versus resolved versus observed placement.** The architecture
+  states that a runtime record must keep these distinct without turning
+  transient scheduler state into history. `ass-exec` records the submitted
+  command and the handle, but does not separate what was asked for, what the
+  policy resolved to, and what was actually observed. Cheap to add and directly
+  useful for explaining a slow or misplaced run.
+- **Logical scarce resources such as licences.** Named in the policy vocabulary
+  and conspicuously relevant here — simulator licences are exactly the scarce
+  resource an analog sweep contends for. `LSFInteractiveTransport` passes `-R`
+  through but nothing models a licence as a resource to reason about.
+- **Retry and timeout bounds.** `-W` bounds the job on the farm, and
+  `max_attempts` bounds reruns, but nothing bounds *our own wait*:
+  `SubprocessRunner` accepts a `timeout` that no transport ever sets. A hung
+  `bsub` client would block its caller indefinitely.
+- **Explicit fallback rule, absent by default.** Named in the policy model,
+  never modelled. Related to result-dependent control below.
+- **Result-dependent control and recovery.** The original open question was
+  whether to reapply a flow to committed explicit state and produce a new
+  versioned plan, or to add a visible conditional/recovery node — with hidden
+  imperative controllers rejected either way. Untouched, and it is precisely
+  the design question the driver will run into.
+- **The typed transition contract.** `Operation(validated_config,
+  explicit_state, declared_artifacts) -> StepResult` was adopted as a research
+  invariant. Three of its four parts now exist in some form; **`explicit_state`
+  has never been revisited**, and the question of whether an operation has
+  durable state distinct from its artifacts remains unexamined.
+
+## New ideas raised during development
+
+- **Workspace garbage collection.** Every attempt keeps its own workspace, and
+  failed attempts are retained deliberately. Nothing reclaims them. A study
+  with many corners and several reruns will accumulate directories that no
+  current plan references. Wants a policy — age, superseded-ness, or explicit
+  operator action — and must never delete an attempt a live plan still resolves
+  to. Recorded as an idea, not scheduled.
+
+## How to use this file
+
+Add to it when a concept is raised and not immediately built. Move rows between
+sections when status changes, and say why. A concept leaving this file should
+leave because it was realized or rejected, never because nobody mentioned it
+again.

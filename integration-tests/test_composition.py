@@ -109,10 +109,11 @@ def test_child_command_failure_propagates_and_stops_parent(tmp_path: Path) -> No
     assert not marker.exists()
 
 
-def test_repository_tree_has_three_direct_units_and_no_root_src() -> None:
+def test_repository_tree_has_four_direct_units_and_no_root_src() -> None:
     unit = composition.load_unit(ROOT)
 
     assert [child.unit_id for child in unit.children] == [
+        "ass-flow",
         "netlist-decomposition",
         "sidecar-edits",
         "spice-canonical",

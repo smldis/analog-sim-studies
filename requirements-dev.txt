@@ -1,3 +1,4 @@
+-e ./ass-flow
 -e ./spice-canonical
 -e ./netlist-decomposition
 -e ./sidecar-edits[docs]

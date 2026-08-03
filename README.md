@@ -6,6 +6,8 @@ design tools. The governing direction is [MANIFESTO.md](MANIFESTO.md), while
 
 ## Owned units
 
+- [`ass-flow/`](ass-flow/) owns executor-neutral Python authoring of static
+  operation/flow graphs and deterministic, inspectable Plan IR.
 - [`sidecar-edits/`](sidecar-edits/) prepares simulation directories through a
   typed Python edit API and owns its examples and Sphinx user/API guide.
 - [`spice-canonical/`](spice-canonical/) extracts a canonical graph-oriented
@@ -39,8 +41,8 @@ python -m pip install -r requirements-dev.txt
 ```
 
 There is deliberately no root Python distribution, so `pip install -e .` is
-replaced by the explicit child bootstrap above. It installs the three editable
-distributions together and preserves the imports `sidecar_edits`,
+replaced by the explicit child bootstrap above. It installs the four editable
+distributions together and preserves the imports `ass_flow`, `sidecar_edits`,
 `spice_canonical`, and `netlist_decomposition`, plus the `sidecar-render` and
 `spice-canonical` commands. Individual package installation is documented in
 each child README.
@@ -90,18 +92,20 @@ python -m http.server --directory build/docs/html 8000
 Run sidecar examples and native-helper flows from `sidecar-edits/`; run the
 canonical corpus verifier from `spice-canonical/`; and run decomposition
 dependency generation or OTA verification from `netlist-decomposition/`.
-Exact commands and external prerequisites live in the owning README. The
-retired flow experiment has no runnable command; its replacement inquiry is
-[`docs/vision/ass-flow-rebuild-main.md`](docs/vision/ass-flow-rebuild-main.md).
-A bounded, non-executing static-planning prototype now lives in
-[`prototypes/ass-flow-planning/`](prototypes/ass-flow-planning/). It is retained
-as implementation evidence rather than declared as a child unit. Its focused
-tests and simulator-free characterization example run from that directory:
+Exact commands and external prerequisites live in the owning README.
+[`ass-flow/`](ass-flow/) is the bounded, non-executing static-planning
+prototype. Its focused tests and simulator-free characterization example run
+from that directory:
 
-```bash
+```console
+cd ass-flow
 python -m pytest -q
 PYTHONPATH=src python examples/characterization.py | python -m json.tool
 ```
+
+ASS Flow owns no executor or runtime contract. Its historical sequential-flow
+convenience proposal is inactive and recorded only in the component
+[archive](ass-flow/docs/archive/sequential-flow-convenience.md).
 
 ## Adding another unit
 

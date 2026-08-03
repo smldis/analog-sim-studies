@@ -46,27 +46,28 @@ any affected child ontology.
 
 ## Contributions from children
 
+- `ass-flow` contributes generic Python-authored static operation/flow planning
+  and immutable, deterministic Plan IR without executor or runtime authority.
 - `sidecar-edits` contributes reviewable simulation-directory preparation.
 - `spice-canonical` contributes canonical netlist extraction.
 - `netlist-decomposition` contributes functional block recognition over the
   canonical representation.
 
-These contributions compose into the larger vision. Flow execution currently
-has no implementation unit: the retired `study-flow` prototype remains
-recoverable in Git history at `528c02f`, while
+These contributions compose into the larger vision. Flow execution still has
+no implementation unit: the retired `study-flow` prototype remains recoverable
+in Git history at `528c02f`, while
 [`docs/vision/ass-flow-rebuild-main.md`](docs/vision/ass-flow-rebuild-main.md)
-holds the architectural inquiry. The root-owned
-[`prototypes/ass-flow-planning/`](prototypes/ass-flow-planning/) now contributes
-runnable evidence for immutable operation/flow definitions and inspectable
-static plans. It deliberately supplies no executor or runtime contract and is
-not a declared child; promotion requires a later boundary review.
+records the architectural inquiry that preceded the bounded planning work.
+The declared `ass-flow` child owns only static planning; its refusing
+`submit(...)` boundary confers no local, distributed, simulator, or study
+runtime authority.
 
 ## Exclusions
 
 The root does not own a unified Python package, source tree, unit-test suite,
 API guide, example catalog, or component-specific build script. It is not a
 package-distribution boundary and does not imply that every future capability
-must use the current three implementations.
+must use the current four implementations.
 
 ## Child composition
 

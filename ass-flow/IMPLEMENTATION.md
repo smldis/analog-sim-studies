@@ -2,11 +2,13 @@
 
 ## Status
 
-**Phase:** component promotion authorized; agent plan ready
+**Phase:** Phase 1 component promotion complete
 
 **Authorized slice:** inspectable static planning only
 
-**Permanent component status:** undecided
+**Component boundary:** declared direct child at `ass-flow/`
+
+**Development state:** `prototype`
 
 ## Work items
 
@@ -17,7 +19,18 @@
 | C3 | Acceptance example and adversarial validation coverage | Codex high agent (`ass-flow-acceptance`) | complete | Runnable example plus 7 acceptance tests pass |
 | I1 | Cross-component integration and API review | Coordinating session | complete | All material source, tests, example, and delegated reports inspected |
 | I2 | Focused and repository-level verification | Coordinating session | complete | 25 prototype tests plus all declared repository tests pass |
-| I3 | Prototype conclusion and promotion recommendation | Coordinating session | complete | Accept as runnable evidence; do not promote to a declared unit yet |
+| I3 | Historical prototype conclusion before user promotion direction | Coordinating session | complete | Accepted as runnable evidence; its location recommendation was superseded by the authorized Phase 1 plan |
+
+## Phase 1 promotion work
+
+| ID | Work | State | Evidence |
+| --- | --- | --- | --- |
+| P1.1 | Move the complete tracked prototype to `ass-flow/` | complete | Source, tests, example, README, and both trackers retain their content under the direct-child path; unchanged implementation/test/example blobs match the committed originals |
+| P1.2 | Establish the child boundary | complete | Local ontology, inherited/narrowed agent guidance, unit manifest, Python 3.10+ `ass-flow` packaging, and composable docs contract added |
+| P1.3 | Own test configuration in packaging | complete | `pyproject.toml` carries the former Python path and test-path settings; `pytest.ini` removed |
+| P1.4 | Archive sequential convenience | complete | [Inactive archive record](docs/archive/sequential-flow-convenience.md) states origin, user status/date, rationale, excluded APIs, and reactivation trigger |
+| P1.5 | Promote root composition contracts | complete | Root unit declaration, developer requirements, README, ontology, and four-child integration expectation updated without adding runtime authority |
+| P1.6 | Verify the promoted slice | complete | 25 focused tests pass; four-child tree and full composed tests pass; wheel builds; aggregate docs discovery/staging includes ASS Flow; reference scans are clean |
 
 ## File ownership during delegation
 
@@ -36,16 +49,24 @@ dialecticH run evidence.
   IDs.
 - An explicit `submit(...)` stub that refuses execution.
 
-## Explicit stubs and deferrals
+## Inactive historical material
 
-- sequential-flow editing convenience: deferred by the user;
+- sequential-flow editing convenience is inactive historical
+  [archive material](docs/archive/sequential-flow-convenience.md), not a work
+  item or backlog;
+
+## Explicit runtime stubs and exclusions
+
 - `submit(...)` and executor integration: `NotImplementedError` boundary;
 - Dask and LSF lowering: deferred;
 - retries, attempts, recovery, and durable publication: deferred;
 - dynamic or result-dependent replanning: deferred;
 - plugins and declarative flow configuration: deferred;
-- distribution packaging and compatibility promises: deferred;
-- permanent unit/ontology promotion: requires a later review.
+
+## Later authorized semantics
+
+- collection-valued fan-in and explicit authored keys belong only to the
+  unchanged authorized Phase 2 plan in `PLANNING.md`.
 
 ## Verification log
 
@@ -64,6 +85,22 @@ dialecticH run evidence.
   three existing child `src` directories on `PYTHONPATH` passed 45
   netlist-decomposition, 77 sidecar-edits, 28 spice-canonical, and 7 root
   integration tests.
+- Phase 1 promotion (2026-08-03): `python -m pytest -q` from `ass-flow/`
+  passed 25 tests, and the unchanged characterization example emitted valid
+  JSON with `PYTHONPATH=src`. `python composition.py tree` reported four
+  direct children including `ass-flow`.
+- Phase 1 composition (2026-08-03): with absolute source-checkout paths for all
+  four children on `PYTHONPATH`, `python composition.py test` passed 25
+  ass-flow, 45 netlist-decomposition, 77 sidecar-edits, 28 spice-canonical,
+  and 7 root integration tests. The root integration suite also passed 7 tests
+  independently with child source paths supplied.
+- Phase 1 packaging and docs (2026-08-03): `python -m build --wheel` produced
+  `ass_flow-0.1.0-py3-none-any.whl`. Aggregate docs discovery/staging linked
+  all four child docs, including `children/ass-flow/docs/index.md`. A full HTML
+  build was not run because Sphinx is not installed in this environment.
+- Phase 1 scope check (2026-08-03): retained implementation, tests, and example
+  files match their committed prototype blobs; the Phase 2 plan section retains
+  SHA-256 `a04bf2aedfc72e3278cfc0dda2ffd730c609b53cf5ac3081764629f9104444a9`.
 
 ## Findings and changes to the plan
 
@@ -89,11 +126,12 @@ dialecticH run evidence.
 - Artifact inputs are scalar, so genuinely dynamic collection fan-in is not
   expressible directly. The example uses an honest fixed three-input reducer;
   broader collection/reducer semantics remain deferred rather than simulated.
-- **Conclusion — retain as evidence, do not promote yet.** The spike answers its
-  decision question positively for static planning. It should remain outside
-  `unit.toml` until a later review decides whether stable identity across graph
-  edits and collection-valued fan-in belong in the same component. Sequential
-  editing remains deferred by the user; runtime work remains unauthorized.
+- **Historical conclusion (superseded).** The spike answered its decision
+  question positively for static planning and initially recommended remaining
+  outside `unit.toml` until a later boundary review. The user direction recorded
+  below superseded that location recommendation. The sequential convenience is
+  now inactive [archive material](docs/archive/sequential-flow-convenience.md);
+  runtime work remains unauthorized.
 - **Superseding direction (2026-08-03):** the user selected `ass-flow/` as the
   component's actual location and authorized continued core development. Phase
   1 promotes the tested code without changing its prototype maturity. Phase 2

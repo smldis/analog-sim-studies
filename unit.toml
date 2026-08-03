@@ -5,6 +5,7 @@ id = "analog-sim-studies"
 name = "Analog Sim Studies"
 ontology = "ONTOLOGY.md"
 children = [
+    "ass-flow",
     "sidecar-edits",
     "spice-canonical",
     "netlist-decomposition",

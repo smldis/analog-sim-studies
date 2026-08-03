@@ -27,21 +27,21 @@ Can a small Python-native planning layer express reusable operations and
 nested static flows as one stable, fully inspectable plan without performing
 executor work or acquiring hidden runtime authority?
 
-## Provisional location and status
+## Historical provisional location and status
 
-The spike lives at `prototypes/ass-flow-planning/`. It is deliberately not
-listed in the root `unit.toml`, has no public distribution contract, and does
-not yet claim a permanent ontology boundary. If the evidence supports an
-independently useful component, promotion into a declared child is a separate
-review decision.
+The spike originally lived at the historical path
+`prototypes/ass-flow-planning/`. At that time it was deliberately absent from
+the root `unit.toml` and had no distribution or permanent ontology contract.
+The later authorized development plan below superseded that provisional status
+and promoted the same tested graph semantics to `ass-flow/`.
 
 ## User-directed narrowing
 
 The graduated main proposed a sequential-flow editing helper as one acceptance
-example. The user has explicitly deferred that separate convenience layer.
-This spike therefore does **not** implement ordered slots, insertion, removal,
-or substitution. Arbitrary Python composition is the only flow authoring model
-in this slice.
+example. The user deferred and later archived that separate convenience layer;
+its provenance and reactivation conditions are recorded in
+[`docs/archive/sequential-flow-convenience.md`](docs/archive/sequential-flow-convenience.md).
+Arbitrary Python composition is the only flow authoring model in this slice.
 
 ## Core implementation priorities
 
@@ -174,10 +174,12 @@ The evidence also narrows three claims:
   external side effects is an authored discipline, not something this API can
   prove.
 
-The recommendation is to retain this directory as runnable design evidence and
-not promote it into `unit.toml` or a permanent public package yet. Sequential
-editing remains deferred by the user, and all runtime surfaces remain explicit
-stubs or exclusions.
+That slice originally recommended retaining the provisional directory as
+runnable design evidence. The authorized development plan below superseded the
+location recommendation and promoted the unchanged semantics to a declared
+prototype child. The sequential convenience is now inactive historical
+[archive material](docs/archive/sequential-flow-convenience.md), and all
+runtime surfaces remain explicit stubs or exclusions.
 
 ## Authorized development plan: promote ASS Flow
 

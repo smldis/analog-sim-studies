@@ -40,6 +40,7 @@ altered by evidence), **deferred** (still wanted, not started), **dropped**
 | Concept | Trigger to revisit |
 | --- | --- |
 | Pooled LSF via `dask_jobqueue.LSFCluster` | A workload needing warm workers or data locality. `LSFPooledTransport` refuses today. |
+| Concurrency in the driver | `ass-run` executes one invocation at a time. Either add concurrency deliberately or adopt Dask for readiness; the unit exists to be replaceable. |
 | One-scheduler mixed topology (labelled local, direct-gateway, pooled workers) | Requires pooled mode first; must be demonstrated, not assumed, since `LSFCluster` normally owns its own scheduler. |
 | Delayed versus Futures comparison (evidence ladder 4) | Was to precede accepting `submit(...)`. Partly overtaken: `ass-exec` executes without Dask, so this now only matters if Dask becomes the driver. |
 | Real direct-LSF smoke test (evidence ladder 6) | Site access. `examples/lsf_preflight.py` is ready; not runnable now. |
@@ -60,17 +61,19 @@ These fell out during direct development. None was rejected on merit.
   and conspicuously relevant here — simulator licences are exactly the scarce
   resource an analog sweep contends for. `LSFInteractiveTransport` passes `-R`
   through but nothing models a licence as a resource to reason about.
-- **Retry and timeout bounds.** `-W` bounds the job on the farm, and
-  `max_attempts` bounds reruns, but nothing bounds *our own wait*:
-  `SubprocessRunner` accepts a `timeout` that no transport ever sets. A hung
-  `bsub` client would block its caller indefinitely.
+- ~~**Retry and timeout bounds.**~~ **Recovered.**
+  `LSFInteractiveTransport(timeout=...)` now bounds our own wait; a client that
+  exceeds it is killed, which with `-I` takes the job too, and the result is
+  reported as indeterminate rather than refused. Retry policy beyond
+  `max_attempts` remains unmodelled.
 - **Explicit fallback rule, absent by default.** Named in the policy model,
   never modelled. Related to result-dependent control below.
-- **Result-dependent control and recovery.** The original open question was
-  whether to reapply a flow to committed explicit state and produce a new
-  versioned plan, or to add a visible conditional/recovery node — with hidden
-  imperative controllers rejected either way. Untouched, and it is precisely
-  the design question the driver will run into.
+- **Result-dependent control and recovery.** Whether to reapply a flow to
+  committed explicit state and produce a new versioned plan, or to add a
+  visible conditional/recovery node — hidden imperative controllers rejected
+  either way. Still open, and now bounded rather than looming: `ass-run` runs
+  only fully determined plans and its guidance forbids adding branching
+  quietly. The question arrives when a workload needs a fallback.
 - **The typed transition contract.** `Operation(validated_config,
   explicit_state, declared_artifacts) -> StepResult` was adopted as a research
   invariant. Three of its four parts now exist in some form; **`explicit_state`

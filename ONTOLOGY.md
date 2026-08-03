@@ -64,11 +64,22 @@ any affected child ontology.
   terminal publication, and reconciliation. It owns no graph and decides no
   readiness.
 
+- `ass-run` contributes plan traversal: dependency order, readiness, value and
+  address threading between invocations, and failure handling. It owns no
+  attempt record and no Plan.
+
 `ass-exec` consumes `ass-flow`'s schema-2 Plan **document**, not its package.
 The cross-unit contract is therefore the portable plain-data artifact: neither
 unit imports the other, and any producer of the same document composes equally
 well. `ass-flow` stays executor-neutral; `ass-exec` reads a Plan but neither
 produces nor validates one.
+
+`ass-run` depends on `ass-exec` as an ordinary Python package, which is the
+honest shape of a consumer: a driver must call `execute`. That is deliberately
+different from the flow-to-exec coupling, which stays document-only so that
+planning cannot acquire executor knowledge. There is no top-level package and
+no unified source tree; the units compose through `unit.toml` and
+`composition.py`, and each remains independently installable.
 - `sidecar-edits` contributes reviewable simulation-directory preparation.
 - `spice-canonical` contributes canonical netlist extraction.
 - `netlist-decomposition` contributes functional block recognition over the

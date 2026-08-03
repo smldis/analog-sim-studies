@@ -52,6 +52,7 @@ class PlannedInvocation:
     depends_on: tuple[str, ...]
     input_digest: str
     bundle: Mapping[str, Any]
+    output_names: tuple[str, ...] = ()
 
 
 def _source_identity(source: Mapping[str, Any]) -> str:
@@ -164,6 +165,12 @@ def plan_bundles(
         )
 
     sources = {source["id"]: source for source in document.get("sources", [])}
+    outputs_by_operation = {
+        definition["identity"]["name"]: tuple(
+            item["name"] for item in definition.get("outputs", [])
+        )
+        for definition in document.get("operations", [])
+    }
     digests: dict[str, str] = {}
     planned: list[PlannedInvocation] = []
 
@@ -209,6 +216,7 @@ def plan_bundles(
                 depends_on=_dependencies(invocation),
                 input_digest=digest,
                 bundle=bundle,
+                output_names=outputs_by_operation.get(operation, ()),
             )
         )
 

@@ -7,6 +7,7 @@ ontology = "ONTOLOGY.md"
 children = [
     "ass-flow",
     "ass-exec",
+    "ass-run",
     "sidecar-edits",
     "spice-canonical",
     "netlist-decomposition",

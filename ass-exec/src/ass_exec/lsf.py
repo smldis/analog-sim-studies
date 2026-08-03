@@ -129,6 +129,13 @@ class SubprocessRunner:
             )
         except FileNotFoundError as error:
             raise CommandUnavailable(f"{argv[0]!r} is not available") from error
+        except subprocess.TimeoutExpired as error:
+            # subprocess.run has already killed the client, and with `-I` that
+            # takes the job with it. Indeterminate rather than refused: the job
+            # may have run, or even completed, before we stopped waiting.
+            raise TransportError(
+                f"{argv[0]} exceeded its {timeout}s bound and was killed"
+            ) from error
         return CommandResult(
             returncode=completed.returncode,
             stdout=completed.stdout or "",
@@ -200,6 +207,7 @@ class LSFInteractiveTransport:
         queue: str | None = None,
         resources: str | None = None,
         cores: int | None = None,
+        timeout: float | None = None,
         runner: Callable[..., CommandResult] | None = None,
     ) -> None:
         if not walltime:
@@ -211,6 +219,9 @@ class LSFInteractiveTransport:
         self.queue = queue
         self.resources = resources
         self.cores = cores
+        # Bounds our own wait. `-W` bounds the job on the farm, but nothing
+        # stopped a hung client from blocking its caller indefinitely.
+        self.timeout = timeout
         self._run = runner or SubprocessRunner()
 
     def build_argv(self, identity: str, bundle: Mapping[str, Any]) -> list[str]:
@@ -241,7 +252,9 @@ class LSFInteractiveTransport:
         argv = self.build_argv(identity, bundle)
         workdir = bundle.get("workdir") or bundle.get("cwd")
         try:
-            result = self._run(argv, cwd=workdir, env=bundle.get("env"))
+            result = self._run(
+                argv, cwd=workdir, env=bundle.get("env"), timeout=self.timeout
+            )
         except CommandUnavailable as error:
             # No bsub means nothing was accepted; this one really is a refusal.
             raise SubmissionRefused(str(error)) from error

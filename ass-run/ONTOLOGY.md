@@ -33,6 +33,14 @@ file written by one step to the step that reads it.
   does not import `ass_flow`: the Plan arrives as a document.
 - `run_plan(document, transport, ...)` executes every invocation in dependency
   order and returns a `RunReport`.
+- `transports` maps a policy name to the substrate providing it. Each
+  invocation lands on the placement ASS Flow already resolved for it, so one
+  corner may take a dedicated LSF job while cheap reductions stay local. A
+  placement no transport provides is fatal: running work somewhere other than
+  where it was asked to run would change what a study means.
+- A single `transport` provides every placement, which suits a uniform run and
+  is wrong as soon as placements differ.
+- Each attempt records requested, resolved, and observed placement separately.
 - `commands` and `outputs` bind an operation to how it actually runs — a
   command line, and which files or streams count as results. The Plan declares
   meaning; a run binds mechanism. Operations absent from both run in-process.

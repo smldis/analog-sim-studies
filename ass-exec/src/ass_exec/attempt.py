@@ -228,6 +228,15 @@ def _launch_or_attach_locked(
             input_digest=input_digest(bundle),
         )
 
+    # What was asked for and what the run resolved to, recorded before the
+    # substrate is touched. What was actually observed arrives with the receipt
+    # and the poll, and is deliberately kept as a separate fact: a run that came
+    # out slow or misplaced is only explainable if the three do not collapse
+    # into one.
+    placement = bundle.get("placement")
+    if placement:
+        journal.append("placement", **placement)
+
     # Intent is durable before the substrate is touched. Everything downstream
     # depends on this ordering.
     journal.append("submit_intent", transport=transport.name)
@@ -375,6 +384,19 @@ def reconcile(
             return journal.fold()
         if produced:
             detail["artifacts"] = [item.as_data() for item in produced]
+
+    if state.placement:
+        detail["placement"] = {
+            **state.placement,
+            "observed": {
+                "transport": state.transport,
+                "handle": {
+                    key: value
+                    for key, value in (state.handle or {}).items()
+                    if key in ("job_id", "identity", "transport", "workdir")
+                },
+            },
+        }
 
     journal.publish_terminal(outcome=outcome, manifest=detail)
     return journal.fold()

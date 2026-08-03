@@ -49,6 +49,7 @@ _EVENTS = frozenset(
         "observed",
         "terminal",
         "reuse_accepted",
+        "placement",
     }
 )
 
@@ -93,6 +94,7 @@ class AttemptState:
     cancel_reason: str | None = None
     reuse_accepted: bool = False
     reuse_reason: str | None = None
+    placement: Mapping[str, Any] = field(default_factory=dict)
     observations: tuple[Mapping[str, Any], ...] = field(default_factory=tuple)
     events: tuple[JournalEvent, ...] = field(default_factory=tuple)
 
@@ -251,6 +253,7 @@ class AttemptJournal:
         cancel_reason: str | None = None
         reuse_accepted = False
         reuse_reason: str | None = None
+        placement: dict[str, Any] = {}
         observations: list[Mapping[str, Any]] = []
         events = self.events()
 
@@ -271,6 +274,8 @@ class AttemptJournal:
             elif item.event == "cancel_requested":
                 cancel_requested = True
                 cancel_reason = item.data.get("reason")
+            elif item.event == "placement":
+                placement = dict(item.data)
             elif item.event == "reuse_accepted":
                 reuse_accepted = True
                 reuse_reason = item.data.get("reason")
@@ -297,6 +302,7 @@ class AttemptJournal:
             cancel_reason=cancel_reason,
             reuse_accepted=reuse_accepted,
             reuse_reason=reuse_reason,
+            placement=placement,
             observations=tuple(observations),
             events=events,
         )

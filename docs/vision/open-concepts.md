@@ -51,16 +51,17 @@ altered by evidence), **deferred** (still wanted, not started), **dropped**
 
 These fell out during direct development. None was rejected on merit.
 
-- **Requested versus resolved versus observed placement.** The architecture
-  states that a runtime record must keep these distinct without turning
-  transient scheduler state into history. `ass-exec` records the submitted
-  command and the handle, but does not separate what was asked for, what the
-  policy resolved to, and what was actually observed. Cheap to add and directly
-  useful for explaining a slow or misplaced run.
+- ~~**Requested versus resolved versus observed placement.**~~ **Recovered.**
+  A `placement` journal event records requested and resolved before submission;
+  observed is published with the manifest. `ass-run` selects a transport from
+  the policy the Plan already resolved, and a placement no transport provides
+  is fatal rather than a silent fallback. Moving work between placements
+  provably does not invalidate its result.
 - **Logical scarce resources such as licences.** Named in the policy vocabulary
   and conspicuously relevant here — simulator licences are exactly the scarce
   resource an analog sweep contends for. `LSFInteractiveTransport` passes `-R`
-  through but nothing models a licence as a resource to reason about.
+  through, and policy options now reach the run, but nothing yet turns a
+  declared licence need into a resource request or reasons about contention.
 - ~~**Retry and timeout bounds.**~~ **Recovered.**
   `LSFInteractiveTransport(timeout=...)` now bounds our own wait; a client that
   exceeds it is killed, which with `-I` takes the job too, and the result is
@@ -92,6 +93,13 @@ remoteness by placing the task on a distant worker, so what runs there is
 effectively in-process execution on a farm node. Durability is unaffected in
 either arrangement, because `execute` runs inside the task and `ass-exec` keeps
 owning identity, journals, reuse, and artifacts.
+
+**Correction (2026-08-03).** An earlier version of this section said that using
+Dask for both would cost the visible per-invocation LSF job. That is only true
+of a *wholly pooled* arrangement. Placement is already resolved per invocation
+by ASS Flow and honoured per invocation by `ass-run`, so a Dask-driven run can
+still send one corner to its own `bsub -I` job while others share a pool.
+Readiness and placement are independent choices; conflating them was the error.
 
 What a wholly pooled arrangement costs:
 

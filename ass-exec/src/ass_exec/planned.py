@@ -24,7 +24,7 @@ remains outside this unit.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
 from ass_exec.reuse import input_digest
@@ -53,6 +53,12 @@ class PlannedInvocation:
     input_digest: str
     bundle: Mapping[str, Any]
     output_names: tuple[str, ...] = ()
+    policy: Mapping[str, Any] = field(default_factory=dict)
+    """The Plan's resolved placement for this invocation.
+
+    Carried alongside the bundle rather than inside it: placement decides where
+    work runs, never what it produces, so it must not reach the input digest.
+    """
 
 
 def _source_identity(source: Mapping[str, Any]) -> str:
@@ -217,6 +223,7 @@ def plan_bundles(
                 input_digest=digest,
                 bundle=bundle,
                 output_names=outputs_by_operation.get(operation, ()),
+                policy=dict(invocation.get("policy") or {}),
             )
         )
 

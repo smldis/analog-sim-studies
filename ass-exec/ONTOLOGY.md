@@ -139,6 +139,11 @@ its siblings are reused and the superseded results stay nameable.
 - A declared output that does not exist after the work reports success fails
   the invocation. Publishing a manifest without it would let downstream work
   resolve an address to nothing.
+- A bundle may carry `placement`, recorded as its own journal event before the
+  substrate is touched and published in the manifest alongside what was
+  observed. Requested, resolved, and observed are kept apart deliberately: a
+  run that came out slow or misplaced is only explainable if they do not
+  collapse into one fact. Placement never reaches the input digest.
 - `Durability` is declared per invocation, never inferred from placement.
   `EPHEMERAL` touches no filesystem, requires no identity or root, and reruns
   on every call. `RECORDED` runs the full protocol and completes from an

@@ -32,6 +32,36 @@ launch_or_attach(AttemptJournal("attempts", identity.rendered), transport, bundl
 Each attempt is a plain directory holding `events.jsonl` and, once terminal,
 `manifest.json`. Both are readable without this package.
 
+## Rerunning without repeating work
+
+Declare what an invocation depends on and let the identity be derived from it.
+Rerunning then skips work whose inputs are unchanged, and reruns work whose
+inputs moved:
+
+```python
+from ass_exec.durability import Durability, execute
+from ass_exec.reuse import input_digest, stale_attempts
+
+bundle = {
+    "operation": "simulate",
+    "command": ["ngspice", "-b", "tt.spice"],
+    "inputs": {"deck": "sha256:aaa"},          # what the result depends on
+    "identity_env": {"PDK_ROOT": "/pdk/sky130A"},
+}
+
+execute(lsf, bundle, durability=Durability.RECORDED, root="attempts",
+        plan_id="plan-1", invocation_id="inv-tt")
+```
+
+Queue, walltime, cores, and general `env` deliberately do **not** participate,
+so retuning resources never invalidates a result. Change the deck, and the
+invocation lands on a new identity and reruns; the previous result stays on
+disk and `stale_attempts(...)` can name it as superseded rather than having
+quietly overwritten it.
+
+This trusts your declaration. An operation that reads an undeclared file is not
+honestly reusable, and no digest will notice.
+
 Run the evidence with:
 
 ```console

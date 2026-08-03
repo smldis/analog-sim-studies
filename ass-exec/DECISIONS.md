@@ -81,6 +81,9 @@ distinction they encode is what makes the orphan-reaping path expressible.
 | Does a transport exception mean the work was refused? | No. Only `SubmissionRefused` establishes that; everything else holds the attempt in the crash window. | `test_indeterminate_submission_blocks_a_blind_resubmission`. |
 | Does recovery require graph topology? | No. | `test_recovery_needs_no_knowledge_of_the_graph` — recovery succeeds from a bundle carrying no dependency information. |
 | Can cancellation be known? | No, only intended and later reconciled. | `test_success_after_requested_cancellation_is_not_normalized`. |
+| Does placement belong in result identity? | No. Queue, walltime, cores and host are excluded, so retuning resources never invalidates a result. | `test_placement_does_not_participate_in_identity`. |
+| Can reuse return a result from different inputs? | No, once identity is content-addressed: changed inputs land on a different attempt. | `test_changed_inputs_do_not_reuse_the_old_result`. |
+| What happens to superseded results? | They are retained and nameable as stale, not overwritten. | `test_prior_results_are_named_as_superseded_not_discarded`. |
 
 The fourth row is the boundary result: because reconciliation reads no
 topology, this unit has not absorbed graph scheduling authority, and the
@@ -189,14 +192,15 @@ mode's design premise is wrong and needs revisiting.
   `dask_jobqueue.LSFCluster`, whose `death_timeout` and close-time `bkill`
   already give owner-bound worker lifetime. Not started; `dask-jobqueue` is not
   installed in this environment.
-- **Result reuse and staleness.** The real resume path: rerun a flow and skip
-  invocations whose results are already published and whose inputs are
-  unchanged. This needs input identity, which needs a bundle contract, which is
-  the next real design question in this unit.
-- **Bundle contract.** Bundles are plain mappings today. Whether they derive
-  from ASS Flow's Plan IR, and who materializes input values across the
-  boundary, is undecided — but result reuse now pushes on it, since reuse is
-  only sound if input identity is part of the bundle.
+- **Bundle contract.** Bundles are still plain mappings, but they now have a
+  declared identity-bearing subset (`IDENTITY_KEYS`). The open question narrows
+  to who fills `inputs`: an author by hand today, or ASS Flow from resolved
+  Plan edges. The latter is the natural next coupling, and it is now the only
+  thing standing between this unit and a real end-to-end slice.
+- **Verifying declared inputs.** Reuse trusts the author's declaration. Whether
+  the unit should ever hash actual input files, rather than accept a supplied
+  digest, is undecided — it would catch undeclared dependencies but requires
+  owning address resolution, which belongs elsewhere.
 - **Who drives readiness.** Dask remains the hypothesis, and the lifetime
   correction removes the main objection to it owning the lifecycle. Nothing in
   this unit depends on that choice, which is worth preserving.

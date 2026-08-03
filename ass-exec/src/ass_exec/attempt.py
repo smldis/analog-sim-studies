@@ -24,6 +24,7 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 
 from ass_exec.journal import AttemptJournal, AttemptState
+from ass_exec.reuse import input_digest
 from ass_exec.transport import Observation, SubmissionRefused, Transport
 
 __all__ = [
@@ -120,6 +121,9 @@ def launch_or_attach(
             plan=bundle.get("plan"),
             invocation=bundle.get("invocation"),
             operation=bundle.get("operation"),
+            # Recorded so a later run can name what this result was computed
+            # from, and explain it as superseded rather than silently replace it.
+            input_digest=input_digest(bundle),
         )
 
     # Intent is durable before the substrate is touched. Everything downstream

@@ -71,6 +71,16 @@ degenerate case rather than a simulation of a remote one.
   lifetime.
 - Neither is reexported from the package initializer: reaching an external
   scheduler is an explicit import.
+- `input_digest(...)` digests only the bundle keys that determine a result:
+  operation, command, arguments, cwd, declared inputs, and explicitly nominated
+  `identity_env`. Queue, walltime, cores, host, and general `env` are excluded,
+  so changing where work runs never invalidates what it produced.
+- Attempt identity may be content-addressed by folding that digest in. Reuse is
+  then sound by construction: a manifest at an identity was produced by exactly
+  those inputs, and changed inputs land elsewhere rather than colliding.
+- `stale_attempts(...)` names prior results for an invocation whose inputs have
+  since changed. Superseded work is retained and explainable, never silently
+  overwritten.
 - `Durability` is declared per invocation, never inferred from placement.
   `EPHEMERAL` touches no filesystem, requires no identity or root, and reruns
   on every call. `RECORDED` runs the full protocol and completes from an
@@ -101,9 +111,11 @@ submit host. The subprocess layer is exercised end to end against a fake
 `bsub`/`bjobs`/`bkill` on PATH. Queue admission, scheduling, and resource
 enforcement are untested.
 
-The unit does not yet implement staleness. `RECORDED` reuse is keyed on attempt
-identity alone, so it will happily reuse a result whose inputs have since
-changed. Sound reuse needs input identity in the bundle, which is undecided.
+Reuse soundness depends on inputs being *declared*. An operation whose result
+depends on an undeclared file, wall-clock time, or a mutable network resource
+is not honestly reusable, and no digest detects that; the unit records what an
+author claims rather than verifying it. Attempt discovery is a directory scan,
+which is fine at prototype scale and wrong at any other.
 
 ## Child composition
 

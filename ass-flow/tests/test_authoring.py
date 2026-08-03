@@ -1,12 +1,16 @@
 from dataclasses import FrozenInstanceError
+import json
 
 import pytest
 
 from ass_flow import (
     AuthoringError,
     BindingError,
+    CollectionInputBinding,
+    InputBinding,
     PlanningScopeError,
     artifact,
+    artifacts,
     flow,
     input_artifact,
     local,
@@ -21,6 +25,7 @@ from ass_flow import (
 DECK = artifact("spice-deck")
 RAW = artifact("simulation-raw")
 REPORT = artifact("measurement-report")
+MEASUREMENT = artifact("measurement")
 
 
 def test_calls_outside_scope_are_actionable_and_operation_body_does_not_run():
@@ -121,6 +126,167 @@ def test_repeated_planning_has_stable_source_invocation_edge_and_boundary_ids():
     ]
     assert [item.id for item in first.edges] == ["edge:0001"]
     assert [item.id for item in first.boundaries] == ["flow:0001"]
+    assert isinstance(first.invocations[1].inputs[0], InputBinding)
+    assert first.invocations[1].inputs[0].cardinality == "scalar"
+    assert first.edges[0].target_member_index is None
+
+
+def test_collection_input_preserves_member_order_in_bindings_edges_and_json():
+    @operation(
+        name="authoring.collections.measure",
+        inputs={"deck": DECK},
+        config={"label": parameter(str)},
+        outputs={"measurement": MEASUREMENT},
+    )
+    def measure(deck, *, label):
+        raise AssertionError("must not run")
+
+    @operation(
+        name="authoring.collections.summarize",
+        inputs={"measurements": artifacts("measurement")},
+        outputs={"report": REPORT},
+    )
+    def summarize(measurements):
+        raise AssertionError("must not run")
+
+    def build():
+        with plan() as draft:
+            deck = input_artifact("input.spice", "spice-deck")
+            measurements = [
+                measure(deck, label=label) for label in ("ss", "tt", "ff")
+            ]
+            report = summarize(measurements)
+        return draft.finish(outputs={"report": report})
+
+    first = build()
+    second = build()
+    summary = first.invocations[-1]
+    binding = summary.inputs[0]
+
+    assert first.to_data() == second.to_data()
+    assert first.to_json() == second.to_json()
+    assert first.operations[-1].inputs[0].required is True
+    assert first.operations[-1].inputs[0].cardinality == "collection"
+    assert isinstance(binding, CollectionInputBinding)
+    assert binding.cardinality == "collection"
+    assert [reference.invocation_id for reference in binding.references] == [
+        "invoke:0001",
+        "invoke:0002",
+        "invoke:0003",
+    ]
+    assert [edge.source.invocation_id for edge in first.edges] == [
+        "invoke:0001",
+        "invoke:0002",
+        "invoke:0003",
+    ]
+    assert [edge.target_member_index for edge in first.edges] == [0, 1, 2]
+
+    data = json.loads(first.to_json())
+    serialized_binding = data["invocations"][-1]["inputs"][0]
+    assert serialized_binding["cardinality"] == "collection"
+    assert [
+        reference["invocation_id"]
+        for reference in serialized_binding["references"]
+    ] == ["invoke:0001", "invoke:0002", "invoke:0003"]
+    assert [edge["target_member_index"] for edge in data["edges"]] == [0, 1, 2]
+    assert "value" not in serialized_binding
+
+
+def test_external_source_collection_member_gets_an_edge_without_scalar_regression():
+    @operation(
+        name="authoring.source_collections.measure",
+        inputs={"deck": DECK},
+        outputs={"measurement": MEASUREMENT},
+    )
+    def measure(deck):
+        raise AssertionError("must not run")
+
+    @operation(
+        name="authoring.source_collections.summarize",
+        inputs={"measurements": artifacts("measurement")},
+        outputs={"report": REPORT},
+    )
+    def summarize(measurements):
+        raise AssertionError("must not run")
+
+    def build():
+        with plan() as draft:
+            deck = input_artifact("input.spice", "spice-deck")
+            external = input_artifact(
+                "existing-measurement.json", "measurement"
+            )
+            produced = measure(deck)
+            report = summarize([external, produced])
+        return draft.finish(outputs={"report": report})
+
+    first = build()
+    second = build()
+    data = json.loads(first.to_json())
+    binding = data["invocations"][-1]["inputs"][0]
+
+    assert first.to_data() == second.to_data()
+    assert first.to_json() == second.to_json()
+    assert len(first.edges) == 2
+    assert [reference["type"] for reference in binding["references"]] == [
+        "source",
+        "output",
+    ]
+    assert [edge["source"]["type"] for edge in data["edges"]] == [
+        "source",
+        "output",
+    ]
+    assert [edge["target_member_index"] for edge in data["edges"]] == [0, 1]
+
+
+def test_collection_inputs_reject_invalid_authored_values_early():
+    @operation(inputs={"deck": DECK}, outputs={"measurement": MEASUREMENT})
+    def measure(deck):
+        raise AssertionError("must not run")
+
+    @operation(
+        inputs={"deck": DECK},
+        outputs={"left": MEASUREMENT, "right": MEASUREMENT},
+    )
+    def split(deck):
+        raise AssertionError("must not run")
+
+    @operation(
+        inputs={"measurements": artifacts("measurement")},
+        outputs={"report": REPORT},
+    )
+    def summarize(measurements):
+        raise AssertionError("must not run")
+
+    with plan() as foreign_draft:
+        foreign = measure(input_artifact("foreign.spice", "spice-deck"))
+    foreign_draft.finish(outputs={"measurement": foreign})
+
+    with plan() as draft:
+        deck = input_artifact("input.spice", "spice-deck")
+        existing_measurement = input_artifact(
+            "existing-measurement.json", "measurement"
+        )
+        measurement = measure(deck)
+        multiple = split(deck)
+        for invalid in (deck, "measurement.json", b"measurement", {"one": measurement}):
+            with pytest.raises(BindingError, match="non-string sequence"):
+                summarize(invalid)
+        with pytest.raises(BindingError, match="non-string sequence"):
+            summarize(member for member in [measurement])
+        with pytest.raises(BindingError, match="must not be empty"):
+            summarize([])
+        with pytest.raises(BindingError, match="expects artifact kind"):
+            summarize([measurement, deck])
+        with pytest.raises(BindingError, match="different plan"):
+            summarize([foreign])
+        with pytest.raises(BindingError, match="select one explicitly"):
+            summarize([multiple])
+        report = summarize((measurement, existing_measurement))
+    normalized = draft.finish(outputs={"report": report})
+
+    assert len(normalized.invocations) == 3
+    assert [edge.target_member_index for edge in normalized.edges] == [0, 1]
+    assert normalized.to_data()["edges"][1]["source"]["type"] == "source"
 
 
 def test_name_keyed_declaration_order_does_not_change_normalized_plan():

@@ -162,6 +162,7 @@ class InputContract:
     name: str
     artifact: ArtifactContract
     required: bool = True
+    cardinality: str = "scalar"
 
     def __post_init__(self) -> None:
         _require_name(self.name, "input name")
@@ -169,6 +170,10 @@ class InputContract:
             raise ContractError("input artifact must be an ArtifactContract")
         if not isinstance(self.required, bool):
             raise ContractError("input required must be a bool")
+        if self.cardinality not in {"scalar", "collection"}:
+            raise ContractError(
+                "input cardinality must be either 'scalar' or 'collection'"
+            )
 
 
 _PLAIN_CONFIG_TYPES = (str, int, float, bool, list, dict, type(None))
@@ -364,11 +369,37 @@ ArtifactReference: TypeAlias = ArtifactSourceReference | OutputReference
 class InputBinding:
     name: str
     reference: ArtifactReference
+    cardinality: str = field(default="scalar", init=False)
 
     def __post_init__(self) -> None:
         _require_name(self.name, "input binding name")
         if not isinstance(self.reference, ArtifactSourceReference | OutputReference):
             raise ContractError("input binding must contain an artifact reference")
+
+
+@dataclass(frozen=True, slots=True)
+class CollectionInputBinding:
+    """One ordered, non-empty collection of homogeneous artifact references."""
+
+    name: str
+    references: tuple[ArtifactReference, ...]
+    cardinality: str = field(default="collection", init=False)
+
+    def __post_init__(self) -> None:
+        _require_name(self.name, "collection input binding name")
+        object.__setattr__(self, "references", tuple(self.references))
+        if not self.references:
+            raise ContractError("collection input binding must not be empty")
+        if not all(
+            isinstance(reference, ArtifactSourceReference | OutputReference)
+            for reference in self.references
+        ):
+            raise ContractError(
+                "collection input binding must contain only artifact references"
+            )
+
+
+ArtifactInputBinding: TypeAlias = InputBinding | CollectionInputBinding
 
 
 @dataclass(frozen=True, slots=True)
@@ -387,7 +418,7 @@ class ConfigBinding:
 class Invocation:
     id: str
     operation: OperationIdentity
-    inputs: tuple[InputBinding, ...] = ()
+    inputs: tuple[ArtifactInputBinding, ...] = ()
     config: tuple[ConfigBinding, ...] = ()
     policy: Policy = field(default_factory=local)
     boundary_id: str | None = None
@@ -398,7 +429,14 @@ class Invocation:
             raise ContractError("invocation operation must be an OperationIdentity")
         object.__setattr__(self, "inputs", tuple(self.inputs))
         object.__setattr__(self, "config", tuple(self.config))
-        _require_instances(self.inputs, InputBinding, "invocation inputs")
+        if not all(
+            isinstance(value, InputBinding | CollectionInputBinding)
+            for value in self.inputs
+        ):
+            raise ContractError(
+                "invocation inputs must contain only InputBinding or "
+                "CollectionInputBinding values"
+            )
         _require_instances(self.config, ConfigBinding, "invocation config")
         if not isinstance(self.policy, Policy):
             raise ContractError("invocation policy must be a resolved Policy")
@@ -409,18 +447,29 @@ class Invocation:
 @dataclass(frozen=True, slots=True)
 class DependencyEdge:
     id: str
-    source: OutputReference
+    source: ArtifactReference
     target_invocation_id: str
     target_input_name: str
     artifact_kind: str
+    target_member_index: int | None = None
 
     def __post_init__(self) -> None:
         _require_id(self.id, "dependency edge id")
-        if not isinstance(self.source, OutputReference):
-            raise ContractError("dependency edge source must be an OutputReference")
+        if not isinstance(self.source, ArtifactSourceReference | OutputReference):
+            raise ContractError(
+                "dependency edge source must be an artifact reference"
+            )
         _require_id(self.target_invocation_id, "dependency target invocation id")
         _require_name(self.target_input_name, "dependency target input name")
         _require_text(self.artifact_kind, "dependency artifact kind")
+        if self.target_member_index is not None and (
+            isinstance(self.target_member_index, bool)
+            or not isinstance(self.target_member_index, int)
+            or self.target_member_index < 0
+        ):
+            raise ContractError(
+                "dependency target_member_index must be a non-negative integer or None"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -587,7 +636,9 @@ class Plan:
         _check_boundary_cycles(boundaries, issue)
 
         operation_for_invocation: dict[str, OperationDefinition] = {}
-        expected_edges: dict[tuple[str, str], OutputReference] = {}
+        expected_edges: dict[
+            tuple[str, str, int | None], ArtifactReference
+        ] = {}
         for invocation_index, invocation in enumerate(self.invocations):
             path = f"invocations[{invocation_index}]"
             operation = operations.get(invocation.operation)
@@ -641,23 +692,49 @@ class Plan:
                         f"input {binding.name!r} is not declared",
                     )
                     continue
-                reference_kind = _reference_kind(
-                    binding.reference,
-                    sources,
-                    invocations,
-                    operation_for_invocation,
-                    operations,
-                    binding_path,
-                    issue,
-                )
-                if reference_kind is not None and reference_kind != contract.artifact.kind:
+                if binding.cardinality != contract.cardinality:
                     issue(
-                        "input_kind_mismatch",
+                        "input_cardinality_mismatch",
                         binding_path,
-                        f"expected {contract.artifact.kind!r}, got {reference_kind!r}",
+                        f"expected {contract.cardinality!r}, got "
+                        f"{binding.cardinality!r}",
                     )
-                if isinstance(binding.reference, OutputReference):
-                    expected_edges[(invocation.id, binding.name)] = binding.reference
+                if isinstance(binding, InputBinding):
+                    indexed_references = ((None, binding.reference),)
+                else:
+                    indexed_references = tuple(enumerate(binding.references))
+                for member_index, reference in indexed_references:
+                    reference_path = (
+                        binding_path
+                        if member_index is None
+                        else f"{binding_path}.references[{member_index}]"
+                    )
+                    reference_kind = _reference_kind(
+                        reference,
+                        sources,
+                        invocations,
+                        operation_for_invocation,
+                        operations,
+                        reference_path,
+                        issue,
+                    )
+                    if (
+                        reference_kind is not None
+                        and reference_kind != contract.artifact.kind
+                    ):
+                        issue(
+                            "input_kind_mismatch",
+                            reference_path,
+                            f"expected {contract.artifact.kind!r}, got "
+                            f"{reference_kind!r}",
+                        )
+                    if (
+                        contract.cardinality == "collection"
+                        or isinstance(reference, OutputReference)
+                    ):
+                        expected_edges[
+                            (invocation.id, binding.name, member_index)
+                        ] = reference
 
             for binding_index, binding in enumerate(invocation.config):
                 binding_path = f"{path}.config[{binding_index}]"
@@ -675,16 +752,20 @@ class Plan:
                         f"expected {contract.value_type.__name__}",
                     )
 
-        seen_edge_targets: set[tuple[str, str]] = set()
+        seen_edge_targets: set[tuple[str, str, int | None]] = set()
         dependency_pairs: list[tuple[str, str]] = []
         for edge_index, edge in enumerate(self.edges):
             path = f"edges[{edge_index}]"
-            target_key = (edge.target_invocation_id, edge.target_input_name)
+            target_key = (
+                edge.target_invocation_id,
+                edge.target_input_name,
+                edge.target_member_index,
+            )
             if target_key in seen_edge_targets:
                 issue(
                     "duplicate_target_edge",
                     path,
-                    "more than one edge targets the same invocation input",
+                    "more than one edge targets the same invocation input member",
                 )
             seen_edge_targets.add(target_key)
             expected_source = expected_edges.get(target_key)
@@ -712,6 +793,7 @@ class Plan:
             )
             target_operation = operation_for_invocation.get(edge.target_invocation_id)
             target_contract = None
+            target_binding = None
             if target_operation is None:
                 issue(
                     "unknown_edge_target",
@@ -733,6 +815,42 @@ class Plan:
                         f"{path}.target_input_name",
                         f"input {edge.target_input_name!r} is not declared",
                     )
+                target_invocation = invocations.get(edge.target_invocation_id)
+                if target_invocation is not None:
+                    target_binding = next(
+                        (
+                            binding
+                            for binding in target_invocation.inputs
+                            if binding.name == edge.target_input_name
+                        ),
+                        None,
+                    )
+            if target_contract is not None:
+                if (
+                    target_contract.cardinality == "scalar"
+                    and edge.target_member_index is not None
+                ):
+                    issue(
+                        "unexpected_edge_member_position",
+                        f"{path}.target_member_index",
+                        "scalar inputs must not have a member position",
+                    )
+                elif target_contract.cardinality == "collection":
+                    if edge.target_member_index is None:
+                        issue(
+                            "missing_edge_member_position",
+                            f"{path}.target_member_index",
+                            "collection input edges require a member position",
+                        )
+                    elif (
+                        isinstance(target_binding, CollectionInputBinding)
+                        and edge.target_member_index >= len(target_binding.references)
+                    ):
+                        issue(
+                            "invalid_edge_member_position",
+                            f"{path}.target_member_index",
+                            "member position is outside the collection binding",
+                        )
             if source_kind is not None and edge.artifact_kind != source_kind:
                 issue(
                     "edge_source_kind_mismatch",
@@ -749,17 +867,25 @@ class Plan:
                     f"edge says {edge.artifact_kind!r}, target accepts "
                     f"{target_contract.artifact.kind!r}",
                 )
-            if edge.source.invocation_id in invocations and edge.target_invocation_id in invocations:
+            if (
+                isinstance(edge.source, OutputReference)
+                and edge.source.invocation_id in invocations
+                and edge.target_invocation_id in invocations
+            ):
                 dependency_pairs.append(
                     (edge.source.invocation_id, edge.target_invocation_id)
                 )
 
         for target_key, source in expected_edges.items():
             if target_key not in seen_edge_targets:
+                member_suffix = (
+                    "" if target_key[2] is None else f"[{target_key[2]}]"
+                )
                 issue(
                     "missing_dependency_edge",
-                    f"invocations[{target_key[0]}].inputs[{target_key[1]}]",
-                    f"output binding from {source.invocation_id}.{source.output_name} has no edge",
+                    f"invocations[{target_key[0]}].inputs[{target_key[1]}]"
+                    f"{member_suffix}",
+                    f"artifact binding from {_reference_label(source)} has no edge",
                 )
         if _has_dependency_cycle(invocations, dependency_pairs):
             issue("dependency_cycle", "edges", "dependency graph must be acyclic")
@@ -832,6 +958,7 @@ class Plan:
                     "source": _reference_data(value.source),
                     "target_invocation_id": value.target_invocation_id,
                     "target_input_name": value.target_input_name,
+                    "target_member_index": value.target_member_index,
                     "artifact_kind": value.artifact_kind,
                 }
                 for value in sorted(self.edges, key=lambda item: item.id)
@@ -1020,6 +1147,7 @@ def _operation_data(value: OperationDefinition) -> dict[str, Any]:
                 "name": item.name,
                 "artifact": _artifact_data(item.artifact),
                 "required": item.required,
+                "cardinality": item.cardinality,
             }
             for item in sorted(value.inputs, key=lambda item: item.name)
         ],
@@ -1057,12 +1185,18 @@ def _reference_data(value: ArtifactReference) -> dict[str, str]:
     }
 
 
+def _reference_label(value: ArtifactReference) -> str:
+    if isinstance(value, ArtifactSourceReference):
+        return value.source_id
+    return f"{value.invocation_id}.{value.output_name}"
+
+
 def _invocation_data(value: Invocation) -> dict[str, Any]:
     return {
         "id": value.id,
         "operation": _operation_identity_data(value.operation),
         "inputs": [
-            {"name": item.name, "reference": _reference_data(item.reference)}
+            _input_binding_data(item)
             for item in sorted(value.inputs, key=lambda item: item.name)
         ],
         "config": [
@@ -1071,6 +1205,22 @@ def _invocation_data(value: Invocation) -> dict[str, Any]:
         ],
         "policy": _policy_data(value.policy),
         "boundary_id": value.boundary_id,
+    }
+
+
+def _input_binding_data(value: ArtifactInputBinding) -> dict[str, Any]:
+    if isinstance(value, InputBinding):
+        return {
+            "name": value.name,
+            "cardinality": value.cardinality,
+            "reference": _reference_data(value.reference),
+        }
+    return {
+        "name": value.name,
+        "cardinality": value.cardinality,
+        "references": [
+            _reference_data(reference) for reference in value.references
+        ],
     }
 
 
@@ -1083,11 +1233,13 @@ def _named_outputs_data(values: tuple[NamedOutput, ...]) -> list[dict[str, Any]]
 
 __all__ = [
     "ArtifactContract",
+    "ArtifactInputBinding",
     "ArtifactReference",
     "ArtifactSource",
     "ArtifactSourceReference",
     "ConfigBinding",
     "ConfigContract",
+    "CollectionInputBinding",
     "ContractError",
     "DependencyEdge",
     "FlowBoundary",

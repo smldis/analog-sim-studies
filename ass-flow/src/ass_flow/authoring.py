@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from contextvars import ContextVar, Token
 from dataclasses import dataclass, field
 import inspect
@@ -12,6 +13,7 @@ from .model import (
     ArtifactContract,
     ArtifactSource,
     ArtifactSourceReference,
+    CollectionInputBinding,
     ConfigBinding,
     ConfigContract,
     ContractError,
@@ -55,6 +57,19 @@ class Parameter:
     def __post_init__(self) -> None:
         # Let the C1 contract remain authoritative for supported literal types.
         ConfigContract("value", self.value_type)
+
+
+@dataclass(frozen=True, slots=True)
+class ArtifactCollection:
+    """A required ordered collection artifact input awaiting its authored name."""
+
+    artifact: ArtifactContract
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.artifact, ArtifactContract):
+            raise ContractError(
+                "artifact collection must contain an ArtifactContract"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -194,6 +209,12 @@ def artifact(kind: str) -> ArtifactContract:
     return ArtifactContract(kind)
 
 
+def artifacts(kind: str) -> ArtifactCollection:
+    """Declare a required, non-empty ordered collection artifact input."""
+
+    return ArtifactCollection(ArtifactContract(kind))
+
+
 def parameter(value_type: type) -> Parameter:
     """Declare the literal Python type of an operation configuration value."""
 
@@ -202,7 +223,7 @@ def parameter(value_type: type) -> Parameter:
 
 def operation(
     *,
-    inputs: Mapping[str, ArtifactContract] | None = None,
+    inputs: Mapping[str, ArtifactContract | ArtifactCollection] | None = None,
     config: Mapping[str, Parameter] | None = None,
     outputs: Mapping[str, ArtifactContract] | None = None,
     resources: Iterable[ResourceContract] = (),
@@ -223,7 +244,7 @@ def operation(
     if selected_policy is not None:
         _require_policy(selected_policy, "operation default policy")
 
-    input_items = _declaration_mapping(inputs, "inputs", ArtifactContract)
+    input_items = _input_declaration_mapping(inputs)
     config_items = _declaration_mapping(config, "config", Parameter)
     output_items = _declaration_mapping(outputs, "outputs", ArtifactContract)
     input_names = {item_name for item_name, _ in input_items}
@@ -252,8 +273,20 @@ def operation(
         definition = OperationDefinition(
             identity=identity,
             inputs=tuple(
-                InputContract(item_name, contract)
-                for item_name, contract in input_items
+                InputContract(
+                    item_name,
+                    (
+                        declaration.artifact
+                        if isinstance(declaration, ArtifactCollection)
+                        else declaration
+                    ),
+                    cardinality=(
+                        "collection"
+                        if isinstance(declaration, ArtifactCollection)
+                        else "scalar"
+                    ),
+                )
+                for item_name, declaration in input_items
             ),
             config=tuple(
                 ConfigContract(item_name, declaration.value_type)
@@ -390,20 +423,40 @@ class PlanDraft:
         self._require_active()
         bound = _bind_operation(authored, args, kwargs)
         definition = authored.definition
-        input_bindings: list[InputBinding] = []
+        input_bindings: list[InputBinding | CollectionInputBinding] = []
         config_bindings: list[ConfigBinding] = []
-        artifact_values: dict[str, ArtifactValue] = {}
+        artifact_values: dict[str, tuple[ArtifactValue, ...]] = {}
 
         for contract in definition.inputs:
-            value = _concise_artifact(bound.arguments[contract.name])
-            self._require_owned(value, f"input {contract.name!r}")
-            if value.artifact.kind != contract.artifact.kind:
-                raise BindingError(
-                    f"input {contract.name!r} expects artifact kind "
-                    f"{contract.artifact.kind!r}, got {value.artifact.kind!r}"
+            authored_value = bound.arguments[contract.name]
+            if contract.cardinality == "collection":
+                values = _artifact_collection(authored_value, contract.name)
+            else:
+                values = (_concise_artifact(authored_value),)
+            for member_index, value in enumerate(values):
+                member_label = (
+                    f"input {contract.name!r} member {member_index}"
+                    if contract.cardinality == "collection"
+                    else f"input {contract.name!r}"
                 )
-            artifact_values[contract.name] = value
-            input_bindings.append(InputBinding(contract.name, value.reference))
+                self._require_owned(value, member_label)
+                if value.artifact.kind != contract.artifact.kind:
+                    raise BindingError(
+                        f"{member_label} expects artifact kind "
+                        f"{contract.artifact.kind!r}, got {value.artifact.kind!r}"
+                    )
+            artifact_values[contract.name] = values
+            if contract.cardinality == "collection":
+                input_bindings.append(
+                    CollectionInputBinding(
+                        contract.name,
+                        tuple(value.reference for value in values),
+                    )
+                )
+            else:
+                input_bindings.append(
+                    InputBinding(contract.name, values[0].reference)
+                )
 
         for contract in definition.config:
             value = bound.arguments[contract.name]
@@ -434,8 +487,12 @@ class PlanDraft:
         self._invocations.append(invocation)
 
         for contract in definition.inputs:
-            value = artifact_values[contract.name]
-            if isinstance(value.reference, OutputReference):
+            for member_index, value in enumerate(artifact_values[contract.name]):
+                if (
+                    contract.cardinality == "scalar"
+                    and not isinstance(value.reference, OutputReference)
+                ):
+                    continue
                 edge_id = f"edge:{self._next_edge:04d}"
                 self._next_edge += 1
                 self._edges.append(
@@ -445,6 +502,11 @@ class PlanDraft:
                         invocation_id,
                         contract.name,
                         contract.artifact.kind,
+                        (
+                            member_index
+                            if contract.cardinality == "collection"
+                            else None
+                        ),
                     )
                 )
 
@@ -700,6 +762,24 @@ def _require_policy(value: object, label: str) -> None:
         raise AuthoringError(f"{label} must be a Policy")
 
 
+def _input_declaration_mapping(
+    value: Mapping[str, ArtifactContract | ArtifactCollection] | None,
+) -> tuple[tuple[str, ArtifactContract | ArtifactCollection], ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, Mapping):
+        raise AuthoringError("operation inputs must be a mapping")
+    items = tuple(value.items())
+    for name, declaration in items:
+        if not isinstance(name, str) or not name.isidentifier():
+            raise AuthoringError("operation inputs names must be Python identifiers")
+        if not isinstance(declaration, ArtifactContract | ArtifactCollection):
+            raise AuthoringError(
+                f"operation inputs {name!r} must use artifact(...) or artifacts(...)"
+            )
+    return tuple(sorted(items, key=lambda item: item[0]))
+
+
 def _declaration_mapping(
     value: Mapping[str, Any] | None, label: str, expected: type
 ) -> tuple[tuple[str, Any], ...]:
@@ -799,7 +879,32 @@ def _concise_artifact(value: Any) -> ArtifactValue:
     )
 
 
+def _artifact_collection(value: Any, input_name: str) -> tuple[ArtifactValue, ...]:
+    if isinstance(value, InvocationResult):
+        # Preserve the actionable selection error for multi-output calls before
+        # reporting that even a concise single output is not a collection.
+        value._as_concise_input()
+    if isinstance(value, (str, bytes, bytearray, memoryview)) or not isinstance(
+        value, Sequence
+    ):
+        raise BindingError(
+            f"collection input {input_name!r} must be a non-string sequence"
+        )
+    if not value:
+        raise BindingError(f"collection input {input_name!r} must not be empty")
+    members = []
+    for member_index, member in enumerate(value):
+        try:
+            members.append(_concise_artifact(member))
+        except BindingError as error:
+            raise BindingError(
+                f"collection input {input_name!r} member {member_index}: {error}"
+            ) from error
+    return tuple(members)
+
+
 __all__ = [
+    "ArtifactCollection",
     "ArtifactValue",
     "AuthoringError",
     "BindingError",
@@ -811,6 +916,7 @@ __all__ = [
     "PlanDraft",
     "PlanningScopeError",
     "artifact",
+    "artifacts",
     "flow",
     "input_artifact",
     "operation",

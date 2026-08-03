@@ -9,6 +9,7 @@ from ass_flow.model import (
     ArtifactSourceReference,
     ConfigBinding,
     ConfigContract,
+    CollectionInputBinding,
     DependencyEdge,
     FlowBoundary,
     FlowDefinition,
@@ -121,6 +122,79 @@ def branching_plan() -> Plan:
     )
 
 
+def collection_plan() -> Plan:
+    plan = branching_plan()
+    merge = replace(
+        plan.operations[1],
+        inputs=(InputContract("measurements", RAW, cardinality="collection"),),
+    )
+    merged = replace(
+        plan.invocations[2],
+        inputs=(
+            CollectionInputBinding(
+                "measurements",
+                (
+                    OutputReference("invoke:tt", "raw"),
+                    OutputReference("invoke:ss", "raw"),
+                ),
+            ),
+        ),
+    )
+    edges = (
+        replace(
+            plan.edges[0],
+            target_input_name="measurements",
+            target_member_index=0,
+        ),
+        replace(
+            plan.edges[1],
+            target_input_name="measurements",
+            target_member_index=1,
+        ),
+    )
+    return replace(
+        plan,
+        operations=(plan.operations[0], merge),
+        invocations=(*plan.invocations[:2], merged),
+        edges=edges,
+    )
+
+
+def source_collection_plan() -> Plan:
+    plan = collection_plan()
+    external = ArtifactSource(
+        "source:measurements",
+        "inputs/existing-measurements.json",
+        RAW,
+    )
+    merged = replace(
+        plan.invocations[2],
+        inputs=(
+            CollectionInputBinding(
+                "measurements",
+                (
+                    ArtifactSourceReference(external.id),
+                    OutputReference("invoke:ss", "raw"),
+                ),
+            ),
+        ),
+    )
+    edges = (
+        replace(
+            plan.edges[0],
+            id="edge:0001",
+            source=ArtifactSourceReference(external.id),
+        ),
+        replace(plan.edges[1], id="edge:0002"),
+    )
+    return replace(
+        plan,
+        sources=(*plan.sources, external),
+        invocations=(*plan.invocations[:2], merged),
+        edges=edges,
+    )
+
+
 def test_values_are_deeply_immutable_and_policies_are_only_data():
     options = {"queue": "short", "constraints": ["linux", "x86_64"]}
     lsf = named_policy("lsf")
@@ -166,6 +240,124 @@ def test_plain_data_and_json_are_deterministic():
     assert reordered.to_json() == plan.to_json()
     assert json.loads(plan.to_json()) == plan.to_data()
     assert " " not in plan.to_json()
+
+
+def test_collection_plan_accepts_one_positioned_edge_per_ordered_member():
+    plan = collection_plan()
+
+    assert plan.validate() is plan
+    binding = plan.invocations[-1].inputs[0]
+    assert isinstance(binding, CollectionInputBinding)
+    assert [reference.invocation_id for reference in binding.references] == [
+        "invoke:tt",
+        "invoke:ss",
+    ]
+    assert [edge.target_member_index for edge in plan.edges] == [0, 1]
+    serialized_invocation = next(
+        invocation
+        for invocation in plan.to_data()["invocations"]
+        if invocation["id"] == "invoke:merge"
+    )
+    assert [
+        reference["invocation_id"]
+        for reference in serialized_invocation["inputs"][0]["references"]
+    ] == ["invoke:tt", "invoke:ss"]
+
+
+def test_source_collection_members_have_positioned_edges_and_validate_by_index():
+    plan = source_collection_plan()
+    reordered = replace(
+        plan,
+        sources=tuple(reversed(plan.sources)),
+        invocations=tuple(reversed(plan.invocations)),
+        edges=tuple(reversed(plan.edges)),
+    )
+
+    assert plan.validate() is plan
+    assert reordered.validate() is reordered
+    assert [type(edge.source) for edge in plan.edges] == [
+        ArtifactSourceReference,
+        OutputReference,
+    ]
+    assert [edge.target_member_index for edge in plan.edges] == [0, 1]
+    assert reordered.to_json() == plan.to_json()
+    assert json.loads(plan.to_json()) == plan.to_data()
+
+    malformed = replace(
+        plan,
+        edges=(
+            replace(plan.edges[0], source=OutputReference("invoke:tt", "raw")),
+            plan.edges[1],
+        ),
+    )
+    with pytest.raises(PlanValidationError) as caught:
+        malformed.validate()
+    assert "edge_binding_mismatch" in {
+        issue.code for issue in caught.value.issues
+    }
+
+
+@pytest.mark.parametrize(
+    ("mutate", "expected_code"),
+    [
+        (
+            lambda plan: replace(plan, edges=plan.edges[:1]),
+            "missing_dependency_edge",
+        ),
+        (
+            lambda plan: replace(
+                plan,
+                edges=(
+                    plan.edges[0],
+                    replace(plan.edges[1], target_member_index=0),
+                ),
+            ),
+            "duplicate_target_edge",
+        ),
+        (
+            lambda plan: replace(
+                plan,
+                edges=(
+                    replace(plan.edges[0], target_member_index=1),
+                    replace(plan.edges[1], target_member_index=0),
+                ),
+            ),
+            "edge_binding_mismatch",
+        ),
+        (
+            lambda plan: replace(
+                plan,
+                edges=(replace(plan.edges[0], target_member_index=None), plan.edges[1]),
+            ),
+            "missing_edge_member_position",
+        ),
+        (
+            lambda plan: replace(
+                plan,
+                edges=(replace(plan.edges[0], target_member_index=7), plan.edges[1]),
+            ),
+            "invalid_edge_member_position",
+        ),
+        (
+            lambda plan: replace(
+                plan,
+                invocations=(
+                    *plan.invocations[:2],
+                    replace(plan.invocations[2], inputs=()),
+                ),
+                edges=(),
+            ),
+            "missing_input",
+        ),
+    ],
+)
+def test_collection_member_position_defects_are_rejected(mutate, expected_code):
+    malformed = mutate(collection_plan())
+
+    with pytest.raises(PlanValidationError) as caught:
+        malformed.validate()
+
+    assert expected_code in {issue.code for issue in caught.value.issues}
 
 
 @pytest.mark.parametrize(

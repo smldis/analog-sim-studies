@@ -2,7 +2,7 @@
 
 ## Status
 
-**Phase:** Phase 1 component promotion complete
+**Phase:** Phase 2A collection-valued artifact inputs complete; Phase 2B pending
 
 **Authorized slice:** inspectable static planning only
 
@@ -32,6 +32,13 @@
 | P1.5 | Promote root composition contracts | complete | Root unit declaration, developer requirements, README, ontology, and four-child integration expectation updated without adding runtime authority |
 | P1.6 | Verify the promoted slice | complete | 25 focused tests pass; four-child tree and full composed tests pass; wheel builds; aggregate docs discovery/staging includes ASS Flow; reference scans are clean |
 
+## Phase 2 core graph semantics
+
+| ID | Work | State | Evidence |
+| --- | --- | --- | --- |
+| P2A | Collection-valued artifact inputs | complete | Public `artifacts(kind)` produces required ordered non-empty collection contracts; immutable bindings retain source/output artifact references in member order; every member has a positioned dependency edge; authoring and Plan validation reject invalid values and malformed positions; all 36 component tests pass |
+| P2B | Explicit stable authored identity | pending | Authorized in `PLANNING.md`; no key API or identity redesign implemented in Phase 2A |
+
 ## File ownership during delegation
 
 The agents share one worktree. Each task prompt assigns exact files. Agents
@@ -47,6 +54,9 @@ dialecticH run evidence.
 - Immutable `@operation` and `@flow` definitions, explicit `plan(...)` scope,
   nested boundary capture, early binding validation, and stable repeated-plan
   IDs.
+- Required ordered collection artifact inputs through `artifacts(kind)`, with
+  explicit collection contract/binding cardinality and one positioned
+  dependency edge per member.
 - An explicit `submit(...)` stub that refuses execution.
 
 ## Inactive historical material
@@ -65,8 +75,8 @@ dialecticH run evidence.
 
 ## Later authorized semantics
 
-- collection-valued fan-in and explicit authored keys belong only to the
-  unchanged authorized Phase 2 plan in `PLANNING.md`.
+- explicit authored keys remain pending as Phase 2B in `PLANNING.md`; Phase 2A
+  does not add or alter authored identity behavior.
 
 ## Verification log
 
@@ -101,6 +111,14 @@ dialecticH run evidence.
 - Phase 1 scope check (2026-08-03): retained implementation, tests, and example
   files match their committed prototype blobs; the Phase 2 plan section retains
   SHA-256 `a04bf2aedfc72e3278cfc0dda2ffd730c609b53cf5ac3081764629f9104444a9`.
+- Phase 2A (2026-08-03): the complete component suite passed 36 tests, including
+  ordered collection fan-in, positioned edges for external-source and
+  operation-output members, deterministic repeat planning/JSON, early authoring
+  rejection, malformed member-position/source matching, and scalar regressions.
+  All package source and component test modules passed `python -m py_compile`.
+- Phase 2A composition (2026-08-03): the full four-child composition passed 36
+  ASS Flow, 45 netlist-decomposition, 77 sidecar-edits, 28 spice-canonical, and
+  7 root integration tests with the child source checkouts on `PYTHONPATH`.
 
 ## Findings and changes to the plan
 
@@ -123,9 +141,11 @@ dialecticH run evidence.
   unconditional failure bodies, but arbitrary Python flow bodies do execute to
   author the graph and cannot be proven side-effect-free by this API. Flow-body
   purity remains an authored discipline, not an enforced invariant.
-- Artifact inputs are scalar, so genuinely dynamic collection fan-in is not
-  expressible directly. The example uses an honest fixed three-input reducer;
-  broader collection/reducer semantics remain deferred rather than simulated.
+- Phase 2A demonstrates direct static collection fan-in without encoding
+  references as configuration: a collection binding preserves authored member
+  order and produces correspondingly positioned dependency edges. The
+  characterization example intentionally retains its Phase 1 fixed three-input
+  reducer until the authorized Phase 3 update.
 - **Historical conclusion (superseded).** The spike answered its decision
   question positively for static planning and initially recommended remaining
   outside `unit.toml` until a later boundary review. The user direction recorded

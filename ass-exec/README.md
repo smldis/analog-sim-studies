@@ -45,8 +45,41 @@ between terminal status and recording it, and a site that cannot be asked
 whether it accepted anything. The first two must resolve to exactly one job and
 no rerun; the third must fail loudly rather than guess.
 
-The only working substrate today is in-process execution. LSF, Dask, worker
-pools, placement, retries, and graph scheduling are outside this unit — see
+## Running on LSF
+
+One selected invocation becomes one `bsub -I` job with its own name, resource
+request, and exit status:
+
+```python
+from ass_exec.durability import Durability, execute
+from ass_exec.lsf import LSFInteractiveTransport
+
+lsf = LSFInteractiveTransport(walltime="30", queue="normal", cores=4)
+execute(
+    lsf,
+    {"command": ["ngspice", "-b", "corner_tt.spice"], "cwd": "run/tt"},
+    durability=Durability.RECORDED,
+    identity=identity.rendered,
+    root="attempts",
+)
+```
+
+Interactive submission is the mechanism, not a concession to human use: LSF
+ties the job to the submitting client, so it cannot outlive the work that
+wanted it. The client stays in this process's group and asks the kernel to
+signal it if we die, which closes the one gap LSF does not. `-W` is mandatory
+as the bound that survives everything else failing.
+
+This holds one process per concurrent job, which is right for a handful of
+independently visible jobs and wrong for hundreds. Many similar jobs belong on
+a pooled `dask_jobqueue.LSFCluster`; `LSFPooledTransport` marks that boundary
+and currently refuses.
+
+No LSF behaviour here has been run against a real cluster — the tests use a
+fake `bsub`.
+
+Worker pools, placement enforcement, retries, and graph scheduling are outside
+this unit — see
 [`ONTOLOGY.md`](ONTOLOGY.md) for the owned boundary and
 [`DECISIONS.md`](DECISIONS.md) for what is settled, what is open, and what
 would change our minds.

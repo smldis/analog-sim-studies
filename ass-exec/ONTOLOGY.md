@@ -61,6 +61,16 @@ degenerate case rather than a simulation of a remote one.
 - `reconcile(...)` publishes disagreement between the record and the substrate
   as the terminal outcome `unreconciled` rather than normalizing it into
   success or failure.
+- `ass_exec.lsf.LSFInteractiveTransport` submits one `bsub -I` job per attempt
+  with `-J <identity>` and a mandatory `-W` walltime, and waits for it. LSF
+  binds the job to the submitting client; the client stays in this process's
+  group and requests `PR_SET_PDEATHSIG` on Linux, so the job does not survive
+  its owner. External work is a command line, not an in-process callable.
+- `ass_exec.lsf.LSFPooledTransport` is a refusing boundary. Pooled execution
+  should adopt `dask_jobqueue.LSFCluster` rather than reimplement worker
+  lifetime.
+- Neither is reexported from the package initializer: reaching an external
+  scheduler is an explicit import.
 - `Durability` is declared per invocation, never inferred from placement.
   `EPHEMERAL` touches no filesystem, requires no identity or root, and reruns
   on every call. `RECORDED` runs the full protocol and completes from an
@@ -82,11 +92,15 @@ policy resolution, artifact storage or addressing, codec execution, evidence
 promotion, or the study lifecycle. It does not consume Plan IR yet: bundles are
 currently plain mappings supplied by a caller.
 
-It does not yet enforce owner-bound lifetime — no lease, heartbeat, or reaping
-exists — and it does not yet implement staleness. `RECORDED` reuse is keyed on
-attempt identity alone, so it will happily reuse a result whose inputs have
-since changed. Sound reuse needs input identity in the bundle, which is
-undecided.
+Owner-bound lifetime is enforced by `bsub -I` plus local process-group and
+`PR_SET_PDEATHSIG` discipline, not by any lease or heartbeat this unit owns. No
+LSF behaviour has been exercised against a real cluster: the direct transport's
+evidence comes from a fake `bsub`, and covers submission shape, refusal, exit
+mapping, and cancellation naming only.
+
+The unit does not yet implement staleness. `RECORDED` reuse is keyed on attempt
+identity alone, so it will happily reuse a result whose inputs have since
+changed. Sound reuse needs input identity in the bundle, which is undecided.
 
 ## Child composition
 

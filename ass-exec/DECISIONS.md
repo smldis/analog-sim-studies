@@ -93,6 +93,10 @@ architecture's rejection line 1 has not been crossed.
 - **`bsub -J` and lookup by job name are available** at the target site.
 - **Minimal local invocations must not pay for durability.** Recording is a
   declared property of work that leaves the process, not a tax on every call.
+- **Interactive jobs are permitted at the target site**, so `bsub -I` is the
+  direct mode.
+- **Many similar jobs belong on a pooled `LSFCluster`**, not on many concurrent
+  `-I` submissions.
 
 ## Open
 
@@ -122,21 +126,35 @@ architecture's rejection line 1 has not been crossed.
   - *Batch walltime.* `bsub -W` lets LSF bound the job itself. Coarse, but
     unconditional, and the only layer that survives the owner losing power.
 
-  **Proposed composition (not yet accepted):** mandatory `-W` resolved from
-  policy as the unconditional ceiling; SIGINT/SIGTERM trapped to `bkill -J
-  <attempt-id>` for the ordinary interactive path; reaping by identity at the
-  next launch to cover SIGKILL and power loss; pooled mode inheriting
-  `dask-jobqueue`'s behaviour unchanged. No lease file, no daemon, no shared
-  state beyond the attempt record. `bsub -I` stays available as an escape hatch
-  but is not the contract, since it binds the guarantee to an interactive
-  session.
+  **Accepted (2026-08-03, user direction): `bsub -I`, and none of the above.**
+  The site permits interactive jobs, so LSF itself binds job lifetime to the
+  submitting client and no lease, heartbeat, signal-trap layer, or reaper is
+  needed. An earlier objection — that `-I` loses its guarantee outside an
+  interactive session — was wrong: `-I` needs no terminal, blocks, and behaves
+  identically under a script. The manifesto's rule about authority not living
+  in an interactive session was also mis-applied; `-I` is a transport, while
+  intent and records stay in files.
 
-  This makes identity uniqueness load-bearing in a new way: reaping is
-  destructive, so `bkill -J` must be incapable of matching someone else's job.
-- **Orphan reaping.** After an indeterminate submission the correct action is
-  discover-and-kill. The protocol expresses this but no transport implements
-  it, and the destructive action deserves its own failure injection before any
-  real `bkill` is wired up.
+  The one real gap is local, not LSF's: `-I` binds the job to the `bsub` client,
+  which is our child. If this process is killed outright the child would be
+  reparented and keep the job alive. Closed by keeping the child in our process
+  group and setting `PR_SET_PDEATHSIG` on Linux. `-W` is still mandatory as the
+  one bound that survives everything else failing.
+
+  Known costs, accepted: one process and one connection per concurrent job, no
+  requeue, and output streaming rather than landing in job output files. The
+  first is why many jobs go to a pool instead.
+- **Orphan reaping.** Mostly obviated by `-I`: a job should not survive its
+  owner, so a `bjobs -J` match means something already went wrong.
+  `LSFInteractiveTransport.discover(...)` reports such a leftover but nothing
+  acts on it automatically, and nothing should until a destructive `bkill` path
+  has its own failure injection.
+- **Pooled mode.** Accepted in principle for many similar invocations, where
+  holding one process per job is the wrong shape. `LSFPooledTransport` is a
+  refusing boundary; the implementation should adopt
+  `dask_jobqueue.LSFCluster`, whose `death_timeout` and close-time `bkill`
+  already give owner-bound worker lifetime. Not started; `dask-jobqueue` is not
+  installed in this environment.
 - **Result reuse and staleness.** The real resume path: rerun a flow and skip
   invocations whose results are already published and whose inputs are
   unchanged. This needs input identity, which needs a bundle contract, which is
@@ -145,9 +163,6 @@ architecture's rejection line 1 has not been crossed.
   from ASS Flow's Plan IR, and who materializes input values across the
   boundary, is undecided — but result reuse now pushes on it, since reuse is
   only sound if input identity is part of the bundle.
-- **Pooled mode.** Adopt `dask-jobqueue` rather than rebuild it; it already
-  implements owner-bound worker lifetime. Not yet exercised here, and not
-  installed in the current environment.
 - **Who drives readiness.** Dask remains the hypothesis, and the lifetime
   correction removes the main objection to it owning the lifecycle. Nothing in
   this unit depends on that choice, which is worth preserving.

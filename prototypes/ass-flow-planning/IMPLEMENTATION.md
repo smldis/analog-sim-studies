@@ -2,7 +2,7 @@
 
 ## Status
 
-**Phase:** bounded prototype complete
+**Phase:** component promotion authorized; agent plan ready
 
 **Authorized slice:** inspectable static planning only
 
@@ -94,3 +94,8 @@ dialecticH run evidence.
   `unit.toml` until a later review decides whether stable identity across graph
   edits and collection-valued fan-in belong in the same component. Sequential
   editing remains deferred by the user; runtime work remains unauthorized.
+- **Superseding direction (2026-08-03):** the user selected `ass-flow/` as the
+  component's actual location and authorized continued core development. Phase
+  1 promotes the tested code without changing its prototype maturity. Phase 2
+  addresses collection fan-in and explicit stable authored keys. The sequential
+  convenience idea is archived and removed from active development scope.

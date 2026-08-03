@@ -178,3 +178,124 @@ The recommendation is to retain this directory as runnable design evidence and
 not promote it into `unit.toml` or a permanent public package yet. Sequential
 editing remains deferred by the user, and all runtime surfaces remain explicit
 stubs or exclusions.
+
+## Authorized development plan: promote ASS Flow
+
+**Authorization:** On 2026-08-03 the user directed development to continue,
+selected `ass-flow/` as the actual component location, and archived the
+sequential-flow convenience idea. This supersedes the preceding recommendation
+to retain the implementation under `prototypes/`, but it does not change the
+component's `prototype` maturity or authorize executor work.
+
+### Invariants for every phase
+
+- `ass-flow` owns generic Python-authored operation/flow planning and normalized
+  Plan IR; it does not own simulation meaning, Dask scheduling, LSF transport,
+  attempt recovery, evidence promotion, or the complete study lifecycle.
+- Planning remains explicit. Operation bodies never execute during planning;
+  arbitrary flow bodies remain ordinary authored Python and therefore cannot be
+  statically proven side-effect-free.
+- Normalized plans remain immutable, deterministic, JSON-inspectable, and
+  validated before any future execution boundary.
+- `submit(...)` remains a refusing `NotImplementedError` boundary in this pass.
+- Existing user changes and dialecticH run evidence remain outside all commits.
+- Each phase is independently testable and committed before the next phase.
+
+### Phase 1 — component promotion and archive
+
+Move the complete prototype to the direct child path `ass-flow/` and establish
+the repository's normal component boundary:
+
+- retain `src/ass_flow/`, `tests/`, `examples/`, `PLANNING.md`, and
+  `IMPLEMENTATION.md` under `ass-flow/`;
+- add `ass-flow/ONTOLOGY.md`, `ass-flow/AGENTS.md`, `ass-flow/unit.toml`, and a
+  minimal `ass-flow/pyproject.toml` for an independently testable Python 3.10+
+  prototype;
+- add `ass-flow/docs/index.md` and
+  `ass-flow/docs/archive/sequential-flow-convenience.md`;
+- archive sequential editing as inactive historical design material: no active
+  checklist item, acceptance criterion, implementation stub, or implied
+  backlog; the archive may name a concrete reactivation trigger;
+- replace the temporary `pytest.ini` with package-owned pytest configuration;
+- add `ass-flow` to root `unit.toml`, developer bootstrap, README, ontology, and
+  composition expectations without claiming an execution contract.
+
+Acceptance:
+
+- `python composition.py tree` lists `ass-flow` as one of four direct units;
+- the component can be tested from `ass-flow/` without relying on the old path;
+- aggregate docs can discover the child docs contract;
+- `rg` finds no maintained reference that treats
+  `prototypes/ass-flow-planning/` as the active implementation;
+- the sequential helper appears only in its archive record and provenance
+  history, not active scope.
+
+### Phase 2 — finish the core static graph semantics
+
+Implement only the two gaps exposed by the first prototype's evidence.
+
+#### 2A. Collection-valued artifact inputs
+
+- Add an explicit public declaration such as `artifacts("corner-metrics")` for
+  an operation input containing a non-empty ordered collection of homogeneous
+  artifact references.
+- Preserve scalar `artifact(...)` behavior unchanged.
+- Represent collection cardinality in the immutable input contract and binding;
+  never encode artifact references as JSON configuration values.
+- Emit and validate one dependency edge per collection member, including a
+  stable member position so multiple edges may target one declared input.
+- Reject non-sequences, empty collections, foreign-plan values, multi-output
+  results without explicit selection, and mixed artifact kinds during planning.
+- Replace the fixed three-input characterization reducer with the direct public
+  shape `summarize(measurements)`.
+
+#### 2B. Explicit stable authored identity
+
+- Extend immutable operation and flow call views with an optional explicit
+  authored key through `.options(key="...")`; policy and key overrides remain
+  immutable and composable.
+- Scope keys by the containing flow boundary and reject duplicates before plan
+  finalization.
+- Derive keyed invocation/boundary IDs and their edge IDs from normalized
+  authored identity rather than global counters, so inserting an unrelated
+  sibling does not rename explicitly keyed work.
+- Keep deterministic generated IDs for unkeyed calls and document that only
+  explicitly keyed identities promise stability across authored graph edits.
+- Do not turn keys into cache keys, Dask keys, attempt identities, sequential
+  slots, or runtime authority.
+
+Acceptance:
+
+- an arbitrary number of statically authored corner outputs feeds one summary
+  invocation through a collection contract;
+- repeated construction yields identical Plan data and JSON;
+- inserting an unrelated unkeyed sibling leaves explicitly keyed invocation,
+  boundary, and connecting edge IDs unchanged;
+- duplicate keys, foreign handles, empty collections, and kind mismatches fail
+  before execution;
+- no sequential editing or executor behavior enters the public API.
+
+### Phase 3 — acceptance and boundary review
+
+- Update the simulator-free characterization example to use collection fan-in
+  and explicit keys through public APIs only.
+- Add adversarial tests for ordering, duplicate keys, nested boundaries,
+  rollback, collection validation, canonical JSON, and operation-body
+  non-execution.
+- Update the component ontology only with behavior demonstrated by tests.
+- Record limitations and the next decision question in `IMPLEMENTATION.md`.
+- Run component tests, wheel build, root composition tests, and aggregate docs.
+
+### Delegation map
+
+1. `ass-flow-boundary` — Phase 1 filesystem/package/composition promotion and
+   sequential archive; no core semantic changes.
+2. `ass-flow-collections` — Phase 2A model/authoring implementation and focused
+   tests; no identity redesign.
+3. `ass-flow-identities` — Phase 2B keyed identity implementation and focused
+   tests after 2A lands.
+4. `ass-flow-review` — Phase 3 example, adversarial acceptance, and independent
+   scope/ontology review; source defects are reported to their owning agent.
+
+The coordinating session owns phase ordering, plan delivery, diff review,
+cross-component integration, tracker updates, verification, and commits.

@@ -27,6 +27,28 @@ authorization records, stop-condition recitals, and delegated review panes.
 
 This revision is recorded rather than drifted into, as the main requires.
 
+### Amendment (2026-08-03): what the two real errors taught
+
+Two substantive errors have occurred in this line of work, with opposite
+shapes, and neither is explained by "not enough reasoning per step".
+
+*The detached-lifetime premise* — that an accepted job outlives its submitter —
+was produced by the heavy dialectic workflow, argued at length in the graduated
+main, and survived reviewer passes. It was falsified by one sentence of user
+direction. Depth did not catch it; contact with the requirement did.
+
+*The unsound reuse default* — `RECORDED` returning results computed from
+different inputs — was produced by the light workflow, flagged in the same
+message that shipped it, recorded in the ontology, and fixed two turns later.
+The reasoning happened; the shipping decision was wrong.
+
+The corrective is therefore not more ceremony, and not deeper per-step review.
+It is two cheap rules, now in `AGENTS.md`: incompleteness must refuse rather
+than answer wrongly, and the invariant gets stated in one sentence before the
+surface is written. Adversarial review is reserved for finished slices, where
+it finds things, rather than applied per increment, where it mostly restates
+what the increment already claims about itself.
+
 ## Premise correction (2026-08-03, user direction)
 
 The unit was built on the architecture's lifetime asymmetry: an accepted batch

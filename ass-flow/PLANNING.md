@@ -1,4 +1,4 @@
-# ASS Flow planning spike
+# ASS Flow planning and evidence work orders
 
 ## Authority and provenance
 
@@ -301,3 +301,175 @@ Acceptance:
 
 The coordinating session owns phase ordering, plan delivery, diff review,
 cross-component integration, tracker updates, verification, and commits.
+
+## Authorized work order: explicit materialized-source handoff
+
+**Work-order ID:** `ASS-FLOW-WO-2026-08-03-ARTIFACT-HANDOFF`
+
+**Authorization:** On 2026-08-03 the user directed development to proceed from
+the completed OTA/PVT Plan reference. This authorizes the bounded static
+contract below. It does not authorize Dask lowering, execution, publication,
+materialization, a codec implementation, a store, or a runtime artifact value.
+
+### Decision question
+
+Can ASS Flow distinguish an addressed external artifact from an ephemeral
+operation result, and record the external artifact's codec and accessibility
+requirements, without materializing a value or changing the existing graph?
+
+### Review correction and ownership
+
+A fresh read-only Codex high architecture review initially proposed mandatory
+publication on every artifact contract. Rechecking the exact graduated main
+rejected that mechanism: it would force every local edge through a durable
+artifact and discard the preserved ability for compatible local and pooled
+Dask work to retain ephemeral values.
+
+The corrected boundary is narrower:
+
+- ASS Flow owns immutable declarations, value-class inspection, serialization,
+  and structural validation because those extend its current Plan contract;
+- authored external sources are already-materialized artifact references;
+- ordinary operation outputs remain ephemeral references, even when an output
+  advertises a possible materialized representation;
+- a future adapter/lowering boundary owns address resolution, codecs,
+  accessibility checks, publication, and runtime materialized values;
+- a future explicit materialization operation or visible final-output request
+  must turn an ephemeral result into an addressed artifact. This work order
+  does not invent either mechanism.
+
+The root-owned OTA/PVT reference supplies cross-unit acceptance evidence. No
+new child or adapter unit is justified by data-only declarations alone.
+
+### Authorized immutable model
+
+Keep `ArtifactContract(kind)` purely logical. Add four data-only concepts:
+
+- `CodecContract(name, version, options)` identifies a codec contract; options
+  use the existing deeply frozen canonical JSON values;
+- `ArtifactAddress(address_space, locator)` records a structured, opaque
+  authored address without resolving or normalizing it;
+- `MaterializationSpec(codec, address_space, access_scope)` describes the
+  representation and environment assumption of an addressed artifact;
+- `OutputContract.can_materialize_as` optionally advertises one representation
+  that a later explicit materializer could request. It is capability metadata,
+  not publication or a change of value class.
+
+`ArtifactSource` replaces its free-form `uri` field with an `address` and a
+required `materialized_as`. `ArtifactSourceReference` has the fixed inspectable
+value class `artifact`; `OutputReference` has the fixed inspectable value class
+`ephemeral`.
+
+The reference classes, not artifact kinds or execution policies, determine the
+binding value class. Collection bindings may contain both classes while
+retaining order. An output capability must never create a source, address,
+edge, publication, or runtime value.
+
+### Authorized public authoring surface
+
+Preserve `artifact(kind)` and `artifacts(kind)` as logical declarations. Add:
+
+```python
+JSON_V1 = codec("json", version="1", encoding="utf-8")
+REPOSITORY_JSON = materialization(
+    codec=JSON_V1,
+    address_space="repository-relative",
+    access_scope="repository-checkout",
+)
+
+limits = input_artifact(
+    address("repository-relative", "inputs/spec_limits.json"),
+    artifact=artifact("spec-limits"),
+    materialized_as=REPOSITORY_JSON,
+)
+
+@operation(
+    outputs={
+        "report": materializable(
+            artifact("report"),
+            as_=REPOSITORY_JSON,
+        )
+    },
+)
+def report():
+    ...
+```
+
+The legacy `input_artifact(uri, kind)` form must fail rather than preserve a
+kind-only external handoff. `materializable(...)` is accepted for outputs only.
+There is no `publish(...)`, default materialization, or automatic transfer.
+
+### Schema and identity
+
+Canonical Plan data changes to schema version 2. It serializes structured
+source addresses, source codec/access data, fixed reference value classes, and
+nullable output capability metadata. This prototype gets no v1 writer,
+migration layer, or compatibility shim.
+
+Graph topology, operation/flow versions, invocation IDs, boundary IDs, edge
+IDs, and scoped authored keys must remain unchanged. The OTA/PVT operations
+retain version `1` because their logical contracts do not change. Adding only
+external source materialization declarations is not an operation semantic
+version change.
+
+### Validation and acceptance evidence
+
+- codec name/version, address space, and access scope are trimmed
+  executor-neutral identifiers;
+- codec options are finite, canonical JSON-compatible data;
+- a locator is non-empty and opaque; planning performs no normalization,
+  existence check, read, resolution, or I/O;
+- an address space must exactly match its `MaterializationSpec`;
+- every external source has an address, codec, and access scope; the kind-only
+  legacy surface fails during authoring and independently malformed Plans fail
+  validation;
+- source and operation-output bindings retain logical kind checking;
+- reference value classes serialize as `artifact` and `ephemeral`
+  respectively, including positioned members of mixed collections;
+- optional output capability changes only operation contract metadata and
+  remains an ephemeral `OutputReference` when invoked;
+- the OTA/PVT graph retains 4 sources, 6 operations, 2 flows, 4 boundaries, 16
+  invocations, 18 edges, and 16 outputs with unchanged keyed identities;
+- its four sources declare honest repository-relative representations: a
+  directory-tree codec, Python-source/UTF-8 for the edit file, and JSON/UTF-8
+  for the measurement definition and limits;
+- the OTA/PVT final evaluation and all ordinary operation dependencies remain
+  ephemeral; no nonexistent output codec is claimed;
+- repeated construction and canonical JSON remain deterministic under schema
+  2, planning performs no I/O, and operation bodies remain unexecuted;
+- component, root integration, full composition, and diff checks pass;
+- maintained code contains no materializer, publisher, resolver, codec
+  implementation, runtime artifact value, Dask/LSF integration, cache,
+  attempt, or provenance state.
+
+### Files and delegation
+
+Core scope is limited to `ass-flow/src/ass_flow/`, its three test modules and
+example, local ontology/README/trackers/architecture ledger, the root OTA/PVT
+reference and focused integration test, and the root ontology claim supported
+by that reference. Sibling component source and ontologies remain untouched.
+
+Implementation is delegated sequentially to fresh Codex high-reasoning agents:
+
+1. `artifact-handoff-core` owns the immutable model, authoring API, schema-2
+   serialization, focused component tests, and characterization example;
+2. `artifact-handoff-evidence` owns OTA/PVT source declarations, root
+   integration evidence, and documentation updates after the core is stable;
+3. `artifact-handoff-review` independently reviews the full diff and boundary.
+
+The coordinating session owns prompts, integration decisions, tracker state,
+independent verification, corrections, staging, and commits.
+
+### Stop and completion rules
+
+Stop instead of broadening if correctness requires reading/decoding an
+artifact, resolving an address, checking real accessibility, publishing a
+value, allocating a target, introducing a materialized operation result,
+selecting Dask/LSF policy, adding adapter-specific code to ASS Flow, or adding a
+second graph model.
+
+This work order completes when the schema-2 static distinction is implemented,
+the OTA/PVT reference demonstrates four explicit artifact sources and
+ephemeral internal edges, all checks pass, and an independent high review
+accepts the no-runtime boundary. Completion authorizes drafting the local Dask
+lowering work order; it does not implement or pre-accept that hypothesis.

@@ -365,20 +365,25 @@ attempt identity and reconciliation protocol.
 
 ## Current evidence work order
 
-The root-owned `docs/reference/ota-pvt-plan/PLANNING.md` work order is complete.
-Its static, non-executing cross-unit reference remains outside this component
-because OTA/PVT, simulator, measurement, and evaluation meaning are not part of
-ASS Flow's ontology. It confirms that the current Plan IR is adequate for this
-fixed graph and exposes artifact/adapter handoff, rather than graph
-expressiveness, as the next prerequisite to execution.
+The user-authorized
+`ASS-FLOW-WO-2026-08-03-ARTIFACT-HANDOFF` work order is recorded in
+`PLANNING.md`. It enriches static Plan declarations only: external sources
+become structured, addressed artifact references with explicit codec and
+accessibility requirements, while every ordinary operation output remains an
+ephemeral reference.
 
-The next work order should isolate the smallest generic contract that lets an
-adapter address, encode/decode, publish, and hand off a declared artifact. It
-must not silently expand into a full artifact store or defer execution
-indefinitely. Local Dask lowering remains the next execution experiment after
-that explicit handoff seam. The completed reference does not itself authorize
-that contract, local lowering, Dask, LSF, sibling adapters, publication, or a
-study runtime.
+An initial review proposal to make publication mandatory on every output was
+rejected after rechecking the exact graduated main. That mechanism would have
+discarded the retained in-memory Dask composition hypothesis. Optional output
+materialization capability is declaration data only; it cannot publish or
+change an edge's value class. Final-output publication and cross-environment
+materialization remain visible decisions for later work orders.
+
+The completed root-owned OTA/PVT Plan reference supplies the acceptance graph
+without moving its domain meaning into ASS Flow. Local Dask lowering remains
+the next execution experiment after this static source-handoff prerequisite.
+Neither the current work order nor its eventual passing evidence authorizes
+Dask, LSF, sibling adapters, publication, or a study runtime.
 
 ## Rules for the next development decision
 

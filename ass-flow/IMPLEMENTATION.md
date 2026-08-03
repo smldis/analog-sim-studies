@@ -2,9 +2,9 @@
 
 ## Status
 
-**Phase:** Phase 3 acceptance and boundary review complete
+**Phase:** explicit materialized-source handoff work order planned; implementation queued
 
-**Authorized slice:** inspectable static planning only
+**Authorized slice:** static planning plus materialized-source declarations only
 
 **Component boundary:** declared direct child at `ass-flow/`
 
@@ -46,6 +46,17 @@
 | P3.1 | Public characterization example | complete | The reducer declares `artifacts("corner-metrics")`; the root, per-corner flows, corner operations, and summary call use explicit scoped keys; nominal-only planning binds one real member and planning with extremes binds three distinct members |
 | P3.2 | Adversarial acceptance coverage | complete | Acceptance tests verify collection binding/edge order for one and three members, visible scoped keys, fully keyed connecting edges, repeat data/JSON identity, canonical stdout, and operation-body non-execution while retaining rollback, foreign-handle, no-runtime, mapping-canonicalization, and refusal coverage |
 | P3.3 | Independent source-boundary review | complete | Complete committed `src/ass_flow` inspection found immutable data/validation, explicit scoped graph capture, and the refusing `submit(...)` boundary; no execution, scheduler, transport, persistence, retry, publication, plugin, cache, or dynamic-replanning authority was found |
+
+## Phase 4 explicit materialized-source handoff
+
+| ID | Work | Owner | State | Evidence |
+| --- | --- | --- | --- | --- |
+| P4.1 | Freeze corrected three-value boundary and schema-2 acceptance contract | Coordinating session plus Codex high (`artifact-handoff-plan-review`) | complete | Exact graduated main recheck rejected mandatory publication on ordinary outputs; `PLANNING.md` records the corrected external-artifact/ephemeral-output split |
+| P4.2 | Add immutable codec, address, materialization, and value-class model | Codex high (`artifact-handoff-core`) | queued | Must remain data-only and leave graph/identity semantics unchanged |
+| P4.3 | Add strict authoring surface and focused component evidence | Codex high (`artifact-handoff-core`) | queued | Kind-only external sources must fail; output capability must remain ephemeral |
+| P4.4 | Adapt OTA/PVT sources and cross-unit evidence | Codex high (`artifact-handoff-evidence`) | blocked on P4.2-P4.3 | Four structured sources; unchanged graph topology and operation/flow versions |
+| P4.5 | Independent source/boundary review | Codex high (`artifact-handoff-review`) | blocked on P4.2-P4.4 | Must inspect the full diff and reject runtime/materialization leakage |
+| P4.6 | Full verification and completion decision | Coordinating session | blocked on P4.2-P4.5 | Component, root integration, composition, canonical JSON, and diff checks |
 
 ## File ownership during delegation
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-**Phase:** Phase 2A collection-valued artifact inputs complete; Phase 2B pending
+**Phase:** Phase 2 complete; Phase 3 review pending
 
 **Authorized slice:** inspectable static planning only
 
@@ -37,7 +37,7 @@
 | ID | Work | State | Evidence |
 | --- | --- | --- | --- |
 | P2A | Collection-valued artifact inputs | complete | Public `artifacts(kind)` produces required ordered non-empty collection contracts; immutable bindings retain source/output artifact references in member order; every member has a positioned dependency edge; authoring and Plan validation reject invalid values and malformed positions; all 36 component tests pass |
-| P2B | Explicit stable authored identity | pending | Authorized in `PLANNING.md`; no key API or identity redesign implemented in Phase 2A |
+| P2B | Explicit stable authored identity | complete | Immutable operation policy/key views and keyed flow views preserve scoped authored keys in Plan IR; duplicate namespaces and rollback are validated; keyed IDs and fully keyed connecting edges survive unrelated unkeyed sibling insertion; all 49 component tests pass |
 
 ## File ownership during delegation
 
@@ -57,6 +57,9 @@ dialecticH run evidence.
 - Required ordered collection artifact inputs through `artifacts(kind)`, with
   explicit collection contract/binding cardinality and one positioned
   dependency edge per member.
+- Optional authored keys on immutable operation and flow call views, with one
+  operation/flow namespace per containing boundary, stable scoped Plan IDs,
+  stable fully keyed connecting edges, and explicit canonical IR fields.
 - An explicit `submit(...)` stub that refuses execution.
 
 ## Inactive historical material
@@ -73,10 +76,11 @@ dialecticH run evidence.
 - dynamic or result-dependent replanning: deferred;
 - plugins and declarative flow configuration: deferred;
 
-## Later authorized semantics
+## Later authorized review
 
-- explicit authored keys remain pending as Phase 2B in `PLANNING.md`; Phase 2A
-  does not add or alter authored identity behavior.
+- Phase 3 acceptance/example/boundary review remains pending. The
+  characterization example, component ontology, README, and docs intentionally
+  retain their pre-Phase-3 state.
 
 ## Verification log
 
@@ -119,6 +123,16 @@ dialecticH run evidence.
 - Phase 2A composition (2026-08-03): the full four-child composition passed 36
   ASS Flow, 45 netlist-decomposition, 77 sidecar-edits, 28 spice-canonical, and
   7 root integration tests with the child source checkouts on `PYTHONPATH`.
+- Phase 2B (2026-08-03): the complete component suite passed 49 tests. Focused
+  evidence covers policy/key option composition in both orders, keyed nested
+  flows, canonical repeat planning, cross-edit keyed invocation/boundary/edge
+  stability, scalar and collection edge behavior, scoped duplicate rejection,
+  distinct-scope reuse, complete operation/flow rollback, early key syntax
+  rejection, and independent Plan validation. All package and test modules
+  passed `python -m py_compile`, and `git diff --check` passed.
+- Phase 2B composition (2026-08-03): the full four-child composition passed 49
+  ASS Flow, 45 netlist-decomposition, 77 sidecar-edits, 28 spice-canonical, and
+  7 root integration tests with the child source checkouts on `PYTHONPATH`.
 
 ## Findings and changes to the plan
 
@@ -131,12 +145,26 @@ dialecticH run evidence.
   machinery. No evidence-backed removable production subsystem or concrete
   blocker was found; line count alone does not justify weakening the explicit
   invariants.
-- Authored-order IDs are deterministic reconstructions, not content-addressed
-  identities: inserting earlier graph nodes renumbers later sources,
-  invocations, edges, and boundaries. Name-keyed declaration order is now
-  canonicalized, so semantically identical input/config/output mappings produce
-  identical normalized data and edge IDs. Identity stability across graph
-  insertion remains a deliberate later design question, not a hidden promise.
+- Authored keys are case-sensitive exact strings using the executor-neutral
+  Plan-ID rule: an ASCII letter or digit followed by ASCII letters, digits,
+  `.`, `_`, `:`, `/`, `@`, `+`, or `-`. A keyed invocation or boundary ID is
+  `kind:key:<sha256>` over its kind, containing boundary ID (or root marker),
+  and exact key. Keys share one operation/flow namespace only within that
+  containing boundary. They are Plan identity, not cache keys, scheduler keys,
+  attempts, sequential slots, or runtime authority.
+- A connecting edge between two keyed invocations is `edge:key:<sha256>` over
+  its source output reference, target invocation, target input, and scalar or
+  collection-member position. Such edges do not consume the fallback edge
+  counter. Edges involving an unkeyed invocation or external source retain
+  deterministic authored-order counter IDs.
+- Stability is scoped rather than absolute. A keyed node beneath an unkeyed
+  enclosing flow can be only as stable as that counter-derived boundary ID;
+  likewise an edge can be only as stable as its enclosing scopes and endpoint
+  references. External source IDs and all unkeyed source, invocation, boundary,
+  and fallback-edge IDs remain authored-order counters and may change when an
+  earlier unkeyed sibling or source is inserted. A fully keyed subgraph under a
+  stable keyed boundary retains its keyed nodes and connecting edges across an
+  unrelated unkeyed sibling insertion.
 - Operation bodies are proven unexecuted by the runnable example's
   unconditional failure bodies, but arbitrary Python flow bodies do execute to
   author the graph and cannot be proven side-effect-free by this API. Flow-body

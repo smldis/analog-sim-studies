@@ -1,4 +1,4 @@
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 import json
 
 import pytest
@@ -7,8 +7,10 @@ from ass_flow import (
     AuthoringError,
     BindingError,
     CollectionInputBinding,
+    FlowCall,
     InputBinding,
     PlanningScopeError,
+    PlanValidationError,
     artifact,
     artifacts,
     flow,
@@ -129,6 +131,10 @@ def test_repeated_planning_has_stable_source_invocation_edge_and_boundary_ids():
     assert isinstance(first.invocations[1].inputs[0], InputBinding)
     assert first.invocations[1].inputs[0].cardinality == "scalar"
     assert first.edges[0].target_member_index is None
+    assert all(
+        item["authored_key"] is None for item in first.to_data()["invocations"]
+    )
+    assert first.to_data()["boundaries"][0]["authored_key"] is None
 
 
 def test_collection_input_preserves_member_order_in_bindings_edges_and_json():
@@ -478,3 +484,348 @@ def test_definition_declarations_and_submit_boundary_fail_early():
 
     with pytest.raises(NotImplementedError, match="outside this planning spike"):
         submit(object())
+
+
+def test_policy_and_key_options_compose_immutably_in_either_order():
+    override = named_policy("lsf")(queue="short")
+
+    @operation(inputs={"deck": DECK}, outputs={"raw": RAW})
+    def simulate(deck):
+        raise AssertionError("must not run")
+
+    policy_view = simulate.options(policy=override)
+    policy_then_key = policy_view.options(key="policy-first")
+    key_view = simulate.options(key="key-first")
+    key_then_policy = key_view.options(policy=override)
+
+    assert policy_view.policy is override
+    assert policy_view.key is None
+    assert key_view.policy is None
+    assert key_view.key == "key-first"
+    assert policy_then_key.policy is override
+    assert policy_then_key.key == "policy-first"
+    assert key_then_policy.policy is override
+    assert key_then_policy.key == "key-first"
+    with pytest.raises(FrozenInstanceError):
+        policy_then_key.key = "changed"
+
+    with plan() as draft:
+        deck = input_artifact("input.spice", "spice-deck")
+        policy_then_key(deck)
+        key_then_policy(deck)
+    normalized = draft.finish(outputs={})
+
+    assert [item.authored_key for item in normalized.invocations] == [
+        "policy-first",
+        "key-first",
+    ]
+    assert [item.policy for item in normalized.invocations] == [override, override]
+    assert all("authored_key" in item for item in normalized.to_data()["invocations"])
+
+
+def test_keyed_nested_flows_repeat_and_survive_an_unkeyed_sibling_insertion():
+    @operation(
+        name="authoring.identities.produce",
+        inputs={"deck": DECK},
+        outputs={"raw": RAW},
+    )
+    def produce(deck):
+        raise AssertionError("must not run")
+
+    @operation(
+        name="authoring.identities.consume",
+        inputs={"raw": artifacts("simulation-raw")},
+        outputs={"report": REPORT},
+    )
+    def consume(raw):
+        raise AssertionError("must not run")
+
+    @operation(
+        name="authoring.identities.noise",
+        inputs={"deck": DECK},
+        outputs={"raw": RAW},
+    )
+    def noise(deck):
+        raise AssertionError("must not run")
+
+    @flow(name="authoring.identities.inner")
+    def inner(raw):
+        return consume.options(key="consumer")(raw)
+
+    @flow(name="authoring.identities.outer")
+    def outer(deck):
+        raw = [
+            produce.options(key="producer-left")(deck),
+            produce.options(key="producer-right")(deck),
+        ]
+        return inner.options(key="inner")(raw)
+
+    @flow(name="authoring.identities.noise_flow")
+    def noise_flow(deck):
+        return noise(deck)
+
+    def build(*, insert_sibling):
+        with plan() as draft:
+            deck = input_artifact("input.spice", "spice-deck")
+            if insert_sibling:
+                noise_flow(deck)
+            report = outer.options(key="outer")(deck)
+        return draft.finish(outputs={"report": report})
+
+    baseline = build(insert_sibling=False)
+    repeated = build(insert_sibling=False)
+    inserted = build(insert_sibling=True)
+
+    outer_view = outer.options(key="original")
+    changed_outer_view = outer_view.options(key="changed")
+    assert isinstance(outer_view, FlowCall)
+    assert outer_view.key == "original"
+    assert changed_outer_view.key == "changed"
+    with pytest.raises(FrozenInstanceError):
+        outer_view.key = "mutated"
+    with pytest.raises(TypeError, match="policy"):
+        outer.options(policy=local())
+
+    assert baseline.to_data() == repeated.to_data()
+    assert baseline.to_json() == repeated.to_json()
+    assert {
+        item.authored_key: item.id
+        for item in baseline.invocations
+        if item.authored_key is not None
+    } == {
+        item.authored_key: item.id
+        for item in inserted.invocations
+        if item.authored_key is not None
+    }
+    assert {
+        item.authored_key: item.id
+        for item in baseline.boundaries
+        if item.authored_key is not None
+    } == {
+        item.authored_key: item.id
+        for item in inserted.boundaries
+        if item.authored_key is not None
+    }
+    assert [item.id for item in baseline.edges] == [item.id for item in inserted.edges]
+    assert all(item.id.startswith("edge:key:") for item in baseline.edges)
+    assert [item.target_member_index for item in baseline.edges] == [0, 1]
+    assert inserted.invocations[0].id == "invoke:0001"
+    assert inserted.boundaries[0].id == "flow:0001"
+    assert {
+        item["authored_key"] for item in baseline.to_data()["boundaries"]
+    } == {"outer", "inner"}
+
+    malformed = replace(
+        baseline,
+        edges=(replace(baseline.edges[0], id="edge:wrong"), baseline.edges[1]),
+    )
+    with pytest.raises(PlanValidationError) as caught:
+        malformed.validate()
+    assert "stable_edge_id_mismatch" in {
+        issue.code for issue in caught.value.issues
+    }
+
+
+def test_duplicate_keys_share_one_operation_and_flow_namespace_per_scope():
+    calls = []
+
+    @operation(inputs={"deck": DECK}, outputs={"raw": RAW})
+    def produce(deck):
+        raise AssertionError("must not run")
+
+    @flow
+    def leaf(deck):
+        calls.append("flow body ran")
+        return produce(deck)
+
+    @flow
+    def keyed_scope(deck):
+        return produce.options(key="reused")(deck)
+
+    with plan() as draft:
+        deck = input_artifact("input.spice", "spice-deck")
+        produce.options(key="op-duplicate")(deck)
+        with pytest.raises(AuthoringError, match="already used"):
+            produce.options(key="op-duplicate")(deck)
+
+        leaf.options(key="flow-duplicate")(deck)
+        with pytest.raises(AuthoringError, match="already used"):
+            leaf.options(key="flow-duplicate")(deck)
+
+        produce.options(key="cross-kind")(deck)
+        with pytest.raises(AuthoringError, match="already used"):
+            leaf.options(key="cross-kind")(deck)
+
+        keyed_scope.options(key="scope-a")(deck)
+        keyed_scope.options(key="scope-b")(deck)
+        leaf(deck)
+    normalized = draft.finish(outputs={})
+
+    assert calls == ["flow body ran", "flow body ran"]
+    reused = [
+        invocation
+        for invocation in normalized.invocations
+        if invocation.authored_key == "reused"
+    ]
+    assert len(reused) == 2
+    assert reused[0].boundary_id != reused[1].boundary_id
+    assert reused[0].id != reused[1].id
+    assert [
+        boundary.id
+        for boundary in normalized.boundaries
+        if boundary.authored_key is None
+    ] == ["flow:0001"]
+    assert normalized.validate() is normalized
+
+
+def test_keyed_calls_and_edges_do_not_consume_unkeyed_counters():
+    @operation(inputs={"deck": DECK}, outputs={"raw": RAW})
+    def produce(deck):
+        raise AssertionError("must not run")
+
+    @operation(inputs={"raw": RAW}, outputs={"report": REPORT})
+    def consume(raw):
+        raise AssertionError("must not run")
+
+    with plan() as draft:
+        deck = input_artifact("input.spice", "spice-deck")
+        keyed_raw = produce.options(key="keyed-producer")(deck)
+        consume.options(key="keyed-consumer")(keyed_raw)
+        unkeyed_raw = produce(deck)
+        unkeyed_report = consume(unkeyed_raw)
+    normalized = draft.finish(outputs={"report": unkeyed_report})
+
+    unkeyed_invocation_ids = [
+        item.id for item in normalized.invocations if item.authored_key is None
+    ]
+    assert unkeyed_invocation_ids == [
+        "invoke:0001",
+        "invoke:0002",
+    ]
+    stable_edges = [
+        item for item in normalized.edges if item.id.startswith("edge:key:")
+    ]
+    counter_edges = [
+        item.id for item in normalized.edges if item.id.startswith("edge:0")
+    ]
+    assert len(stable_edges) == 1
+    assert counter_edges == ["edge:0001"]
+
+
+def test_duplicate_operation_rollback_does_not_leak_or_consume_counters():
+    @operation(
+        name="authoring.rollback.accepted",
+        inputs={"deck": DECK},
+        outputs={"raw": RAW},
+    )
+    def accepted(deck):
+        raise AssertionError("must not run")
+
+    @operation(
+        name="authoring.rollback.rejected",
+        inputs={"deck": DECK},
+        outputs={"raw": RAW},
+    )
+    def rejected(deck):
+        raise AssertionError("must not run")
+
+    with plan() as draft:
+        deck = input_artifact("input.spice", "spice-deck")
+        accepted(deck)
+        accepted.options(key="reserved")(deck)
+        with pytest.raises(AuthoringError, match="already used"):
+            rejected.options(key="reserved")(deck)
+        accepted(deck)
+    normalized = draft.finish(outputs={})
+
+    unkeyed_invocation_ids = [
+        item.id for item in normalized.invocations if item.authored_key is None
+    ]
+    assert unkeyed_invocation_ids == [
+        "invoke:0001",
+        "invoke:0002",
+    ]
+    assert {item.identity.name for item in normalized.operations} == {
+        "authoring.rollback.accepted"
+    }
+    assert len(normalized.invocations) == 3
+
+
+def test_failing_keyed_flow_restores_keys_graph_and_every_unkeyed_counter():
+    @operation(inputs={"deck": DECK}, outputs={"raw": RAW})
+    def produce(deck):
+        raise AssertionError("must not run")
+
+    @operation(inputs={"raw": RAW}, outputs={"report": REPORT})
+    def consume(raw):
+        raise AssertionError("must not run")
+
+    @flow(name="authoring.rollback.failing")
+    def failing(deck):
+        raw = produce.options(key="step")(deck)
+        consume(raw)
+        raise RuntimeError("planned failure")
+
+    @flow(name="authoring.rollback.success")
+    def success(deck):
+        return produce.options(key="step")(deck)
+
+    @flow(name="authoring.rollback.unkeyed")
+    def unkeyed(deck):
+        return produce(deck)
+
+    with plan() as draft:
+        deck = input_artifact("input.spice", "spice-deck")
+        with pytest.raises(RuntimeError, match="planned failure"):
+            failing.options(key="boundary")(deck)
+        keyed = success.options(key="boundary")(deck)
+        raw = produce(deck)
+        report = consume(raw)
+        later = unkeyed(deck)
+    normalized = draft.finish(
+        outputs={"keyed": keyed, "report": report, "later": later}
+    )
+
+    unkeyed_invocation_ids = [
+        item.id for item in normalized.invocations if item.authored_key is None
+    ]
+    assert unkeyed_invocation_ids == [
+        "invoke:0001",
+        "invoke:0002",
+        "invoke:0003",
+    ]
+    assert [item.id for item in normalized.edges] == ["edge:0001"]
+    assert [item.id for item in normalized.boundaries if item.authored_key is None] == [
+        "flow:0001"
+    ]
+    assert {item.identity.name for item in normalized.flows} == {
+        "authoring.rollback.success",
+        "authoring.rollback.unkeyed",
+    }
+    assert {item.authored_key for item in normalized.invocations} == {None, "step"}
+
+
+@pytest.mark.parametrize(
+    "invalid_key",
+    ["", " leading", "trailing ", "_leading", "bad key", "é"],
+)
+def test_invalid_authored_key_syntax_fails_before_graph_mutation(invalid_key):
+    @operation(inputs={"deck": DECK}, outputs={"raw": RAW})
+    def produce(deck):
+        raise AssertionError("must not run")
+
+    @flow
+    def wrapper(deck):
+        return produce(deck)
+
+    with plan() as draft:
+        deck = input_artifact("input.spice", "spice-deck")
+        with pytest.raises(AuthoringError, match="authored key"):
+            produce.options(key=invalid_key)(deck)
+        with pytest.raises(AuthoringError, match="authored key"):
+            wrapper.options(key=invalid_key)(deck)
+        result = produce(deck)
+    normalized = draft.finish(outputs={"raw": result})
+
+    assert [item.id for item in normalized.invocations] == ["invoke:0001"]
+    assert normalized.boundaries == ()

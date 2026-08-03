@@ -32,6 +32,9 @@ from .model import (
     Plan,
     Policy,
     ResourceContract,
+    _keyed_plan_id,
+    _stable_edge_id,
+    normalize_authored_key,
     resolve_policy,
 )
 
@@ -142,21 +145,28 @@ class Operation:
     def __name__(self) -> str:
         return self._function.__name__
 
-    def options(self, *, policy: Policy) -> OperationCall:
-        _require_policy(policy, "call policy")
-        return OperationCall(self, policy)
+    def options(
+        self, *, policy: Policy | None = None, key: str | None = None
+    ) -> OperationCall:
+        """Return an immutable call view with policy and/or authored identity."""
+
+        if policy is not None:
+            _require_policy(policy, "call policy")
+        normalized_key = _optional_authored_key(key)
+        return OperationCall(self, policy, normalized_key)
 
     def __call__(self, *args: Any, **kwargs: Any) -> InvocationResult:
-        return self._plan_call(None, args, kwargs)
+        return self._plan_call(None, None, args, kwargs)
 
     def _plan_call(
         self,
         policy: Policy | None,
+        key: str | None,
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ) -> InvocationResult:
         draft = _active_draft("operation")
-        return draft._call_operation(self, policy, args, kwargs)
+        return draft._call_operation(self, policy, key, args, kwargs)
 
 
 @dataclass(frozen=True, slots=True)
@@ -164,7 +174,16 @@ class OperationCall:
     """An immutable per-call view over an operation definition."""
 
     operation: Operation
-    policy: Policy
+    policy: Policy | None = None
+    key: str | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.operation, Operation):
+            raise AuthoringError("operation call must contain an Operation")
+        if self.policy is not None:
+            _require_policy(self.policy, "call policy")
+        if self.key is not None:
+            _require_authored_key(self.key)
 
     @property
     def definition(self) -> OperationDefinition:
@@ -174,12 +193,19 @@ class OperationCall:
     def identity(self) -> OperationIdentity:
         return self.operation.identity
 
-    def options(self, *, policy: Policy) -> OperationCall:
-        _require_policy(policy, "call policy")
-        return OperationCall(self.operation, policy)
+    def options(
+        self, *, policy: Policy | None = None, key: str | None = None
+    ) -> OperationCall:
+        """Compose an immutable override while retaining omitted options."""
+
+        selected_policy = self.policy if policy is None else policy
+        selected_key = self.key if key is None else _optional_authored_key(key)
+        if selected_policy is not None:
+            _require_policy(selected_policy, "call policy")
+        return OperationCall(self.operation, selected_policy, selected_key)
 
     def __call__(self, *args: Any, **kwargs: Any) -> InvocationResult:
-        return self.operation._plan_call(self.policy, args, kwargs)
+        return self.operation._plan_call(self.policy, self.key, args, kwargs)
 
 
 @dataclass(frozen=True, slots=True)
@@ -198,9 +224,42 @@ class Flow:
     def __name__(self) -> str:
         return self._function.__name__
 
+    def options(self, *, key: str) -> FlowCall:
+        """Return an immutable keyed call view; flows have no policy option."""
+
+        return FlowCall(self, _require_authored_key(key))
+
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         draft = _active_draft("flow")
-        return draft._call_flow(self, args, kwargs)
+        return draft._call_flow(self, None, args, kwargs)
+
+
+@dataclass(frozen=True, slots=True)
+class FlowCall:
+    """An immutable keyed call view over a flow definition."""
+
+    flow: Flow
+    key: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.flow, Flow):
+            raise AuthoringError("flow call must contain a Flow")
+        _require_authored_key(self.key)
+
+    @property
+    def definition(self) -> FlowDefinition:
+        return self.flow.definition
+
+    @property
+    def identity(self) -> FlowIdentity:
+        return self.flow.identity
+
+    def options(self, *, key: str) -> FlowCall:
+        return FlowCall(self.flow, _require_authored_key(key))
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        draft = _active_draft("flow")
+        return draft._call_flow(self.flow, self.key, args, kwargs)
 
 
 def artifact(kind: str) -> ArtifactContract:
@@ -341,6 +400,8 @@ class PlanDraft:
         self._boundaries: list[FlowBoundary] = []
         self._boundary_parents: dict[str, str | None] = {}
         self._boundary_stack: list[str] = []
+        self._scoped_keys: set[tuple[str | None, str]] = set()
+        self._keyed_invocation_ids: set[str] = set()
         self._next_source = 1
         self._next_invocation = 1
         self._next_edge = 1
@@ -417,116 +478,145 @@ class PlanDraft:
         self,
         authored: Operation,
         call_policy: Policy | None,
+        authored_key: str | None,
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ) -> InvocationResult:
         self._require_active()
-        bound = _bind_operation(authored, args, kwargs)
-        definition = authored.definition
-        input_bindings: list[InputBinding | CollectionInputBinding] = []
-        config_bindings: list[ConfigBinding] = []
-        artifact_values: dict[str, tuple[ArtifactValue, ...]] = {}
+        checkpoint = self._checkpoint()
+        try:
+            bound = _bind_operation(authored, args, kwargs)
+            definition = authored.definition
+            input_bindings: list[InputBinding | CollectionInputBinding] = []
+            config_bindings: list[ConfigBinding] = []
+            artifact_values: dict[str, tuple[ArtifactValue, ...]] = {}
 
-        for contract in definition.inputs:
-            authored_value = bound.arguments[contract.name]
-            if contract.cardinality == "collection":
-                values = _artifact_collection(authored_value, contract.name)
-            else:
-                values = (_concise_artifact(authored_value),)
-            for member_index, value in enumerate(values):
-                member_label = (
-                    f"input {contract.name!r} member {member_index}"
-                    if contract.cardinality == "collection"
-                    else f"input {contract.name!r}"
-                )
-                self._require_owned(value, member_label)
-                if value.artifact.kind != contract.artifact.kind:
+            for contract in definition.inputs:
+                authored_value = bound.arguments[contract.name]
+                if contract.cardinality == "collection":
+                    values = _artifact_collection(authored_value, contract.name)
+                else:
+                    values = (_concise_artifact(authored_value),)
+                for member_index, value in enumerate(values):
+                    member_label = (
+                        f"input {contract.name!r} member {member_index}"
+                        if contract.cardinality == "collection"
+                        else f"input {contract.name!r}"
+                    )
+                    self._require_owned(value, member_label)
+                    if value.artifact.kind != contract.artifact.kind:
+                        raise BindingError(
+                            f"{member_label} expects artifact kind "
+                            f"{contract.artifact.kind!r}, got {value.artifact.kind!r}"
+                        )
+                artifact_values[contract.name] = values
+                if contract.cardinality == "collection":
+                    input_bindings.append(
+                        CollectionInputBinding(
+                            contract.name,
+                            tuple(value.reference for value in values),
+                        )
+                    )
+                else:
+                    input_bindings.append(
+                        InputBinding(contract.name, values[0].reference)
+                    )
+
+            for contract in definition.config:
+                value = bound.arguments[contract.name]
+                if type(value) is not contract.value_type:
                     raise BindingError(
-                        f"{member_label} expects artifact kind "
-                        f"{contract.artifact.kind!r}, got {value.artifact.kind!r}"
+                        f"config {contract.name!r} expects "
+                        f"{contract.value_type.__name__}, got {type(value).__name__}"
                     )
-            artifact_values[contract.name] = values
-            if contract.cardinality == "collection":
-                input_bindings.append(
-                    CollectionInputBinding(
-                        contract.name,
-                        tuple(value.reference for value in values),
-                    )
-                )
+                try:
+                    config_bindings.append(ConfigBinding(contract.name, value))
+                except ContractError as error:
+                    raise BindingError(str(error)) from error
+
+            boundary_id = self._boundary_stack[-1] if self._boundary_stack else None
+            if authored_key is None:
+                invocation_id = f"invoke:{self._next_invocation:04d}"
+                self._next_invocation += 1
             else:
-                input_bindings.append(
-                    InputBinding(contract.name, values[0].reference)
+                self._reserve_key(boundary_id, authored_key)
+                invocation_id = _keyed_plan_id(
+                    "invoke", boundary_id, authored_key
                 )
-
-        for contract in definition.config:
-            value = bound.arguments[contract.name]
-            if type(value) is not contract.value_type:
-                raise BindingError(
-                    f"config {contract.name!r} expects {contract.value_type.__name__}, "
-                    f"got {type(value).__name__}"
-                )
-            try:
-                config_bindings.append(ConfigBinding(contract.name, value))
-            except ContractError as error:
-                raise BindingError(str(error)) from error
-
-        self._register_operation(definition)
-        invocation_id = f"invoke:{self._next_invocation:04d}"
-        self._next_invocation += 1
-        boundary_id = self._boundary_stack[-1] if self._boundary_stack else None
-        invocation = Invocation(
-            id=invocation_id,
-            operation=definition.identity,
-            inputs=tuple(input_bindings),
-            config=tuple(config_bindings),
-            policy=resolve_policy(
-                call_policy, definition.default_policy, self._default_policy
-            ),
-            boundary_id=boundary_id,
-        )
-        self._invocations.append(invocation)
-
-        for contract in definition.inputs:
-            for member_index, value in enumerate(artifact_values[contract.name]):
-                if (
-                    contract.cardinality == "scalar"
-                    and not isinstance(value.reference, OutputReference)
-                ):
-                    continue
-                edge_id = f"edge:{self._next_edge:04d}"
-                self._next_edge += 1
-                self._edges.append(
-                    DependencyEdge(
-                        edge_id,
-                        value.reference,
-                        invocation_id,
-                        contract.name,
-                        contract.artifact.kind,
-                        (
-                            member_index
-                            if contract.cardinality == "collection"
-                            else None
-                        ),
-                    )
-                )
-
-        result_values = tuple(
-            (
-                output.name,
-                ArtifactValue(
-                    OutputReference(invocation_id, output.name),
-                    output.artifact,
-                    self,
-                    boundary_id,
+                self._keyed_invocation_ids.add(invocation_id)
+            self._register_operation(definition)
+            invocation = Invocation(
+                id=invocation_id,
+                operation=definition.identity,
+                inputs=tuple(input_bindings),
+                config=tuple(config_bindings),
+                policy=resolve_policy(
+                    call_policy, definition.default_policy, self._default_policy
                 ),
+                boundary_id=boundary_id,
+                authored_key=authored_key,
             )
-            for output in definition.outputs
-        )
-        return InvocationResult(result_values)
+            self._invocations.append(invocation)
+
+            for contract in definition.inputs:
+                for member_index, value in enumerate(artifact_values[contract.name]):
+                    if (
+                        contract.cardinality == "scalar"
+                        and not isinstance(value.reference, OutputReference)
+                    ):
+                        continue
+                    target_member_index = (
+                        member_index
+                        if contract.cardinality == "collection"
+                        else None
+                    )
+                    if (
+                        authored_key is not None
+                        and isinstance(value.reference, OutputReference)
+                        and value.reference.invocation_id
+                        in self._keyed_invocation_ids
+                    ):
+                        edge_id = _stable_edge_id(
+                            value.reference,
+                            invocation_id,
+                            contract.name,
+                            target_member_index,
+                        )
+                    else:
+                        edge_id = f"edge:{self._next_edge:04d}"
+                        self._next_edge += 1
+                    self._edges.append(
+                        DependencyEdge(
+                            edge_id,
+                            value.reference,
+                            invocation_id,
+                            contract.name,
+                            contract.artifact.kind,
+                            target_member_index,
+                        )
+                    )
+
+            result_values = tuple(
+                (
+                    output.name,
+                    ArtifactValue(
+                        OutputReference(invocation_id, output.name),
+                        output.artifact,
+                        self,
+                        boundary_id,
+                    ),
+                )
+                for output in definition.outputs
+            )
+            return InvocationResult(result_values)
+        except Exception:
+            self._restore(checkpoint)
+            raise
 
     def _call_flow(
         self,
         authored: Flow,
+        authored_key: str | None,
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ) -> Any:
@@ -540,12 +630,17 @@ class PlanDraft:
         self._check_nested_handles((args, kwargs))
         checkpoint = self._checkpoint()
         parent_id = self._boundary_stack[-1] if self._boundary_stack else None
-        boundary_id = f"flow:{self._next_boundary:04d}"
-        self._next_boundary += 1
-        self._register_flow(authored.definition)
-        self._boundary_parents[boundary_id] = parent_id
-        self._boundary_stack.append(boundary_id)
+        boundary_id: str | None = None
         try:
+            if authored_key is None:
+                boundary_id = f"flow:{self._next_boundary:04d}"
+                self._next_boundary += 1
+            else:
+                self._reserve_key(parent_id, authored_key)
+                boundary_id = _keyed_plan_id("flow", parent_id, authored_key)
+            self._register_flow(authored.definition)
+            self._boundary_parents[boundary_id] = parent_id
+            self._boundary_stack.append(boundary_id)
             result = authored._function(*args, **kwargs)
             named_outputs = self._named_outputs(
                 result, prefix="output", boundary_id=boundary_id
@@ -556,13 +651,18 @@ class PlanDraft:
                     authored.identity,
                     parent_id=parent_id,
                     outputs=named_outputs,
+                    authored_key=authored_key,
                 )
             )
         except Exception:
             self._restore(checkpoint)
             raise
         finally:
-            if self._boundary_stack and self._boundary_stack[-1] == boundary_id:
+            if (
+                boundary_id is not None
+                and self._boundary_stack
+                and self._boundary_stack[-1] == boundary_id
+            ):
                 self._boundary_stack.pop()
         return result
 
@@ -690,6 +790,16 @@ class PlanDraft:
             )
         self._flows.setdefault(definition.identity, definition)
 
+    def _reserve_key(self, scope_id: str | None, authored_key: str) -> None:
+        scoped_key = (scope_id, authored_key)
+        if scoped_key in self._scoped_keys:
+            scope_label = "root" if scope_id is None else scope_id
+            raise AuthoringError(
+                f"authored key {authored_key!r} is already used in scope "
+                f"{scope_label!r}"
+            )
+        self._scoped_keys.add(scoped_key)
+
     def _checkpoint(self) -> tuple[Any, ...]:
         return (
             dict(self._operations),
@@ -700,6 +810,8 @@ class PlanDraft:
             list(self._edges),
             list(self._boundaries),
             dict(self._boundary_parents),
+            set(self._scoped_keys),
+            set(self._keyed_invocation_ids),
             self._next_source,
             self._next_invocation,
             self._next_edge,
@@ -716,6 +828,8 @@ class PlanDraft:
             self._edges,
             self._boundaries,
             self._boundary_parents,
+            self._scoped_keys,
+            self._keyed_invocation_ids,
             self._next_source,
             self._next_invocation,
             self._next_edge,
@@ -760,6 +874,17 @@ def _active_draft(action: str) -> PlanDraft:
 def _require_policy(value: object, label: str) -> None:
     if not isinstance(value, Policy):
         raise AuthoringError(f"{label} must be a Policy")
+
+
+def _require_authored_key(value: object) -> str:
+    try:
+        return normalize_authored_key(value)
+    except ContractError as error:
+        raise AuthoringError(str(error)) from error
+
+
+def _optional_authored_key(value: object | None) -> str | None:
+    return None if value is None else _require_authored_key(value)
 
 
 def _input_declaration_mapping(
@@ -909,6 +1034,7 @@ __all__ = [
     "AuthoringError",
     "BindingError",
     "Flow",
+    "FlowCall",
     "InvocationResult",
     "Operation",
     "OperationCall",

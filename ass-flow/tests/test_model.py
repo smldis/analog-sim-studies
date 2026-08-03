@@ -10,6 +10,7 @@ from ass_flow.model import (
     ConfigBinding,
     ConfigContract,
     CollectionInputBinding,
+    ContractError,
     DependencyEdge,
     FlowBoundary,
     FlowDefinition,
@@ -430,3 +431,46 @@ def test_malformed_plans_are_rejected_with_structured_issues(mutate, expected_co
         malformed.validate()
 
     assert expected_code in {issue.code for issue in caught.value.issues}
+
+
+def test_authored_key_values_and_scoped_namespace_are_validated_in_the_model():
+    plan = branching_plan()
+
+    with pytest.raises(ContractError, match="authored key"):
+        replace(plan.invocations[0], authored_key="bad key")
+
+    corrupted_invocation = replace(plan.invocations[0])
+    object.__setattr__(corrupted_invocation, "authored_key", "bad key")
+    corrupted_plan = replace(
+        plan,
+        invocations=(corrupted_invocation, *plan.invocations[1:]),
+    )
+    with pytest.raises(PlanValidationError) as corrupted_caught:
+        corrupted_plan.validate()
+    assert "invalid_authored_key" in {
+        issue.code for issue in corrupted_caught.value.issues
+    }
+
+    malformed = replace(
+        plan,
+        invocations=(
+            *plan.invocations[:2],
+            replace(
+                plan.invocations[2],
+                boundary_id=None,
+                authored_key="shared",
+            ),
+        ),
+        boundaries=(
+            replace(plan.boundaries[0], authored_key="shared"),
+            plan.boundaries[1],
+        ),
+    )
+
+    with pytest.raises(PlanValidationError) as caught:
+        malformed.validate()
+
+    codes = {issue.code for issue in caught.value.issues}
+    assert "duplicate_authored_key" in codes
+    assert "keyed_invoke_id_mismatch" in codes
+    assert "keyed_flow_id_mismatch" in codes

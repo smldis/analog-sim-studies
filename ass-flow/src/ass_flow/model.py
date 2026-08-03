@@ -8,6 +8,7 @@ policy precedence; :class:`Plan` only records and validates the resulting graph.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import hashlib
 import json
 import math
 import re
@@ -44,6 +45,7 @@ class PlanValidationError(ModelError):
 
 
 _ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/@+\-]*$")
+_AUTHORED_KEY_PATTERN = _ID_PATTERN
 
 
 def _require_text(value: object, label: str) -> None:
@@ -58,6 +60,56 @@ def _require_id(value: object, label: str) -> None:
             f"{label} must contain only letters, digits, '.', '_', ':', '/', "
             "'@', '+', or '-'"
         )
+
+
+def normalize_authored_key(value: object) -> str:
+    """Validate and return one case-sensitive executor-neutral authored key.
+
+    Keys use the same lexical subset as Plan IDs: they start with an ASCII
+    letter or digit and then contain only ASCII letters, digits, ``.``, ``_``,
+    ``:``, ``/``, ``@``, ``+``, or ``-``.  No whitespace normalization or case
+    folding is performed, so the returned value is the authored identity.
+    """
+
+    if not isinstance(value, str) or not _AUTHORED_KEY_PATTERN.fullmatch(value):
+        raise ContractError(
+            "authored key must start with a letter or digit and contain only "
+            "letters, digits, '.', '_', ':', '/', '@', '+', or '-'"
+        )
+    return value
+
+
+def _keyed_plan_id(kind: str, scope_id: str | None, authored_key: str) -> str:
+    """Derive a Plan ID from an exact scoped authored identity."""
+
+    normalized_key = normalize_authored_key(authored_key)
+    normalized_scope = "root" if scope_id is None else f"boundary\0{scope_id}"
+    payload = f"{kind}\0{normalized_scope}\0{normalized_key}".encode("utf-8")
+    return f"{kind}:key:{hashlib.sha256(payload).hexdigest()}"
+
+
+def _stable_edge_id(
+    source: ArtifactReference,
+    target_invocation_id: str,
+    target_input_name: str,
+    target_member_index: int | None,
+) -> str:
+    """Derive an edge ID from stable endpoint/reference identity."""
+
+    if isinstance(source, ArtifactSourceReference):
+        source_identity = f"source\0{source.source_id}"
+    else:
+        source_identity = (
+            f"output\0{source.invocation_id}\0{source.output_name}"
+        )
+    member_identity = (
+        "scalar" if target_member_index is None else str(target_member_index)
+    )
+    payload = (
+        f"{source_identity}\0{target_invocation_id}\0{target_input_name}"
+        f"\0{member_identity}"
+    ).encode("utf-8")
+    return f"edge:key:{hashlib.sha256(payload).hexdigest()}"
 
 
 def _require_name(value: object, label: str) -> None:
@@ -422,6 +474,7 @@ class Invocation:
     config: tuple[ConfigBinding, ...] = ()
     policy: Policy = field(default_factory=local)
     boundary_id: str | None = None
+    authored_key: str | None = None
 
     def __post_init__(self) -> None:
         _require_id(self.id, "invocation id")
@@ -442,6 +495,8 @@ class Invocation:
             raise ContractError("invocation policy must be a resolved Policy")
         if self.boundary_id is not None:
             _require_id(self.boundary_id, "invocation boundary id")
+        if self.authored_key is not None:
+            normalize_authored_key(self.authored_key)
 
 
 @dataclass(frozen=True, slots=True)
@@ -489,6 +544,7 @@ class FlowBoundary:
     flow: FlowIdentity
     parent_id: str | None = None
     outputs: tuple[NamedOutput, ...] = ()
+    authored_key: str | None = None
 
     def __post_init__(self) -> None:
         _require_id(self.id, "flow boundary id")
@@ -498,6 +554,8 @@ class FlowBoundary:
             _require_id(self.parent_id, "flow boundary parent id")
         object.__setattr__(self, "outputs", tuple(self.outputs))
         _require_instances(self.outputs, NamedOutput, "flow boundary outputs")
+        if self.authored_key is not None:
+            normalize_authored_key(self.authored_key)
 
 
 def _require_instances(values: tuple[Any, ...], expected: type, label: str) -> None:
@@ -588,6 +646,61 @@ class Plan:
             issue,
         )
         _check_named_uniqueness(self.outputs, "outputs", "duplicate_plan_output", issue)
+
+        scoped_authored_keys: dict[tuple[str | None, str], str] = {}
+
+        def check_authored_key(
+            authored_key: object,
+            scope_id: str | None,
+            path: str,
+            owner_kind: str,
+            owner_id: str,
+        ) -> None:
+            if authored_key is None:
+                return
+            if not isinstance(authored_key, str) or not _AUTHORED_KEY_PATTERN.fullmatch(
+                authored_key
+            ):
+                issue(
+                    "invalid_authored_key",
+                    f"{path}.authored_key",
+                    "key does not use the executor-neutral Plan ID syntax",
+                )
+                return
+            scoped_key = (scope_id, authored_key)
+            existing_path = scoped_authored_keys.get(scoped_key)
+            if existing_path is not None:
+                issue(
+                    "duplicate_authored_key",
+                    f"{path}.authored_key",
+                    f"key {authored_key!r} is already used at {existing_path}",
+                )
+            else:
+                scoped_authored_keys[scoped_key] = f"{path}.authored_key"
+            expected_id = _keyed_plan_id(owner_kind, scope_id, authored_key)
+            if owner_id != expected_id:
+                issue(
+                    f"keyed_{owner_kind}_id_mismatch",
+                    f"{path}.id",
+                    "ID is not derived from its containing scope and authored key",
+                )
+
+        for invocation_index, invocation in enumerate(self.invocations):
+            check_authored_key(
+                invocation.authored_key,
+                invocation.boundary_id,
+                f"invocations[{invocation_index}]",
+                "invoke",
+                invocation.id,
+            )
+        for boundary_index, boundary in enumerate(self.boundaries):
+            check_authored_key(
+                boundary.authored_key,
+                boundary.parent_id,
+                f"boundaries[{boundary_index}]",
+                "flow",
+                boundary.id,
+            )
 
         for op_index, operation in enumerate(self.operations):
             path = f"operations[{op_index}]"
@@ -875,6 +988,25 @@ class Plan:
                 dependency_pairs.append(
                     (edge.source.invocation_id, edge.target_invocation_id)
                 )
+                source_invocation = invocations[edge.source.invocation_id]
+                target_invocation = invocations[edge.target_invocation_id]
+                if (
+                    source_invocation.authored_key is not None
+                    and target_invocation.authored_key is not None
+                ):
+                    expected_edge_id = _stable_edge_id(
+                        edge.source,
+                        edge.target_invocation_id,
+                        edge.target_input_name,
+                        edge.target_member_index,
+                    )
+                    if edge.id != expected_edge_id:
+                        issue(
+                            "stable_edge_id_mismatch",
+                            f"{path}.id",
+                            "edge ID is not derived from its stable endpoints, "
+                            "target input, and member position",
+                        )
 
         for target_key, source in expected_edges.items():
             if target_key not in seen_edge_targets:
@@ -968,6 +1100,7 @@ class Plan:
                     "id": value.id,
                     "flow": _flow_identity_data(value.flow),
                     "parent_id": value.parent_id,
+                    "authored_key": value.authored_key,
                     "outputs": _named_outputs_data(value.outputs),
                 }
                 for value in sorted(self.boundaries, key=lambda item: item.id)
@@ -1205,6 +1338,7 @@ def _invocation_data(value: Invocation) -> dict[str, Any]:
         ],
         "policy": _policy_data(value.policy),
         "boundary_id": value.boundary_id,
+        "authored_key": value.authored_key,
     }
 
 

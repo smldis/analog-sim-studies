@@ -2,9 +2,10 @@
 
 ## Status
 
-**Phase:** explicit materialized-source handoff complete
+**Phase:** local Dask Delayed lowering core authorized
 
-**Authorized slice:** static planning plus materialized-source declarations only
+**Authorized slice:** bounded local Delayed lowering experiment; no public
+submission or remote runtime
 
 **Component boundary:** declared direct child at `ass-flow/`
 
@@ -58,6 +59,16 @@
 | P4.5 | Independent source/boundary review | Codex high (`artifact-handoff-review`) | complete | Full-diff review found one structured-validation leak for a malformed source artifact; the core owner added the defensive guard and regression, and independent re-review replaced `REVISE` with `ACCEPT` |
 | P4.6 | Full verification and completion decision | Coordinating session | complete | Final verification passed 63 component, 10 focused OTA/PVT, 17 root integration, and full composition 63/45/77/28/17; both examples emitted valid schema-2 JSON, changed Python compiled, the wheel built, and `git diff --check` passed |
 
+## Phase 5 local Dask Delayed lowering
+
+| ID | Work | Owner | State | Evidence |
+| --- | --- | --- | --- | --- |
+| P5.1 | Freeze Plan/implementation/source/Dask identity and ownership boundary | Coordinating session plus fresh Codex high review | complete | Initial `REVISE` exposed unsafe repeat-stable Dask keys and ambiguous orphan/root semantics; corrected work order uses collision-safe per-lowering keys, explicit roots, optimization probes, ontology treatment, and two-stage packaging; re-review returned `ACCEPT` |
+| P5.2 | Implement experimental Delayed lowering and focused refusal tests | Codex high (`local-dask-core`) | pending on P5.1 | Must preserve invocation wrappers, ordered bindings, exact output maps, explicit registries, and local-only policy |
+| P5.3 | Add simulator-free runnable evidence and honest documentation | Codex high (`local-dask-evidence`) | pending on P5.2 | Must demonstrate branching/fan-in without source I/O or decorated operation-body execution |
+| P5.4 | Independent execution/boundary review | Codex high (`local-dask-review`) | pending on P5.3 | Must challenge task identity, optimization claims, optional dependency isolation, and excluded runtime authority |
+| P5.5 | Full verification and completion decision | Coordinating session | pending on P5.4 | Component, root integration, composition, import isolation, wheel, example, and diff checks must pass before acceptance |
+
 ## File ownership during delegation
 
 The agents share one worktree. Each task prompt assigns exact files. Agents
@@ -96,7 +107,8 @@ dialecticH run evidence.
 ## Explicit runtime stubs and exclusions
 
 - `submit(...)` and executor integration: `NotImplementedError` boundary;
-- Dask and LSF lowering: deferred;
+- public/general Dask and all LSF lowering: deferred; the Phase 5 experimental
+  local Delayed work order remains under review;
 - retries, attempts, recovery, and durable publication: deferred;
 - address resolution, codec execution, real access checking, materialized
   operation outputs, and runtime artifact values: deferred outside ASS Flow;

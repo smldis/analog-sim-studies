@@ -482,3 +482,282 @@ focused OTA/PVT tests, 17 root integration tests, full composition
 63/45/77/28/17, both schema-2 JSON commands, Python compilation, wheel build,
 and diff checks. The next executor experiment still requires a separate
 reviewed work order before delegation.
+
+## Authorized work order: local Dask Delayed lowering
+
+**Work-order ID:** `ASS-FLOW-WO-2026-08-03-LOCAL-DASK-LOWERING`
+
+**Authorization:** After reviewing the proposed executor sequence, the user
+directed development to proceed on 2026-08-03. This authorizes only the bounded
+local lowering experiment below. It does not authorize a working `submit(...)`
+surface, Dask Distributed/Futures, LSF, retries, persistence, publication,
+materialized operation outputs, source resolution, codec execution, a generic
+executor abstraction, or a study runtime.
+
+### Decision question
+
+Can one immutable schema-2 `Plan` be lowered to a locally computable Dask
+Delayed graph while preserving authored invocation meaning, policy rejection,
+static branching, ordered collection fan-in, and explicit operation/source
+binding, without making Dask task state authoritative or adding a second graph
+scheduler?
+
+### Ownership and identity boundary
+
+`ass_flow.experimental.local_dask` is a non-reexported experimental adapter
+owned by this component solely to test whether Plan IR is a sufficient lowering
+contract. Its presence assigns the experiment—not general execution,
+scheduling, or a public runtime—to ASS Flow. If retained, the same integrated
+change must update the local ontology to describe that experimental
+contribution and narrow the Dask exclusion accordingly. The parent continues
+to promote planning only. If the hypothesis is rejected and the code is not
+retained as explicit negative evidence, remove the module before commit.
+
+Neither `ass_flow.__init__` nor `ass_flow.experimental.__init__` may import or
+reexport the Dask module. Creating a child unit before learning whether the
+Plan lowers is premature; the completion review must revisit component
+ownership before any public execution surface is accepted.
+
+The lowerer consumes only:
+
+- a validated immutable `Plan`;
+- an explicit mapping from exact `OperationIdentity` values to Python
+  implementation callables; and
+- an explicit mapping from `ArtifactSource.id` to already-decoded runtime
+  values.
+
+The lowerer consumes model values only and is compatible with a future
+independently reconstructed Plan; this work order adds no Plan reader or
+deserializer. It must not receive or inspect an authored `Operation`, its
+private callable, or its authoring module. It also must not resolve an artifact
+address, execute a codec, or read a source file.
+
+Plan invocation IDs remain logical authored identities. Every lowering call
+allocates a fresh opaque namespace. Source, invocation-wrapper, and projection
+keys combine that namespace with their role and logical Plan identity through
+public Dask naming APIs. Actual Dask keys are unique within one lowering and
+different across independent lowerings. Correctness must not derive from
+`pure=True`, callable/source tokenization, or Plan IDs alone.
+
+The inspection record maps Plan invocation IDs to actual pre-optimization keys
+for that lowering; no cross-lowering key stability is promised. Dask keys are
+never Plan IDs, attempt IDs, cache keys, or durable records. Registry keys are
+exact `OperationIdentity` name/version values, not callable object identity.
+
+### Minimal experimental surface
+
+Add one explicitly experimental module under
+`ass_flow.experimental.local_dask`. It may expose:
+
+```python
+lowered = lower_delayed(
+    normalized_plan,
+    operations={operation_identity: implementation},
+    sources={source_id: decoded_value},
+)
+```
+
+`lower_delayed(...)` returns a small immutable inspection record containing
+the Dask Delayed task for every Plan invocation, the Delayed projection for
+every named Plan output, and the explicit invocation-ID-to-Dask-key mapping.
+It has no `run`, `compute`, `submit`, cancellation, persistence, or publication
+method. Callers use Dask's own `compute(...)` explicitly during the experiment.
+
+The wrapper receives keyword arguments for the invocation's bound input and
+configuration names, not absent optional declarations. Scalar inputs receive
+one runtime value and collection inputs an ordered tuple. Frozen list/object
+configuration is thawed inside each wrapper execution into fresh ordinary
+list/dict values.
+
+The result is copied once into an ordinary dict. Failure while reading it, a
+non-mapping value, or a key set different from the exact declared output-name
+set is an attributable invocation failure. Runtime output value types are
+otherwise unrestricted. There is no single-output shortcut, implicit tuple
+convention, runtime artifact wrapper, or automatic materialization.
+
+A zero-output invocation must return an empty mapping and still has an
+invocation task. An orphan invocation also has a task. The lowerer does not
+choose execution roots: computing top-level outputs executes only their
+ancestor closure, while computing all invocation tasks executes every
+invocation, including orphans and zero-output invocations. Empty top-level
+outputs are valid. Flow-boundary outputs remain Plan inspection metadata and
+create no invocation work. Multiple top-level names referencing the same
+`OutputReference` reuse one projection Delayed.
+
+One visible pre-optimization invocation wrapper produces the complete output
+mapping; mechanical projection tasks must not duplicate it. Within one
+`dask.compute(...)` evaluation over merged requested roots, a wrapper key is
+evaluated at most once by the tested local scheduler. Separate compute calls
+may execute it again; no persistence, memoization, retry, or cross-call
+exactly-once guarantee exists. Wrapper failures carry the Plan invocation ID
+and operation identity while preserving the original exception as the cause.
+
+### Preflight and runtime refusal
+
+Preflight must check the Plan type, call `Plan.validate()`, and copy both
+supplied mappings once. Every operation-registry key must be an
+`OperationIdentity` and every value callable. Every identity referenced by an
+invocation must be present exactly; an equal-name/different-version entry does
+not bind. Additional well-formed entries are allowed and ignored.
+
+Source keys must equal the complete set of Plan source IDs exactly; missing and
+extra IDs fail. A top-level injected source that is itself a Dask collection
+fails. Concrete source containers are opaque and must not be traversed for
+hidden dependencies.
+
+Every invocation must resolve to option-free `local`, and every operation
+referenced by an invocation must have no resource declarations because this
+experiment selects no local resource semantics. Unused well-formed registry
+entries and unused operation definitions do not create work and are not
+rejected for unused resource declarations.
+
+Graph construction must be independent of Plan tuple order: a consumer may
+precede its producer in stored invocations or edges. Build dependencies
+recursively with memoization from validated input references rather than
+introducing a second readiness graph.
+
+The invocation wrapper rechecks its captured policy immediately before calling
+the implementation. Signature incompatibility, implementation exceptions,
+result mapping access/copy failures, and exact output-name mismatch are
+execution-time failures carrying invocation ID, operation identity, and their
+original `Exception` cause. Do not catch `BaseException`. Returned values
+remain ordinary ephemeral Python/Dask values; logical artifact kinds are not
+runtime Python type assertions.
+
+### Dask and packaging boundary
+
+Use Dask Delayed only. Do not import `dask.distributed`, create a `Client`, use
+Futures, define scheduler plugins, or select a named worker executor. The
+ordinary `ass_flow` import and all planning-only behavior must remain usable
+without Dask installed.
+
+Core/evidence review first reaches provisional technical acceptance using the
+installed Dask 2026.7.1. Only then may packaging add an optional
+`dask==2026.7.1` extra and may `requirements-dev.txt` select it. Final
+acceptance follows clean-environment and full-composition verification.
+Rejection leaves both packaging files unchanged. Dask must not become an
+unconditional runtime dependency of the planning package. Installed metadata
+supports Python 3.10+, but the current environment tests Python 3.14.6 only.
+
+`local` is the only Plan policy admitted and the only tested compute recipe;
+it is not an enforceable placement property of a returned Delayed collection.
+The lowerer performs no scheduling and does not infer ambient scheduler state.
+Acceptance uses `dask.compute(..., scheduler="synchronous",
+optimize_graph=False)`. If enforced local placement is required, this
+Delayed-only surface is insufficient and the experiment stops.
+
+The raw graph must expose the invocation mapping before optimization. Evidence
+also computes under installed default optimization and with
+`optimization.fuse.delayed=True`, recording observed keys and whether authored
+invocation boundaries disappear. If the desired contract requires keys to
+survive ordinary optimization, their disappearance falsifies the hypothesis;
+do not add private anti-fusion machinery. This option-free local spike emits no
+routing annotation and makes no annotation-survival claim. Live handles and
+cancellation remain for the separate Delayed/Futures comparison.
+
+### Acceptance evidence
+
+- A simulator-free graph includes branching, fan-in, shuffled invocation/edge
+  tuple order, a scalar source and predecessor binding, and a collection mixing
+  source and predecessor references in intentionally significant order. It
+  computes the expected result from injected values and explicit callables.
+- The graph also includes a multi-output invocation, aliased top-level names,
+  nested list/dict configuration proving fresh per-wrapper thawing, an orphan
+  invocation, and a zero-output invocation. Tests distinguish computing named
+  output closure from explicitly computing all invocation tasks.
+- Every authored invocation has exactly one pre-optimization wrapper and one
+  distinct actual Dask-key mapping; no wrapper is created from an edge or flow
+  boundary. Aliased outputs reuse one projection.
+- Lower the same Plan twice with different source values and/or
+  implementations, compute roots from both lowerings in one `dask.compute`,
+  and obtain both correct distinct results without key collision.
+- Explicit per-invocation counters prove one wrapper evaluation within one
+  merged compute. Separate compute calls are documented to re-execute.
+- Raw, installed-default-optimization, and forced-fusion observations record
+  the executed keys and whether invocation task boundaries survive.
+- A nonexistent/poison authoring module identity and refusing decorated bodies
+  prove that only explicitly registered implementations run.
+- A strange but valid runtime output value proves the lowerer adds no artifact
+  kind/Python type assertion. A top-level Dask collection source is rejected.
+- Missing/extra source bindings, malformed registry keys/values, missing exact
+  operation versions, unsupported policy/options/resources, invalid result
+  shape, missing/extra result names, mapping access failures, and implementation
+  exceptions cover the complete attributable refusal matrix.
+- Lowering performs no filesystem I/O, address resolution, codec execution,
+  publication, materialization, dynamic replanning, retry, persistence, or
+  distributed scheduling.
+- Existing 63 component tests, focused lowering tests, root integration, and
+  full composition pass. Changed Python compiles and diff checks remain clean.
+- After provisional technical acceptance, build the wheel with Dask only in
+  optional metadata. Install it with `--no-deps` into an isolated environment
+  without Dask; `import ass_flow` and the planning-only characterization path
+  succeed, while explicit experimental-module use fails with a short
+  optional-dependency message.
+- Python 3.10 compatibility receives static/package-metadata inspection only
+  unless a real 3.10 interpreter becomes available. No runtime-tested claim is
+  made from the Python 3.14.6 evidence.
+- The implementation states that Delayed does not establish enforced
+  placement, process/distributed serialization, optimization invariance, live
+  handles, cancellation, retries, persistence, side-effect safety, or
+  cross-compute exactly-once behavior.
+
+### Files and delegation
+
+The intended implementation scope is limited to:
+
+- `ass-flow/src/ass_flow/experimental/` for the lowering experiment;
+- one focused component test module and one simulator-free example;
+- `ass-flow/pyproject.toml` and root `requirements-dev.txt` only after
+  provisional technical acceptance, and only for the exact optional Dask
+  dependency selected above;
+- the local README, ontology, planning/implementation trackers, docs index, and
+  architecture ledger where demonstrated evidence changes their claims.
+
+Core planner/model/authoring changes require a stop and review unless a small
+source defect blocks the experiment. Root OTA/PVT declarations and sibling
+component source remain unchanged.
+
+Implementation is delegated sequentially:
+
+1. a fresh Codex high architecture reviewer challenges this work order before
+   code is assigned;
+2. `local-dask-core` implements the experimental lowering and focused tests;
+3. `local-dask-evidence` adds the runnable simulator-free example and updates
+   documentation only after the core contract is stable;
+4. `local-dask-review` independently reviews the complete diff, execution
+   boundary, packaging, and evidence.
+
+The coordinating session owns work-order correction, commits, prompts,
+integration decisions, independent verification, tracker state, and final
+scope review.
+
+### Stop and completion rules
+
+Stop instead of broadening if the experiment requires executing decorated
+authoring callables implicitly, mutating Plan IR, storing Dask handles in Plan
+data, resolving source addresses, implementing codecs, inferring a scheduler
+from ambient state, accepting non-local policy, materializing outputs, adding a
+second readiness graph, using Distributed/Futures, implementing cancellation,
+or adding LSF/durable attempt behavior.
+
+Also stop and record the hypothesis as falsified or narrowed if correctness
+requires stable Dask keys across lowerings, tokenizing runtime values or
+callables as identity, implicit authored-callable/module access, scheduler
+enforcement by the lowerer, private Dask graph APIs, global anti-fusion controls
+hidden from callers, attaching orphan work to named outputs implicitly, or core
+Plan changes. On falsification, do not add the optional dependency or authorize
+`submit(...)`.
+
+The work order completes only when the bounded lowering and refusal evidence
+pass, an independent high review accepts the identity/authority boundary, and
+the component/root composition remains green. Completion may authorize a
+separate Delayed/Futures comparison work order. It does not authorize a public
+`submit(...)` or remote execution.
+
+**Pre-handoff review:** Accepted on 2026-08-03 after revision. The first
+Codex-high review rejected repeat-stable Dask keys because independently bound
+graphs with equal keys merged to the wrong value, and required explicit
+orphan/zero-output roots, tuple-order independence, fusion observations,
+ontology treatment, and non-circular packaging gates. The corrected contract
+uses fresh per-lowering namespaces and received `ACCEPT`. Implementation remains
+subject to the completion review above.

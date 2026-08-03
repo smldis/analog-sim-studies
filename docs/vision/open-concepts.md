@@ -81,47 +81,57 @@ These fell out during direct development. None was rejected on merit.
   has never been revisited**, and the question of whether an operation has
   durable state distinct from its artifacts remains unexamined.
 
-## Using Dask for both readiness and placement
+## Dask: which slot, and should the slots merge?
 
-Asked directly: what if Dask drives readiness *and* supplies the workers, via
-`LSFCluster`? It is a coherent architecture, and it is not recommended as the
-default.
+Two independent questions were being asked with one word.
 
-Structurally the two concerns do not merge so much as one collapses. With
-pooled workers the transport becomes almost trivial — Dask supplies the
-remoteness by placing the task on a distant worker, so what runs there is
-effectively in-process execution on a farm node. Durability is unaffected in
-either arrangement, because `execute` runs inside the task and `ass-exec` keeps
-owning identity, journals, reuse, and artifacts.
+**Slot A — who decides what runs next.** `ass-run`'s loop, or a Dask graph.
 
-**Correction (2026-08-03).** An earlier version of this section said that using
-Dask for both would cost the visible per-invocation LSF job. That is only true
-of a *wholly pooled* arrangement. Placement is already resolved per invocation
-by ASS Flow and honoured per invocation by `ass-run`, so a Dask-driven run can
-still send one corner to its own `bsub -I` job while others share a pool.
-Readiness and placement are independent choices; conflating them was the error.
+**Slot B — where one invocation runs.** `local`, `lsf-direct`, or `lsf-pool`,
+already resolved per invocation by ASS Flow and honoured per invocation by
+`ass-run`.
 
-What a wholly pooled arrangement costs:
+They do not need merging, and `lsf-pool` is not a merge in any case: it is a
+third peer alongside the other two placements.
 
-- **One visible LSF job per invocation**, which was a stated requirement. `bjobs`
-  shows workers, not corners: no per-invocation resource request, no
-  per-invocation `bkill`, no per-invocation accounting.
-- **Heterogeneous resources.** One pool profile is one worker shape, so a
-  large-memory corner and a small one share it and the difference is wasted.
-- **Licence accounting.** The sharpest cost in this domain. One job per
-  invocation lets LSF manage simulator licences through `rusage`, because LSF
-  knows the count. Under a pool the jobs LSF sees are workers, so licence
-  contention stops being visible to the scheduler that could arbitrate it.
-- **Failure isolation.** A crashing simulator takes a worker process rather
-  than a single job, and the recovery interacts with attempt retry semantics.
+### Using the pool does not require giving Dask the graph
 
-Preferred shape: keep the two concerns separate and let policy choose per
-invocation, as the original design proposed (`local`, `lsf-direct`,
-`lsf-pool`). Direct for large, slow, heterogeneous, or licence-consuming work;
-pooled for many small homogeneous steps. This is what makes
-requested-versus-resolved-versus-observed placement necessary rather than
-merely tidy, and it is why that dropped concept should be recovered before
-pooled mode is built.
+`dask-jobqueue` can serve as a *transport*. `LSFPooledTransport` would hold a
+client to an `LSFCluster`, submit one invocation, wait for its future, and
+return. Dask never sees the plan — it sees independent submissions. The pool's
+real benefit, avoiding per-task `bsub` latency for many short steps, is
+available without handing over graph authority.
+
+### Why Dask should probably not take slot A
+
+- **Worker occupancy under mixed placement.** If Dask owns both readiness and
+  the workers, a task whose placement is `lsf-direct` blocks a Dask worker slot
+  for the whole external job while doing nothing. Ten pooled workers and fifty
+  direct corners serialise at ten. This is the graduated main's unanswered
+  question — how executor capacity corresponds to outstanding LSF jobs — and
+  per-invocation placement makes it the normal case rather than an edge case.
+  With `ass-run` owning readiness a blocked wait is a thread, and there are no
+  slots to contend for.
+- **Locality is gone.** Steps exchange file addresses on a shared store, so
+  there are no in-memory values to keep warm and nothing to schedule around.
+  That was Dask's strongest argument for owning readiness.
+- **What remains** is concurrency, priorities, and backpressure. Bounded
+  concurrency is a small addition to `ass-run`; the other two are worth
+  revisiting only at task counts this project has not reached.
+
+### What a wholly pooled arrangement would cost
+
+Recorded because it is the arrangement to avoid drifting into, not because
+anything proposes it. Routing *every* invocation through a pool would give up
+one visible LSF job per invocation, force a single worker shape on
+heterogeneous work, and remove simulator licences from the scheduler that could
+arbitrate them — LSF would see workers, not corners. Per-invocation placement is
+precisely what prevents this, provided placements are actually authored.
+
+### Preferred shape
+
+Three placements as peers with readiness staying in `ass-run`. Revisit Dask for
+slot A only if task counts and priority needs outgrow a thread pool.
 
 ## New ideas raised during development
 

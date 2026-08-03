@@ -44,6 +44,7 @@ _EVENTS = frozenset(
         "cancel_requested",
         "observed",
         "terminal",
+        "reuse_accepted",
     }
 )
 
@@ -78,6 +79,8 @@ class AttemptState:
     manifest_path: str | None = None
     cancel_requested: bool = False
     cancel_reason: str | None = None
+    reuse_accepted: bool = False
+    reuse_reason: str | None = None
     observations: tuple[Mapping[str, Any], ...] = field(default_factory=tuple)
     events: tuple[JournalEvent, ...] = field(default_factory=tuple)
 
@@ -167,6 +170,8 @@ class AttemptJournal:
         manifest_path: str | None = None
         cancel_requested = False
         cancel_reason: str | None = None
+        reuse_accepted = False
+        reuse_reason: str | None = None
         observations: list[Mapping[str, Any]] = []
         events = self.events()
 
@@ -187,6 +192,9 @@ class AttemptJournal:
             elif item.event == "cancel_requested":
                 cancel_requested = True
                 cancel_reason = item.data.get("reason")
+            elif item.event == "reuse_accepted":
+                reuse_accepted = True
+                reuse_reason = item.data.get("reason")
             elif item.event == "observed":
                 observations.append(item.data)
             elif item.event == "terminal":
@@ -208,6 +216,8 @@ class AttemptJournal:
             manifest_path=manifest_path,
             cancel_requested=cancel_requested,
             cancel_reason=cancel_reason,
+            reuse_accepted=reuse_accepted,
+            reuse_reason=reuse_reason,
             observations=tuple(observations),
             events=events,
         )

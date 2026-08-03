@@ -19,7 +19,13 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Mapping
 
-from ass_exec.attempt import LaunchResult, launch_or_attach, reconcile
+from ass_exec.attempt import (
+    AttemptError,
+    LaunchResult,
+    is_reusable,
+    launch_or_attach,
+    reconcile,
+)
 from ass_exec.identity import attempt_identity
 from ass_exec.journal import AttemptJournal
 from ass_exec.reuse import input_digest
@@ -38,6 +44,41 @@ class Durability(Enum):
     RECORDED = "recorded"
     """A full attempt directory: append-only events and a published manifest.
     Required for work that leaves the process."""
+
+
+def _select_sequence(
+    *,
+    root: str,
+    plan_id: str,
+    invocation_id: str,
+    digest: str,
+    max_attempts: int,
+) -> str:
+    """Find the attempt this run should use for one set of inputs.
+
+    Sequences let the same inputs be attempted more than once without ever
+    overwriting an earlier record. The first sequence that is unfinished, or
+    finished with a reusable result, is the one to use; sequences whose results
+    were kept but not reused are stepped over and left intact.
+    """
+
+    for sequence in range(max_attempts):
+        identity = attempt_identity(
+            plan_id=plan_id,
+            invocation_id=invocation_id,
+            sequence=sequence,
+            input_digest=digest,
+        ).rendered
+        journal = AttemptJournal(root, identity)
+        published = journal.read_manifest()
+        if published is None or is_reusable(journal.fold(), published):
+            return identity
+
+    raise AttemptError(
+        f"{invocation_id} has {max_attempts} attempts at these inputs, none "
+        f"reusable. Inspect them and either fix the cause or call "
+        f"accept_for_reuse(...) on the one that should stand."
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +103,7 @@ def execute(
     plan_id: str | None = None,
     invocation_id: str | None = None,
     unchecked_identity: bool = False,
+    max_attempts: int = 20,
 ) -> ExecutionResult:
     """Run one invocation at the declared durability level.
 
@@ -97,11 +139,13 @@ def execute(
         # recording where an attempt came from cannot change what it reuses.
         bundle = {**bundle, "plan": plan_id, "invocation": invocation_id}
         if identity is None:
-            identity = attempt_identity(
+            identity = _select_sequence(
+                root=root,
                 plan_id=plan_id,
                 invocation_id=invocation_id,
-                input_digest=input_digest(bundle),
-            ).rendered
+                digest=input_digest(bundle),
+                max_attempts=max_attempts,
+            )
 
     if root is None:
         raise ValueError("recorded execution requires a root")

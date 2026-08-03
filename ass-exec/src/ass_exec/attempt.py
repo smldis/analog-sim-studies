@@ -29,13 +29,32 @@ from ass_exec.transport import Observation, SubmissionRefused, Transport
 
 __all__ = [
     "AttemptError",
+    "AttemptSpent",
     "LaunchResult",
+    "REUSABLE_OUTCOMES",
     "ReconciliationError",
     "UnrecoverableAttempt",
+    "accept_for_reuse",
+    "is_reusable",
     "launch_or_attach",
     "reconcile",
     "request_cancel",
 ]
+
+REUSABLE_OUTCOMES = frozenset({"succeeded"})
+"""Outcomes a later run may return instead of doing the work again.
+
+Only success. A failure may have been the work's own verdict — a design that
+does not converge — or something incidental to it: an out-of-memory kill, a
+preempted node, a full filesystem. The record cannot tell those apart, and
+guessing in either direction is worse than not guessing. Caching an infrastructure
+failure would poison an invocation permanently; discarding a real negative
+result would waste the run that produced it.
+
+So a failed attempt is kept, not reused: rerunning is the default, the earlier
+attempt stays on disk for inspection, and an operator who has looked at it can
+mark it reusable with `accept_for_reuse`.
+"""
 
 
 class AttemptError(RuntimeError):
@@ -53,6 +72,42 @@ class UnrecoverableAttempt(AttemptError):
 
 class ReconciliationError(AttemptError):
     """The durable record and the observed substrate state disagree."""
+
+
+class AttemptSpent(AttemptError):
+    """This attempt reached a terminal outcome that may not be reused.
+
+    Not a failure of the protocol: the work is finished and its record stands.
+    The caller should run a fresh attempt at a later sequence, leaving this one
+    intact for inspection.
+    """
+
+
+def is_reusable(state: AttemptState, manifest: Mapping[str, Any] | None) -> bool:
+    """Whether a published result may stand in for running the work again."""
+
+    if manifest is None:
+        return False
+    if state.reuse_accepted:
+        return True
+    return manifest.get("outcome") in REUSABLE_OUTCOMES
+
+
+def accept_for_reuse(journal: AttemptJournal, *, reason: str) -> AttemptState:
+    """Record that a human inspected this result and chose to keep it.
+
+    The escape hatch for a failure worth preserving — a known-bad corner being
+    debugged, or a negative result that should not be recomputed on every run.
+    It is durable and attributable rather than a flag on a command line.
+    """
+
+    published = journal.read_manifest()
+    if published is None:
+        raise AttemptError(
+            f"attempt {journal.identity} has no published result to accept"
+        )
+    journal.append("reuse_accepted", reason=reason, outcome=published.get("outcome"))
+    return journal.fold()
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,6 +145,13 @@ def launch_or_attach(
                 repaired=True,
             )
             state = journal.fold()
+        if not is_reusable(state, published):
+            raise AttemptSpent(
+                f"attempt {journal.identity} ended as "
+                f"{published.get('outcome')!r}, which is not reused "
+                f"automatically. Run a later sequence, or call "
+                f"accept_for_reuse(...) after inspecting it."
+            )
         return LaunchResult("completed", state, published)
 
     if state.is_terminal:

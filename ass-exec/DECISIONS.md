@@ -105,6 +105,7 @@ distinction they encode is what makes the orphan-reaping path expressible.
 | Can cancellation be known? | No, only intended and later reconciled. | `test_success_after_requested_cancellation_is_not_normalized`. |
 | Does placement belong in result identity? | No. Queue, walltime, cores and host are excluded, so retuning resources never invalidates a result. | `test_placement_does_not_participate_in_identity`. |
 | Can reuse return a result from different inputs? | No, once identity is content-addressed: changed inputs land on a different attempt. | `test_changed_inputs_do_not_reuse_the_old_result`. |
+| May a failed result be reused? | Not automatically. It is retained, the rerun takes a new sequence, and a human may accept it after inspection. | `test_a_failure_is_not_reused_and_the_work_runs_again`, `test_an_accepted_failure_is_reused_afterwards`. |
 | What happens to superseded results? | They are retained and nameable as stale, not overwritten. | `test_prior_results_are_named_as_superseded_not_discarded`. |
 | How should the two units couple? | Through the Plan document, not the package. Neither imports the other. | `planned.py` reads plain data; `test_the_real_ass_flow_example_plan_derives` runs against a Plan ASS Flow actually produced. |
 | Does staleness propagate transitively? | Yes. Editing one corner reruns it and its reduction while siblings are reused. | `test_a_changed_config_invalidates_only_its_own_branch_and_downstream`, and the end-to-end example. |

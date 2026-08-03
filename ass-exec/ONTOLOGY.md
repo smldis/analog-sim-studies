@@ -101,6 +101,12 @@ its siblings are reused and the superseded results stay nameable.
   declared input digests.
 - `execute(...)` refuses a bare `identity` for recorded work, because such an
   identity says nothing about what produced the result stored under it.
+- Only `succeeded` is reused automatically. A failure may be the work's own
+  verdict or something incidental to it — an OOM kill, a preempted node — and
+  the record cannot tell those apart. Failed attempts are retained, a rerun
+  takes the next sequence, and `accept_for_reuse(...)` durably records a human
+  decision to keep one. `AttemptSpent` reports a terminal result that may not
+  be reused.
 - `Durability` is declared per invocation, never inferred from placement.
   `EPHEMERAL` touches no filesystem, requires no identity or root, and reruns
   on every call. `RECORDED` runs the full protocol and completes from an

@@ -113,11 +113,14 @@ def test_a_declared_file_lands_where_the_operation_said(site):
 
 def test_the_plan_carries_what_implements_each_operation(tmp_path):
     document = study(build()).document
+    # Named from this module, whatever pytest imported it as.
     definitions = {
         item["identity"]["name"]: item for item in document["operations"]
     }
-    implementation = definitions["tests.test_study.write_note"]["implementation"]
+    name = f"{write_note.identity.name}"
+    implementation = definitions[name]["implementation"]
 
+    assert name.endswith(".write_note"), name
     assert implementation["entry_point"].endswith(":write_note")
     assert implementation["fingerprint"]
 

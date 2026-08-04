@@ -161,10 +161,17 @@ def _plan_id(document: Mapping[str, Any]) -> str:
     ever reused.
     """
 
-    outputs = document.get("outputs") or {}
-    for name in sorted(outputs):
-        return str(name)
-    return "study"
+    # Declared outputs are a list of {"name", "reference"} records, not a
+    # mapping. Reading them as one stringified the whole record — reference and
+    # producing invocation id included — so a study whose output came from a
+    # differently keyed invocation landed on a different attempt root and
+    # reused nothing, however unchanged the work itself was.
+    names = sorted(
+        str(item["name"])
+        for item in document.get("outputs") or ()
+        if isinstance(item, Mapping) and "name" in item
+    )
+    return "-".join(names) if names else "study"
 
 
 def _reporter(

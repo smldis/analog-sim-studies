@@ -36,6 +36,15 @@ corner's declared configuration reruns exactly that corner's chain and the
 shared final evaluation, and leaves the other corners' results untouched on
 disk.
 
+The run's own stdout is diagnostics, per this study's own rule for every
+`ngspice` invocation it runs. The real, durable result is
+`_runs/report.json`, written after every run (reused or not): every
+invocation's disposition/outcome/duration and the full evaluation, so a human
+or a script can inspect a run without re-parsing terminal output. Written by
+ordinary post-processing in `run_study.py`, not a Plan operation — adding one
+would change the reference's declared invocation/edge/output cardinality,
+which `PLANNING.md` reserves for coordinated review.
+
 Names that correspond to Sidecar Edits, SPICE Canonical, or Netlist
 Decomposition are no longer merely proposed adapter boundaries for this
 reference's own use — `run_study.py` calls their real public APIs. They remain

@@ -49,6 +49,7 @@ import struct
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -77,6 +78,7 @@ SPEC_LIMITS_PATH = STUDY_DIR / "inputs" / "spec_limits.json"
 
 DEFAULT_ROOT = STUDY_DIR / "_runs" / "attempts"
 DEFAULT_WORKSPACE_ROOT = STUDY_DIR / "_runs" / "work"
+DEFAULT_REPORT_PATH = STUDY_DIR / "_runs" / "report.json"
 
 PLAN_ID = "ota-pvt-study"
 
@@ -561,6 +563,52 @@ def run_once(
     return report, transport.durations_s
 
 
+def write_report(
+    *,
+    report,
+    durations_s: Mapping[str, float],
+    evaluation: Mapping[str, Any] | None,
+    total_s: float,
+    path: Path,
+) -> None:
+    """Materialize this run's results as a file. Stdout is diagnostics only.
+
+    Not a Plan operation: adding one would change the reference's declared
+    invocation/edge/output cardinality, which ``PLANNING.md`` reserves for
+    coordinated review. This is ordinary post-processing in the binding
+    script, over data ``run_plan`` already returned -- it does not read a
+    result and decide what to run next, so it is not the result-dependent
+    control ``ass-run`` is kept free of.
+    """
+
+    invocations = [
+        {
+            "authored_key": outcome.authored_key,
+            "operation": outcome.operation,
+            "disposition": outcome.disposition,
+            "outcome": outcome.outcome,
+            "duration_s": durations_s.get(outcome.invocation_id),
+            "error": outcome.error,
+        }
+        for outcome in report.outcomes
+    ]
+    document = {
+        "plan_id": PLAN_ID,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "succeeded": report.succeeded,
+        "total_wall_clock_s": total_s,
+        "invocations": invocations,
+        "evaluation": evaluation,
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(document, indent=2, default=str), encoding="utf-8")
+    if not path.exists():
+        # Mirrors the declared-output rule this study holds every simulator
+        # step to: a report that claims to exist and does not is a failure,
+        # not a detail to shrug off.
+        raise RuntimeError(f"wrote {path} but it is not there afterward")
+
+
 def main() -> int:
     sys.path.insert(0, str(STUDY_DIR))
     import ota_pvt_plan  # noqa: E402  (path must be set up first)
@@ -588,6 +636,15 @@ def main() -> int:
     )
     if evaluation is not None:
         print(json.dumps(evaluation, indent=2, default=str))
+
+    write_report(
+        report=report,
+        durations_s=durations_s,
+        evaluation=evaluation,
+        total_s=total_s,
+        path=DEFAULT_REPORT_PATH,
+    )
+    print(f"\nreport written: {DEFAULT_REPORT_PATH}")
 
     return 0 if report.succeeded else 1
 

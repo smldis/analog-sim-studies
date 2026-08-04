@@ -34,6 +34,13 @@ Two substrates exist: in-process execution, the honest degenerate case where
 work cannot outlive its caller, and direct `bsub -I` submission, which has
 never contacted a real cluster. Pooled execution refuses.
 
+The unit also now studies whether a sweep can be watched without being
+disturbed. `ass_exec.watch` is an observer over records it does not own; its
+evidence is that the owner's log is untouched after observation and that a
+deliberately false observation changes neither an outcome nor what reuse
+returns. Like everything else here that names `bjobs`, its parsing has never
+met a real farm.
+
 The unit now also studies whether content-addressed identity derived from a
 Plan document makes rerunning honest. `examples/planned_characterization.py`
 is the current evidence: three corners and a reduction run, rerun with nothing
@@ -164,6 +171,26 @@ its siblings are reused and the superseded results stay nameable.
   collapse into one fact. Placement never reaches the input digest, including
   its options: retuning a corner's memory or moving it to another queue reuses
   the result it already produced rather than recomputing it.
+- `ass_exec.watch` observes attempts it does not own. It reads attempt
+  directories, asks LSF once per refresh about every live job rather than once
+  per job, and appends transitions to an `observations.jsonl` beside each
+  record. The invariant is that an observation is evidence *about* an attempt,
+  never a transition *of* it: the observer writes its own file, so the log that
+  carries the ordering rules keeps exactly one writer, and nothing an observer
+  records can change what an attempt concludes or what reuse returns. A watcher
+  may be killed, restarted, or run twice with no effect on any result.
+- Only state changes are recorded, which is what makes per-job **queue latency**
+  derivable afterwards — the interval between `submit_intent` and the first
+  `running` observation is the dispatch cost this project has been reasoning
+  about without measuring.
+- Job status is read with `bjobs -o "job_name stat"`. Default `bjobs` output is
+  refused rather than parsed: it truncates job names and its columns shift when
+  a pending job has no execution host, so a `PEND` row can be read as `RUN` —
+  wrong in precisely the field being watched. A site whose LSF predates `-o`
+  gets a refusal that says so.
+- An attempt on a substrate that has no external job is left alone rather than
+  given an invented state, and a job absent from LSF while the record says live
+  is left to reconciliation, which owns the attempt.
 - `Durability` is declared per invocation, never inferred from placement.
   `EPHEMERAL` touches no filesystem, requires no identity or root, and reruns
   on every call. `RECORDED` runs the full protocol and completes from an

@@ -77,6 +77,30 @@ def check_name_lookup(name: str) -> bool:
     return True
 
 
+def check_status_format() -> bool:
+    """Whether job status can be read without guessing at columns.
+
+    The watcher asks `bjobs -noheader -o "job_name stat"`, one call for every
+    live job. Default `bjobs` output is not a safe substitute: it truncates the
+    job name, and its columns shift when a pending job has no execution host,
+    so a `PEND` row can be parsed as `RUN` — wrong in precisely the field being
+    watched. If this fails, the site's LSF predates `-o` and the watcher will
+    refuse rather than guess.
+    """
+
+    completed = subprocess.run(
+        ["bjobs", "-noheader", "-o", "job_name stat"],
+        capture_output=True,
+        text=True,
+    )
+    text = f"{completed.stdout} {completed.stderr}"
+    if "Illegal option" in text or "Unknown option" in text:
+        report(FAIL, "bjobs -o job status", completed.stderr.strip()[:200])
+        return False
+    report(PASS, "bjobs -o job status", "stable two-column format accepted")
+    return True
+
+
 def check_resource_request(
     queue: str | None, name: str, licence: str | None
 ) -> bool:
@@ -204,6 +228,7 @@ def main() -> int:
 
     ok = check_interactive(args.queue, f"ass-preflight-{token}-a")
     ok = check_name_lookup(f"ass-preflight-{token}-a") and ok
+    ok = check_status_format() and ok
     ok = (
         check_resource_request(
             args.queue, f"ass-preflight-{token}-r", args.licence

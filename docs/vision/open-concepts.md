@@ -42,6 +42,7 @@ altered by evidence), **deferred** (still wanted, not started), **dropped**
 | Pooled LSF via `dask_jobqueue.LSFCluster` | **Many short invocations**, where per-job queue dispatch costs more than the work. Not "many invocations": one job each is a good fit for long-running corners regardless of count, and it buys per-corner resource requests, `bkill`, accounting, licence arbitration and failure isolation. `LSFPooledTransport` refuses today. |
 | ~~Concurrency in the driver~~ **Answered by adopting Dask.** | It is `threads_per_worker` on the cluster, and no code in `ass-run` owns it. Measured 2026-08-04: a waiting invocation costs ~16 KiB of thread plus one client process, so this is a safety rail rather than a scheduler feature, and the real limiter is the site's MAX JOB policy, per-user process limits, and the licence count. Ask for those numbers rather than inventing one. |
 | ~~Per-job status: a `bjobs` watcher and a sweep view~~ **Built as `ass_exec.watch`.** | One `bjobs -o "job_name stat"` per refresh for every live attempt, transitions appended to an `observations.jsonl` beside each record, and `examples/watch_sweep.py` as a terminal view. An observation is evidence about an attempt, never a transition of it, so the observer writes its own file and cannot change an outcome. **Queue latency is now derivable** — the gap between `submit_intent` and the first `running` observation is the per-job dispatch cost the pooled-versus-direct question needs. What is still missing is a real farm: the parsing has never met one, `lsf_preflight.py` checks that `-o` exists, and default `bjobs` output is refused rather than parsed because its columns shift for pending jobs. |
+| Unified flow-level `submit()` — one file per study | **Wanted (2026-08-04, user direction), designed, not built.** The OTA study currently takes two files: a Plan declaration whose operation bodies raise, and a ~600-line binding supplying implementations, commands, output paths, transports and roots. The proposal collapses them: the operation body *is* the implementation, receiving an `out` namespace of declared output paths in its attempt workspace; a body returning `shell(...)` is a launcher whose command runs at the placement, while a body returning a value ran in process; `sweep(points, key=...)` opens a keyed scope so reuse cannot be lost to renumbering; identity folds a normalized source hash of the body, retiring both the out-of-band `commands=` dict and `operation_version` as a human promise; declared sources are fingerprinted by mtime and size, closing the staleness gap below; durability is inferred from declared outputs with an override. A `Site` holds the only things that are not the study — placements to transports, roots, address spaces, kernel threads — from a file. `study.plan.summary()` stays inspectable before `study.submit(site=...)` spends anything. What it costs: the Plan stops being implementation-neutral and needs its package importable. What it does not cost: `ass-exec` still reads plain dicts and imports neither `ass_flow` nor Dask, so the attempt protocol, reuse, placement and the watcher are untouched and the kernel stays swappable. Estimated 1,200–1,500 lines and a Plan schema bump to 3. |
 | One-scheduler mixed topology (labelled local, direct-gateway, pooled workers) | Requires pooled mode first; must be demonstrated, not assumed, since `LSFCluster` normally owns its own scheduler. See "What \"both slots\" must not be allowed to mean" below for why mixed, rather than wholly pooled, is the preferred shape. |
 | Delayed versus Futures comparison (evidence ladder 4) | **Now live, since Dask is the driver.** `ass_run.graph` uses Futures — `client.submit` with explicit keys, `pure=False`, and `as_completed` for live events — while `ass_flow.experimental.local_dask` lowers to Delayed. Futures were chosen for keys an operator can recognise and for reporting as work completes; whether Delayed would express the graph better is untested. |
 | Real direct-LSF smoke test (evidence ladder 6) | Site access. `examples/lsf_preflight.py` is ready; not runnable now. |
@@ -77,12 +78,9 @@ These fell out during direct development. None was rejected on merit.
   `max_attempts` remains unmodelled.
 - **Explicit fallback rule, absent by default.** Named in the policy model,
   never modelled. Related to result-dependent control below.
-- **Result-dependent control and recovery.** Whether to reapply a flow to
-  committed explicit state and produce a new versioned plan, or to add a
-  visible conditional/recovery node — hidden imperative controllers rejected
-  either way. Still open, and now bounded rather than looming: `ass-run` runs
-  only fully determined plans and its guidance forbids adding branching
-  quietly. The question arrives when a workload needs a fallback.
+- **Result-dependent control and recovery.** Deliberately out of scope
+  (2026-08-04, user direction), with the reasoning recorded below rather than
+  left as a shrug. See "Future work: result-dependent control".
 - **The typed transition contract.** `Operation(validated_config,
   explicit_state, declared_artifacts) -> StepResult` was adopted as a research
   invariant. Three of its four parts now exist in some form; **`explicit_state`
@@ -360,6 +358,79 @@ still open, and it is still the study that should settle it.
   different placements per operation. Whether a plan-only reference should
   eventually author a real placement name distinct from its documentation
   status, once it has a genuine reason to differ per operation, is open.
+
+## Future work: result-dependent control
+
+Deliberately out of scope (2026-08-04, user direction). Recorded in full
+because it is the concept most likely to arrive by accident, and because the
+two things this project did today — adopting Dask, and designing a flow-level
+`submit()` — both lowered the cost of doing it badly.
+
+### What it means
+
+Everything the units run today is *fully determined before it starts*. A flow
+body executes at planning time and produces a fixed graph, which is what makes
+a Plan inspectable before it spends simulation resources and a rerun
+predictable. Result-dependent control breaks that property. Its real forms are
+ordinary engineering wishes:
+
+- a corner that will not converge, retried with different solver options;
+- a sizing sweep that continues until a specification closes, or gives up;
+- corners chosen adaptively, because the interesting ones are near a boundary;
+- a fallback placement when a licence never becomes available.
+
+### Why it is not simply a feature
+
+The Plan stops predicting what will run. Reuse, staleness, and "explain which
+work is stale and what must run again" are all defined against a graph that
+exists before execution. A graph that grows in response to results has no such
+object to compare against, so the manifesto's verification path — *inspect
+resolved parameters, corners, jobs and dependencies before execution* — has
+nothing to inspect.
+
+### The risk is now higher, not lower
+
+Two changes this session made the wrong version cheap:
+
+- **Dask is the kernel.** Tasks launching tasks is a supported pattern
+  (`worker_client`, `secede`), so a dynamic graph is now a small code change
+  rather than an architectural project. Capability is not permission.
+- **A flow-level `submit()` is proposed.** That façade is exactly where
+  adaptivity would arrive disguised as convenience — a `retry=` argument, a
+  `max_iterations=`, an `until=` predicate. Each is individually reasonable.
+  Together they are the hidden imperative controller the inquiry rejected.
+
+Treat any of those three keyword arguments on `submit()` as the tripwire.
+
+### The shape it should take if it is ever built
+
+Not a mutating graph. A second, explicitly named verb — `explore(...)` — that
+is honest about producing a **sequence of Plans** rather than one:
+
+1. Each iteration materializes a complete, inspectable, versioned Plan.
+2. Provenance links plan *n* to plan *n+1* together with the observation that
+   caused the step, so the sequence can be read afterwards as an argument.
+3. The decision function itself has an identity — a code fingerprint, like an
+   operation — and its inputs are recorded. **This is the load-bearing part:**
+   an adaptive study is only reproducible if the controller that adapted it is
+   identified and its decisions are durable. Otherwise the study cannot be
+   replayed, and "trace a conclusion back to its exact inputs" fails at the
+   first branch.
+4. Stop conditions and spend limits are declared, not discovered. The
+   manifesto already frames autonomy this way: a policy attached to a study,
+   bounding operations and resources, not a separate architecture.
+
+Under that shape, reuse and staleness keep working, because every individual
+Plan is still fully determined. What changes is that a study becomes a list of
+Plans rather than one — which is closer to what an engineering campaign
+actually is.
+
+### What would make it live
+
+A real workload that needs a fallback, and cannot be expressed by rerunning an
+edited plan by hand. Until then, editing the plan and rerunning is both the
+honest answer and, given content-addressed reuse, a cheap one: only the
+affected branch recomputes.
 
 ## How to use this file
 

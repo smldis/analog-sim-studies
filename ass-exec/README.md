@@ -160,10 +160,16 @@ wanted it. The client stays in this process's group and asks the kernel to
 signal it if we die, which closes the one gap LSF does not. `-W` is mandatory
 as the bound that survives everything else failing.
 
-This holds one process per concurrent job, which is right for a handful of
-independently visible jobs and wrong for hundreds. Many similar jobs belong on
-a pooled `dask_jobqueue.LSFCluster`; `LSFPooledTransport` marks that boundary
-and currently refuses.
+One job per invocation costs one queue dispatch, which is negligible for work
+that runs for minutes and ruinous for work that runs for seconds. It buys a
+per-corner resource request, `bkill`, logs, accounting, licence arbitration by
+LSF, and failure isolation. Short repetitive steps are what belong on a pooled
+`dask_jobqueue.LSFCluster` instead; `LSFPooledTransport` marks that boundary and
+currently refuses.
+
+Concurrency is a separate matter: each simultaneously running job holds a
+blocked client on the submit host, so the practical limit is your site's
+per-user process and pending-job policy.
 
 The subprocess layer runs for real against a fake `bsub`/`bjobs`/`bkill` on
 PATH, and `tests/test_owner_bound.py` proves with real signals that a spawned

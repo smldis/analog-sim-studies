@@ -12,9 +12,18 @@ alive. Two local mechanisms close it — the child stays in our process group, s
 a group signal reaches it, and on Linux it asks the kernel to signal it when
 its parent dies. Neither involves LSF.
 
-This mode holds one process and one connection per concurrent job, which is
-right for a handful of independently visible jobs and wrong for hundreds. Many
-similar jobs belong on a pooled `LSFCluster` instead.
+The cost of one job per invocation is queue dispatch latency, paid once per
+job. For work that runs for minutes it disappears into the noise; for a
+two-second step it dwarfs the work itself. The axis is therefore how long an
+invocation runs, not how many there are: a thousand ten-minute corners are a
+fine fit, a hundred two-second extractions are not, and those belong on a
+pooled `LSFCluster` that pays dispatch once per worker.
+
+Concurrency has a separate, softer cost: each *simultaneously running* job holds
+a blocked client process and connection on the submit host. That scales with the
+concurrency limit rather than the job count, and its real ceiling is site policy
+— per-user process limits, maximum pending jobs — which this unit does not know
+and should not guess.
 """
 
 from __future__ import annotations

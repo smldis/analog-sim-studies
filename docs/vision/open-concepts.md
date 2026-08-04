@@ -39,7 +39,7 @@ altered by evidence), **deferred** (still wanted, not started), **dropped**
 
 | Concept | Trigger to revisit |
 | --- | --- |
-| Pooled LSF via `dask_jobqueue.LSFCluster` | A workload needing warm workers or data locality. `LSFPooledTransport` refuses today. |
+| Pooled LSF via `dask_jobqueue.LSFCluster` | **Many short invocations**, where per-job queue dispatch costs more than the work. Not "many invocations": one job each is a good fit for long-running corners regardless of count, and it buys per-corner resource requests, `bkill`, accounting, licence arbitration and failure isolation. `LSFPooledTransport` refuses today. |
 | Concurrency in the driver | `ass-run` executes one invocation at a time. Current preference is bounded concurrency here rather than adopting a scheduler, since file-based artifacts removed Dask's locality argument. Revisit if task counts or priority needs outgrow a thread pool. Note that with `bsub -I`, concurrency means one held client process per running job. |
 | One-scheduler mixed topology (labelled local, direct-gateway, pooled workers) | Requires pooled mode first; must be demonstrated, not assumed, since `LSFCluster` normally owns its own scheduler. See "Using Dask for both slots" below for why mixed, rather than wholly pooled, is the preferred shape. |
 | Delayed versus Futures comparison (evidence ladder 4) | Was to precede accepting `submit(...)`. Partly overtaken: `ass-exec` executes without Dask, so this now only matters if Dask becomes the driver. |
@@ -115,6 +115,11 @@ available without handing over graph authority.
 - **Locality is gone.** Steps exchange file addresses on a shared store, so
   there are no in-memory values to keep warm and nothing to schedule around.
   That was Dask's strongest argument for owning readiness.
+- **Concurrency limits are a site question, not an architecture one.** Each
+  simultaneously running `bsub -I` holds a blocked client on the submit host,
+  bounded by the concurrency limit rather than the job count. The real ceiling
+  is per-user process and pending-job policy at the site, which has not been
+  measured; earlier claims of a threshold here were guesses.
 - **What remains** is concurrency, priorities, and backpressure. Bounded
   concurrency is a small addition to `ass-run`; the other two are worth
   revisiting only at task counts this project has not reached.

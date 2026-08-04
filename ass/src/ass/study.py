@@ -75,16 +75,32 @@ class Study:
         """What will run, before anything is spent."""
 
         document = self.document
+        invocations = sorted(
+            document.get("invocations", []),
+            key=lambda item: item.get("authored_key") or item["id"],
+        )
         lines = [
             f"plan schema {document.get('schema_version')}: "
-            f"{len(document.get('invocations', []))} invocations, "
+            f"{len(invocations)} invocations, "
             f"{len(document.get('sources', []))} sources"
         ]
-        for invocation in document.get("invocations", []):
+        # Widths follow the study rather than a guess: an authored key that
+        # overran a fixed column used to run into the operation name, which is
+        # unreadable exactly when a study is large enough to need reading.
+        keys = [item.get("authored_key") or item["id"] for item in invocations]
+        key_width = max((len(item) for item in keys), default=0) + 2
+        name_width = (
+            max(
+                (len(item["operation"]["name"]) for item in invocations),
+                default=0,
+            )
+            + 2
+        )
+        for invocation, key in zip(invocations, keys):
             placement = (invocation.get("policy") or {}).get("name", "local")
             lines.append(
-                f"  {invocation.get('authored_key') or invocation['id']:<28}"
-                f"{invocation['operation']['name']:<34}{placement}"
+                f"  {key:<{key_width}}"
+                f"{invocation['operation']['name']:<{name_width}}{placement}"
             )
         return "\n".join(lines)
 

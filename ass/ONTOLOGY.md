@@ -28,8 +28,21 @@ number. A second run reuses all ten invocations; editing one corner's declared
 temperature reruns that corner and the shared reduction only; editing an
 operation's *body* reruns every invocation of that operation and nothing else.
 
+Its second evidence is `examples/ota_pvt.py`, the OTA/PVT reference study
+ported from the two files it used to be. Sixteen invocations over three PVT
+points, four declared external sources, real ngspice AC sweeps, and gain/GBW/
+phase-margin computed from the raw file rather than transcribed. What the port
+demonstrates is the seam closing: `run_study.py` re-declared all six operations,
+supplied their output paths, and wrote `del base, edits  # unresolved source
+reference` three times because a declared source could not reach a body. None of
+that survives. Editing `spec_limits.json` reran `evaluate-pvt` alone — fifteen
+invocations reused — and flipped the verdict to failing; restoring the file
+reused the original attempt rather than recomputing it.
+
 What it has not met: a farm. Every placement it has run is `local`, so the
-`shell` launcher reaching an `lsf` job is designed and untested.
+`shell` launcher reaching an `lsf` job is designed and untested. `ota_pvt.py`
+carries the one-line policy change that would place each corner on its own job,
+as a comment rather than a claim.
 
 ## Current contracts
 

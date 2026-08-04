@@ -31,7 +31,7 @@ altered by evidence), **deferred** (still wanted, not started), **dropped**
 | Concept | Original stance | Now |
 | --- | --- | --- |
 | Direct-LSF job lifetime | A job outlives its submitter, so a durable protocol must own its identity | User direction: work is owner-bound. `bsub -I` plus process-group and `PR_SET_PDEATHSIG`. The protocol survives with a changed justification. |
-| Dask as the kernel | The main's *preferred hypothesis*: Dask owns graph dependencies, readiness, priorities, retries | Weakened twice. Owner-bound lifetime removed the identity objection that made Dask necessary *and* the one that made it unsound. Then the file-based artifact decision removed its strongest remaining argument: when steps exchange paths on a shared store there are no in-memory values to keep warm and no locality to schedule around. What remains is concurrency and scale, and bounded concurrency is a small addition to `ass-run`. Dask stays relevant for *pooled* execution — many short jobs wanting warm workers — which is a different question from readiness. |
+| Dask as the kernel | The main's *preferred hypothesis*: Dask owns graph dependencies, readiness, priorities, retries | Weakened twice. Owner-bound lifetime removed the identity objection that made Dask necessary *and* the one that made it unsound. Then the file-based artifact decision removed its strongest remaining argument: when steps exchange paths on a shared store there are no in-memory values to keep warm and no locality to schedule around. What remains is concurrency and scale, and bounded concurrency is a small addition to `ass-run`. Dask stays relevant for *pooled* execution — many short jobs wanting warm workers — which is a different question from readiness. A third argument, worker occupancy under mixed placement, was **retracted** on 2026-08-04; see below. |
 | Component boundary and name | One rebuilt "ASS Flow" | Split into `ass-flow` (planning) and `ass-exec` (attempts), coupled through the Plan document. Nothing yet owns "run the plan", so no unit is operator-facing "flow". Open. |
 | "Resume" | Reattaching to running work | Result reuse: rerun and skip work whose inputs are unchanged. |
 
@@ -57,11 +57,18 @@ These fell out during direct development. None was rejected on merit.
   the policy the Plan already resolved, and a placement no transport provides
   is fatal rather than a silent fallback. Moving work between placements
   provably does not invalidate its result.
-- **Logical scarce resources such as licences.** Named in the policy vocabulary
-  and conspicuously relevant here — simulator licences are exactly the scarce
-  resource an analog sweep contends for. `LSFInteractiveTransport` passes `-R`
-  through, and policy options now reach the run, but nothing yet turns a
-  declared licence need into a resource request or reasons about contention.
+- ~~**Logical scarce resources such as licences.**~~ **Recovered.**
+  A placement may declare `licences={"<name>": n}`, and that becomes a `rusage`
+  term on the one job that needs it, alongside `queue`, `cores`, `memory_mb`
+  and a raw `resources` escape hatch — all resolved per invocation over the
+  transport's site defaults. Contention is deliberately *not* reasoned about
+  here: LSF knows the licence count and who holds it, so arbitration is handed
+  to the scheduler rather than modelled. Three things this does not settle:
+  whether the site's resource names match what a plan authors (ask, do not
+  guess — `lsf_preflight.py --licence <name>` checks it), what a licence
+  declaration should mean at a placement that cannot arbitrate it (`local` and
+  the in-process transport ignore placement entirely today), and whether a
+  study wants to *see* contention rather than merely wait inside it.
 - ~~**Retry and timeout bounds.**~~ **Recovered.**
   `LSFInteractiveTransport(timeout=...)` now bounds our own wait; a client that
   exceeds it is killed, which with `-I` takes the job too, and the result is
@@ -102,16 +109,35 @@ return. Dask never sees the plan — it sees independent submissions. The pool's
 real benefit, avoiding per-task `bsub` latency for many short steps, is
 available without handing over graph authority.
 
-### Why Dask should probably not take slot A
+### Retracted: the worker-occupancy argument (2026-08-04)
 
-- **Worker occupancy under mixed placement.** If Dask owns both readiness and
-  the workers, a task whose placement is `lsf-direct` blocks a Dask worker slot
-  for the whole external job while doing nothing. Ten pooled workers and fifty
-  direct corners serialise at ten. This is the graduated main's unanswered
-  question — how executor capacity corresponds to outstanding LSF jobs — and
-  per-invocation placement makes it the normal case rather than an edge case.
-  With `ass-run` owning readiness a blocked wait is a thread, and there are no
-  slots to contend for.
+The strongest argument this register made against Dask in slot A was that a
+task whose placement is `lsf-direct` would block a Dask worker slot for the
+whole external job, so ten pooled workers and fifty direct corners serialise at
+ten. **That is wrong, and it was recorded without checking.** It is retracted
+rather than quietly edited, because it was cited as reasoning elsewhere.
+
+`distributed.secede()` exists for exactly this case: called from inside a task,
+the thread leaves the worker's thread pool, the pool refills the slot, and the
+task changes to the `long-running` state which explicitly does not count
+against the worker's parallelism limit. `rejoin()` blocks to re-acquire a slot
+afterwards, and `worker_client()` is the documented wrapper that does both
+safely. The failure mode that would have vindicated the argument — seceded
+tasks driving scheduler occupancy negative so those workers hoarded all new
+work — was real in 2022.1.0–2022.3.0 and was fixed (dask/distributed#5975, PR
+#6351). Evidence is documentary; no spike was run, because `distributed` is not
+installed here.
+
+What survives is smaller and worth stating exactly, because it is *neutral*
+rather than anti-Dask: a seceded task still holds a real OS thread and a worker
+process for the life of the external job, which is the same cost as a blocked
+thread in an `ass-run` pool. Dask does not make an outstanding `bsub -I` cheap;
+it makes it *no more expensive than doing it ourselves*. And `secede()` has to
+be called from within the task, so a blocking transport would need a
+Dask-aware wrapper — a small integration cost `ass-run` does not currently pay.
+
+### Why Dask might still not take slot A
+
 - **Locality is gone.** Steps exchange file addresses on a shared store, so
   there are no in-memory values to keep warm and nothing to schedule around.
   That was Dask's strongest argument for owning readiness.
@@ -133,10 +159,48 @@ heterogeneous work, and remove simulator licences from the scheduler that could
 arbitrate them — LSF would see workers, not corners. Per-invocation placement is
 precisely what prevents this, provided placements are actually authored.
 
-### Preferred shape
+### The counter-case, which this register had underweighted
 
-Three placements as peers with readiness staying in `ass-run`. Revisit Dask for
-slot A only if task counts and priority needs outgrow a thread pool.
+Recorded so the next reader argues both sides rather than inheriting one.
+
+- **`ass-run` accreting into a scheduler.** It already owns ordering,
+  readiness, failure handling, and placement selection. Concurrency, then
+  limits, backpressure, priorities, cancellation, progress reporting — each
+  increment is individually reasonable and collectively the workflow engine the
+  inquiry warned against building. **Treat the next scheduler-shaped feature
+  request as a tripwire, not a task**: if two arrive together, that is the
+  signal to reopen this section rather than implement them.
+- **Diagnostics.** Dask's dashboard is real operational value on a long sweep.
+  `ass-run` has nothing equivalent and no plan for one.
+- **Graph-level retries and error propagation** come free with Dask; both are
+  currently unmodelled here (`sequence` exists and is unused).
+- **Data-parallel post-processing** over many raw files is Dask's home ground.
+  If a study needs it, Dask is in the stack anyway and slot A costs less.
+- **The graduated main preferred Dask as the kernel**, formed with a
+  whole-system view. The arguments against it were assembled incrementally, and
+  one of them has now been retracted outright.
+
+### Where this stands, and what would settle it
+
+Provisionally unchanged: readiness stays in `ass-run`, three placements as
+peers, bounded concurrency added here rather than adopting a scheduler. But the
+justification is now narrower and should be stated as it actually is — not "a
+Dask kernel would serialise mixed placement", which was false, but "Dask's
+locality advantage does not apply to file artifacts, and its remaining benefits
+are ones no workload here has yet asked for." That is a default to challenge.
+
+Discriminating observations, none of which exist yet:
+
+- Real numbers from the OTA/PVT study: how many invocations, how long each, how
+  heterogeneous their resource needs. This is the reason to run it first.
+- Whether an operator wants a live dashboard for a long sweep. **Ask; do not
+  assume.**
+- Whether `ass-run` starts needing priorities or backpressure (the tripwire).
+- A spike, if the question turns live: `secede()` around a blocking `bsub -I`
+  under `LSFCluster`, which also answers whether `dask_jobqueue` tolerates being
+  used as a plain submit-and-wait transport for slot B.
+
+Deciding before the study exists would be choosing on aesthetics.
 
 ## New ideas raised during development
 

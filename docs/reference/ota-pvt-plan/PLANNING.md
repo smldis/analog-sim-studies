@@ -323,3 +323,41 @@ execution, real accessibility checks, publication, materialized operation
 outputs, runtime artifact values, adapters, or execution. Implementation,
 focused evidence, and independent Phase 4 acceptance are complete. Dask is
 only the next candidate under a separate reviewed work order.
+
+## Follow-on record: a real execution binding (2026-08-04)
+
+The prerequisite decision above asked for "the smallest generic
+artifact/adapter contract needed to give real boundary values an address,
+codec, publication rule, and handoff semantics" before any executor. That
+contract arrived by a different route than expected: not a new generic
+artifact layer, but `ass-exec`'s attempt protocol and `ass-run`'s
+`run_plan`, both since built and evidenced against this same reference's Plan
+*shape* (see `ass-run/tests/test_file_flow.py`, which runs the two-step
+shape this reference generalizes, over real LSF-shaped subprocesses).
+
+This follow-on authorized only: adding `run_study.py` beside the Plan
+declaration as a companion binding, in the same shape as
+`ass-exec/examples/planned_characterization.py` — a real implementation per
+operation name, handed to a transport, walked by `ass_run.run_plan` — and
+running it against real `ngspice`, real Sidecar Edits, real SPICE Canonical,
+and real Netlist Decomposition. `ota_pvt_plan.py` is unchanged; its six
+operation bodies still raise `NotImplementedError`, which remains the correct
+shape for a document meant to be inspected without acquiring runtime meaning.
+
+**What this proves.** The exact Plan this reference declared — four sources,
+six operations, two flows, sixteen invocations, eighteen edges — runs for
+real, end to end, through all three execution units, producing a real,
+checked PVT evaluation from a real simulator. See `README.md` for how to run
+it and `IMPLEMENTATION.md` for the observed numbers.
+
+**What this does not authorize.** Editing `ota_pvt_plan.py`'s operation
+bodies, promoting `run_study.py` into a reusable OTA-study API or a general
+executor, LSF placement (none is reachable from a development sandbox), or
+any change to the Plan's declared shape, artifact kinds, or cardinality. Two
+seams this run surfaced without resolving are recorded in
+`docs/vision/open-concepts.md` rather than fixed here: source content is not
+part of an invocation's identity (only its declared address/codec is, so an
+edited fixture's *content* does not by itself invalidate a cached result),
+and this reference's `reference.plan-only` policy doubles as ass-run's
+placement-name lookup key, which this binding sidesteps by running in
+single-transport mode rather than by authoring a real placement name.

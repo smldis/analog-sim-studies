@@ -5,11 +5,15 @@
 **Phase:** work order complete
 
 **Follow-on:** schema-2 source-handoff adaptation complete and independently
-accepted
+accepted; real execution binding complete (see below)
 
 **Authorized slice:** one root-owned, plan-only OTA/PVT reference
 
-**Runtime status:** explicitly unimplemented
+**Runtime status:** `ota_pvt_plan.py`'s six operation bodies remain
+unimplemented by design. A companion binding, `run_study.py`, runs the exact
+same Plan end to end against real `ngspice`, real Sidecar Edits, real SPICE
+Canonical, and real Netlist Decomposition, through unmodified `ass-exec`/
+`ass-run`. See "Follow-on: real execution binding" below.
 
 **Component impact:** none; the repository retains four direct children
 
@@ -37,6 +41,58 @@ The R1-R7 table is the closed historical record of
 | A3 | Prove the artifact/ephemeral split without output materialization | implemented and verified | Schema 2 has four artifact source declarations; all 18 operation-output edges and every named output, including final evaluation, are ephemeral; every output capability is null |
 | A4 | Preserve canonical and no-runtime boundaries | implemented and verified | 10 focused tests cover repeated data/JSON, exact representations, legacy rejection, refusing bodies/submit, source-import audit, and guarded no-I/O construction |
 | A5 | Independent Phase 4 acceptance | complete | Fresh full-diff review accepted the reference and data-only boundary after one ASS Flow malformed-source validation defect was corrected and independently reverified |
+
+## Follow-on: real execution binding (2026-08-04)
+
+| ID | Work | State | Evidence |
+| --- | --- | --- | --- |
+| E1 | Bind all six operation names to real implementations, per `ass-exec`'s own companion-binding pattern | implemented | `run_study.py`; `ota_pvt_plan.py` untouched |
+| E2 | Run the study against real `ngspice -b -r`, real Sidecar Edits, real SPICE Canonical, real Netlist Decomposition | implemented and observed | see verification log below |
+| E3 | Give `canonical-netlist` and `ota-functional-decomposition` a first JSON-safe serialization | implemented | required, not optional: `ass_exec` journals every observed result as JSON regardless of durability path, so an in-process return value that is not JSON-safe fails the invocation before this study's own logic runs (discovered by running it, see `run_study.py`'s module docstring) |
+| E4 | Confirm reuse and transitive staleness against real attempts, not just the digest math | observed | second run reuses all 16; editing one corner's declared `temp_c` reruns exactly that corner's 5 invocations plus the shared `evaluate-pvt`, 6 of 16 |
+| E5 | Record what this run surfaced and did not resolve | recorded | `docs/vision/open-concepts.md`; see "Honest limitations" below |
+
+### Verification log (2026-08-04)
+
+Run with `PYTHONPATH=ass-flow/src:ass-run/src:ass-exec/src:sidecar-edits/src:spice-canonical/src:netlist-decomposition/src python docs/reference/ota-pvt-plan/run_study.py`, from a clean `_runs/`:
+
+- **First run.** All 16 invocations `claimed` and `succeeded`. Per-invocation
+  wall clock (this process's own timing, not `ass_exec`'s):
+  `prepare-run` 5.6-14.1 ms (×3), `canonicalize-deck` 3.5-4.7 ms (×3),
+  `decompose-ota` 1.9-19.8 ms (×3), `simulate-ac` 10.1-33.2 ms (×3, real
+  `ngspice`), `measure-ac` 2.1-4.3 ms (×3), `evaluate-pvt` 0.5 ms (×1). Sum of
+  per-invocation work: ~148 ms. Wall clock measured around the whole
+  `run_plan` call: 749 ms; the ~600 ms difference is `ass_exec`/`ass_run`
+  overhead (journal appends, digest hashing, directory creation) per
+  invocation, not simulation time — real for 16 short invocations, and the
+  fact this task's item 1-3 numbers exist to inform.
+- **Second run, same `_runs/`.** All 16 invocations `completed` (reused, zero
+  local implementations called). Wall clock: 10.4 ms. The final evaluation
+  JSON is byte-identical to the first run's.
+- **Edited-corner run.** `ss_1v62_125c`'s `temp_c` changed from 125 to 130 in
+  memory only (`ota_pvt_plan.PVT_POINTS` reassigned in a throwaway harness;
+  the committed file is untouched), same `_runs/`. Exactly `ss`'s
+  `prepare-run`, `canonicalize-deck`, `decompose-ota`, `simulate-ac`,
+  `measure-ac`, plus the shared `evaluate-pvt` — 6 of 16 — show `claimed`; the
+  other 10 (both untouched corners, in full) show `completed`. The superseded
+  `ss` attempt directory is retained on disk, not overwritten; the new one
+  gets its own content-addressed identity.
+- **Artifacts.** Each corner's rendered deck (`prepare_run`'s declared `run`
+  output) is 573-578 bytes of real, corner-specific SPICE text. Each
+  `simulate_ac` raw file is exactly 29389 bytes (181 AC points × 10 variables
+  × 16 bytes, plus a ~430-byte ASCII header) — real `ngspice` binary AC output,
+  read back by a from-scratch parser in `run_study.py` (no third-party SPICE
+  raw-file dependency). Total footprint for 3 corners plus one edited rerun
+  (22 attempt directories): 612 KiB, split roughly 340 KiB attempts (journals
+  and manifests) / 268 KiB workspaces (rendered decks, raw files, ngspice
+  logs).
+- **Nothing refused.** Every invocation across all three runs succeeded; no
+  operation declined for missing evidence in this run. (The refusal paths
+  this study exercises unconditionally in code -- a nonzero `ngspice` exit,
+  a raw file the simulator never wrote, a raw file whose AC/complex shape
+  doesn't match, a gain sweep that never crosses 0 dB, a metric the
+  measurement definition names but the reader doesn't compute -- were not
+  triggered by this fixture, which converges cleanly at all three points.)
 
 ## Required implementation constraints
 
@@ -156,3 +212,39 @@ The R1-R7 table is the closed historical record of
 - execution, lowering, scheduling, retries, attempts, recovery, and caching;
 - provenance, evidence promotion, decisions, and durable study lifecycle;
 - production hardening and generalized OTA-study APIs.
+
+## What the real execution binding resolved, and what it still does not
+
+The lists above are the historical plan-only record and are left as written.
+`run_study.py` (2026-08-04) resolves some of them for its own binding, not for
+ASS Flow itself:
+
+- **Resolved by `run_study.py`, not by ASS Flow:** simulator and waveform
+  integration (real `ngspice`, a from-scratch AC raw-file reader), address
+  resolution for the four sources (read directly from the same locators
+  `ota_pvt_plan.py` authored, since `ass_run.binding.resolve` only threads
+  *output* references -- see its module docstring), materialized operation
+  outputs and runtime artifact values (`prepare_run`'s rendered directory and
+  `simulate_ac`'s raw file, via `ass_exec`'s declared-output/manifest
+  machinery), execution (via unmodified `ass_run.run_plan`), and a first
+  JSON-safe serialization for the `canonical-netlist` and
+  `ota-functional-decomposition` artifact kinds.
+- **Still true, unresolved, and out of this follow-on's scope:** sibling ASS
+  Flow adapters (ASS Flow itself still has none), provenance/evidence
+  promotion/decisions/durable study lifecycle, production hardening, a
+  reusable OTA-study API, and LSF placement (unreachable from a development
+  sandbox; this run is entirely `local`).
+- **Newly surfaced by actually running it**, recorded in
+  `docs/vision/open-concepts.md` rather than fixed here: a Plan invocation's
+  content-addressed identity covers a source's declared address and codec,
+  never the referenced file's content, so editing `inputs/base/ota_ac.cir` or
+  `inputs/pvt_edits.py` in place would not by itself invalidate a cached
+  result (only editing `ota_pvt_plan.py`'s own declared config does, which is
+  what the edited-corner run above exercises); `ass_run.run_plan` always runs
+  at `Durability.RECORDED`, which journals every observed result as JSON, so
+  an in-process step cannot honestly return a value that cannot serialize to
+  JSON, only discovered by hitting it; and this reference's Plan carries no
+  authored placement name, only the `reference.plan-only` documentation
+  marker, which collides with what `ass_run.binding.select_transport` reads
+  as one -- resolved here by running in single-transport mode rather than by
+  authoring a real placement.

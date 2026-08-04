@@ -47,13 +47,21 @@ any affected child ontology.
   rebuild inquiry with its current status, including concepts that fell out of
   direct development without a decision. It spans both units, so it belongs at
   the composition root rather than in either one.
-- `docs/reference/ota-pvt-plan/` owns one representative, non-executing
-  cross-unit Plan declaration and its versioned input fixtures. It tests static
-  composition through public ASS Flow contracts: four repository-relative
-  sources are declared as addressed artifact references with explicit data-only
-  representation/access requirements, while all operation-output edges and the
-  final evaluation remain ephemeral. This does not promote its analog-domain
-  labels into a child API or claim sibling adapters.
+- `docs/reference/ota-pvt-plan/` owns one representative cross-unit Plan
+  declaration (`ota_pvt_plan.py`), its versioned input fixtures, and a
+  companion real-execution binding (`run_study.py`). The Plan declaration
+  itself remains non-executing: it tests static composition through public
+  ASS Flow contracts alone -- four repository-relative sources declared as
+  addressed artifact references with explicit data-only representation/access
+  requirements, while all operation-output edges and the final evaluation
+  remain ephemeral. The companion binding is a separate, ordinary consumer of
+  `ass-exec`/`ass-run`'s already-public execution contracts, in the same shape
+  as `ass-exec/examples/planned_characterization.py`: it supplies a real
+  implementation per declared operation name and runs the exact same Plan
+  end to end against real `ngspice` and the real Sidecar Edits, SPICE
+  Canonical, and Netlist Decomposition public APIs. Neither promotes this
+  reference's analog-domain labels into a child API, claims a sibling adapter
+  ASS Flow itself provides, or adds a fifth component.
 
 ## Contributions from children
 

@@ -310,6 +310,56 @@ still open, and it is still the study that should settle it.
   current plan references. Wants a policy — age, superseded-ness, or explicit
   operator action — and must never delete an attempt a live plan still resolves
   to. Recorded as an idea, not scheduled.
+- **A source's identity is its declared address and codec, never its
+  content.** Raised running the OTA/PVT reference's real execution binding
+  (`docs/reference/ota-pvt-plan/run_study.py`, 2026-08-04). `plan_bundles`'s
+  `_source_identity` hashes `{artifact, address, materialized_as}` only; there
+  is no mtime/size check as there is for a declared *output* file
+  (`ass_exec.artifacts.ArtifactRef`). Editing `inputs/base/ota_ac.cir` or
+  `inputs/pvt_edits.py` in place, without touching their declared address in
+  `ota_pvt_plan.py`, would not invalidate any cached attempt that reads them —
+  a rerun would silently reuse a result computed from the old file content.
+  This is a different gap from the "Artifact checksums and provenance" row
+  below, which is about declared *outputs*: that row's mtime-plus-size
+  argument was never extended to sources, and small authored text fixtures
+  are exactly the case where hashing content would be cheap. Not scheduled;
+  the honest workaround this run used was to make config that should
+  participate in identity (point_id, process, vdd_v, temp_c) a declared Plan
+  config value rather than fixture content, which is what the edited-corner
+  reuse test actually exercised.
+- **`ass_exec`'s `Durability.RECORDED` path requires every in-process return
+  value to be JSON-safe, not merely inspectable.** Raised by the same run:
+  `reconcile()` appends `{"value": ...}` to the append-only journal via
+  `json.dumps` before any output declaration is even consulted, and
+  `ass_run.run_plan` always executes at `Durability.RECORDED` — there is no
+  lighter path for a fast in-process step, unlike `ass_exec.durability`'s own
+  stated design ("an ordinary in-memory Python step... has nothing worth
+  reconstructing"). Concretely, `spice_canonical.CanonicalNetlist` and
+  `netlist_decomposition.BlockTag` are frozen dataclasses with a `frozenset`
+  field and are not JSON-serializable; the first real run failed at exactly
+  this point. `run_study.py` worked around it by adding a small hand-written
+  serialization for both (see its module docstring), which is real forward
+  progress on PLANNING.md's recorded "no portable serialization" limitation,
+  but it is scoped to what one in-process run needs, not a general artifact
+  codec. Whether `run_plan` should offer an `EPHEMERAL` path for invocations
+  with no declared outputs, mirroring `execute()`'s own two-tier design, is
+  open.
+- **A Plan-only reference's documentation-marker policy collides with
+  `ass_run`'s placement-name lookup.** `ota_pvt_plan.py`'s
+  `PLAN_DECLARATION_POLICY`/`SIMULATOR_BOUNDARY_POLICY` are named
+  `reference.plan-only`, meant only as a status marker ("declaration-only",
+  "unimplemented"). `ass_run.binding.select_transport` reads
+  `(item.policy or {}).get("name")` as the *placement* to route an invocation
+  to, falling back to `"local"` only when no name is present at all. Because
+  this Plan does author a name, every invocation asks for placement
+  `reference.plan-only`, not `local` — a `transports={"local": ...}` mapping
+  would raise `UnsupportedPlacement` for all sixteen. `run_study.py` sidesteps
+  this by running in single-transport mode (`transport=...`, which answers
+  any requested placement name identically), which is honest for a Plan with
+  one uniform policy but would not scale to a Plan that actually wanted
+  different placements per operation. Whether a plan-only reference should
+  eventually author a real placement name distinct from its documentation
+  status, once it has a genuine reason to differ per operation, is open.
 
 ## How to use this file
 

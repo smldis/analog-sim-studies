@@ -425,6 +425,55 @@ Plan is still fully determined. What changes is that a study becomes a list of
 Plans rather than one — which is closer to what an engineering campaign
 actually is.
 
+### Already demonstrated: staged plans (2026-08-05)
+
+The "sequence of Plans" shape above is not hypothetical. It runs, in
+`ass/examples/ota_pvt_clean_nested.py`, and it arrived from the opposite
+direction — not as a way to adapt to results, but as the answer to a limitation
+that looked fatal.
+
+Reading a corner set inside the graph makes it a *result*, so the plan holding
+that read cannot name one invocation per corner. The conclusion "therefore the
+fan-out must collapse into monolithic operations" is wrong, and was recorded
+here as wrong. An invocation may **author a Plan and run it**: `jobs` is an
+ordinary value inside a body, so authoring over it is ordinary authoring. Stage
+two names one prepare, simulate and measure per corner and is complete and
+inspectable before it spends anything, exactly like the plan containing it.
+
+This is not result-dependent control and must not be filed as a step toward it.
+No plan branches on its own results; each plan is fully determined when
+authored, and a later stage is authored after an earlier stage produced its
+values. Every property defined against "a graph that exists before execution"
+survives, per plan. Measured: changing a spec limit reran the outer invocation,
+which re-authored stage two, which then **reused nine of its ten invocations**
+and recomputed only the evaluation.
+
+Two things it does not yet have, and both are what `explore(...)` above would
+need anyway:
+
+- The stage-two plan is a declared output of the invocation that authored it,
+  so it is recorded — but nothing links stage one to stage two as *provenance*.
+  Reading the sequence back as an argument is manual.
+- The authoring function has no identity of its own. Point 3 above calls that
+  the load-bearing part, and it is missing here for the same reason: the body
+  that authors stage two is fingerprinted as an operation, which is close, but
+  the register should not treat "close" as "done".
+
+### Deferred: declaring part of a source
+
+Found by the same example. A source is fingerprinted whole, so a file carrying
+two independent declarations over-invalidates. `pvt_edits.py` says both *which
+corners exist* and *how every corner is edited*; every corner's render declares
+the file as an input, so adding a corner changes the fingerprint and correctly —
+but far too broadly — reruns every corner's simulation.
+
+The system is not wrong; the declaration is too coarse. What is missing is a way
+to say "this operation depends on *that part* of that source". Staged plans make
+it fixable rather than fixed: stage one already separates the param sets from
+the rest of the file, so stage two could depend on the edit recipe instead of
+the file that carries it. Nothing does that yet, and it should not be invented
+before a workload pays for it.
+
 ### What would make it live
 
 A real workload that needs a fallback, and cannot be expressed by rerunning an

@@ -31,8 +31,8 @@ altered by evidence), **deferred** (still wanted, not started), **dropped**
 | Concept | Original stance | Now |
 | --- | --- | --- |
 | Direct-LSF job lifetime | A job outlives its submitter, so a durable protocol must own its identity | User direction: work is owner-bound. `bsub -I` plus process-group and `PR_SET_PDEATHSIG`. The protocol survives with a changed justification. |
-| Dask as the kernel | The main's *preferred hypothesis*: Dask owns graph dependencies, readiness, priorities, retries | Weakened twice. Owner-bound lifetime removed the identity objection that made Dask necessary *and* the one that made it unsound. Then the file-based artifact decision removed its strongest remaining argument: when steps exchange paths on a shared store there are no in-memory values to keep warm and no locality to schedule around. (Scoped 2026-08-04: that holds for the steps that use artifacts, not for every step; see the correction below.) What remains is concurrency and scale, and bounded concurrency is a small addition to `ass-run`. Dask stays relevant for *pooled* execution — many short jobs wanting warm workers — which is a different question from readiness. A third argument, worker occupancy under mixed placement, was **retracted** on 2026-08-04; see below. |
-| Component boundary and name | One rebuilt "ASS Flow" | Split into `ass-flow` (planning) and `ass-exec` (attempts), coupled through the Plan document. Nothing yet owns "run the plan", so no unit is operator-facing "flow". Open. |
+| Dask as the kernel | The main's *preferred hypothesis*: Dask owns graph dependencies, readiness, priorities, retries | **Adopted 2026-08-04 (user direction), after the case against it was measured and largely dissolved.** `ass_run.graph` gives readiness to Dask; `ass_run.binding` keeps the meaning of a run identical across kernels; `ass-exec` remains Dask-free. The route there is worth keeping: the hypothesis was weakened twice — owner-bound lifetime removed the identity objection, and file-based artifacts removed the locality argument for the steps that use them — then the strongest remaining objection was retracted on measurement. What decided it was not new evidence for Dask but the collapse of the evidence against it, plus a stated need for a live view. |
+| Component boundary and name | One rebuilt "ASS Flow" | Split into `ass-flow` (planning), `ass-exec` (attempts), and `ass-run` (binding a run, with readiness now Dask's), coupled through the Plan document. No unit is named operator-facing "flow"; whether one should be is still open. |
 | "Resume" | Reattaching to running work | Result reuse: rerun and skip work whose inputs are unchanged. |
 
 ## Deferred, still wanted
@@ -40,10 +40,10 @@ altered by evidence), **deferred** (still wanted, not started), **dropped**
 | Concept | Trigger to revisit |
 | --- | --- |
 | Pooled LSF via `dask_jobqueue.LSFCluster` | **Many short invocations**, where per-job queue dispatch costs more than the work. Not "many invocations": one job each is a good fit for long-running corners regardless of count, and it buys per-corner resource requests, `bkill`, accounting, licence arbitration and failure isolation. `LSFPooledTransport` refuses today. |
-| Concurrency in the driver | `ass-run` executes one invocation at a time. Measured 2026-08-04: a waiting invocation costs ~16 KiB of thread plus one client process, so this is a **safety rail with an arbitrary high default**, not a scheduler feature to tune. The real limiter is the site's MAX JOB policy, per-user process limits, and the licence count. Ask for those numbers rather than inventing one. |
+| ~~Concurrency in the driver~~ **Answered by adopting Dask.** | It is `threads_per_worker` on the cluster, and no code in `ass-run` owns it. Measured 2026-08-04: a waiting invocation costs ~16 KiB of thread plus one client process, so this is a safety rail rather than a scheduler feature, and the real limiter is the site's MAX JOB policy, per-user process limits, and the licence count. Ask for those numbers rather than inventing one. |
 | Per-job status: a `bjobs` watcher and a sweep view | **Wanted, user direction 2026-08-04: a live view of a long sweep matters, and it should show the status of each `bsub -I`.** Nothing provides it today: with `-I` the transport blocks from submission to terminal, so the record cannot distinguish a corner pending in the queue from one simulating. `discover()` and `_state_from_bjobs` already read `PEND/RUN/DONE/EXIT`; nothing calls them while a direct submission is in flight. Shape proposed: one `bjobs` call per refresh for all live identities (job names are `ass-<digest>`), appending `observed` events to each attempt's record, with the view as a reader over journals. Two by-products: it measures **per-job queue latency**, which is the number the pooled-versus-direct question has always lacked, and being a reader rather than a driver feature it works unchanged whoever owns readiness. Site facts to check first, in preflight: whether `bjobs -o` is available and whether `-J` accepts a wildcard. |
 | One-scheduler mixed topology (labelled local, direct-gateway, pooled workers) | Requires pooled mode first; must be demonstrated, not assumed, since `LSFCluster` normally owns its own scheduler. See "What \"both slots\" must not be allowed to mean" below for why mixed, rather than wholly pooled, is the preferred shape. |
-| Delayed versus Futures comparison (evidence ladder 4) | Was to precede accepting `submit(...)`. Partly overtaken: `ass-exec` executes without Dask, so this now only matters if Dask becomes the driver. |
+| Delayed versus Futures comparison (evidence ladder 4) | **Now live, since Dask is the driver.** `ass_run.graph` uses Futures — `client.submit` with explicit keys, `pure=False`, and `as_completed` for live events — while `ass_flow.experimental.local_dask` lowers to Delayed. Futures were chosen for keys an operator can recognise and for reporting as work completes; whether Delayed would express the graph better is untested. |
 | Real direct-LSF smoke test (evidence ladder 6) | Site access. `examples/lsf_preflight.py` is ready; not runnable now. |
 | Plugins and declarative flow configuration | A concrete multi-repository or non-Python authoring need. |
 | Artifact checksums and provenance | Deliberate: hashing multi-GB raw files every run is a real cost, and mtime plus size is the cheap staleness signal. Revisit if mtime proves unreliable on NFS. |
@@ -89,7 +89,43 @@ These fell out during direct development. None was rejected on merit.
   has never been revisited**, and the question of whether an operation has
   durable state distinct from its artifacts remains unexamined.
 
-## Dask: which slot, and should the slots merge?
+## Decided: Dask takes both slots (2026-08-04, user direction)
+
+`ass_run.graph.run_plan_graph` is the kernel. What that does and does not mean:
+
+- **Slot A is Dask's.** Readiness, ordering, and concurrency belong to the
+  graph. Concurrency is `threads_per_worker` — there is no limit parameter,
+  because a waiting invocation costs ~16 KiB and the real ceiling is site
+  policy.
+- **Slot B is unchanged and still per-invocation.** `local` runs in the worker,
+  `lsf-direct` blocks on its own `bsub -I` so per-corner `rusage`, `bkill` and
+  accounting survive, and `lsf-pool` still refuses. Adopting Dask for readiness
+  did *not* route work through pooled workers, and must not.
+- **The recommended cluster is local and threaded** on the submit host:
+  `LocalCluster(processes=False, threads_per_worker=N)`. No nanny to restart a
+  worker holding live clients, and nothing secedes, so a worker with jobs in
+  flight reads as running.
+- **`ass-exec` stays Dask-free**, which is what keeps this reversible. It has
+  already been reversed twice.
+
+Two things the adoption did not resolve. Per-job status still needs the `bjobs`
+watcher — Dask cannot see `PEND`. And the sequential kernel is retained rather
+than deleted: it is the reference that keeps the graph kernel honest, and the
+test that matters is that the two agree on identity and value.
+
+**Measured while implementing, and worth recording because it contradicts what
+was assumed:** Dask serializes every task even on an in-process cluster, so a
+transport travels to a worker as a copy, never as a shared live object. Ours
+are stateless per submission, so this is correct today. A pooled transport
+holding a client to a second cluster is a singleton and cannot be passed this
+way — when `lsf-pool` is built it will need a factory constructed on the
+worker, not an instance handed to `run_plan_graph`.
+
+## How that decision was reached, kept in full
+
+Retained rather than summarised: the decision is only trustworthy if the
+argument that produced it — including the parts that turned out to be wrong —
+remains inspectable.
 
 Two independent questions were being asked with one word.
 

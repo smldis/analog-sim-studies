@@ -258,12 +258,18 @@ spots. Prefer evidence from something the unit did not write.
   the unit should ever hash actual input files, rather than accept a supplied
   digest, is undecided — it would catch undeclared dependencies but requires
   owning address resolution, which belongs elsewhere.
-- **Who drives readiness.** Dask remains the hypothesis, and the lifetime
-  correction removes the main objection to it owning the lifecycle. Nothing in
-  this unit depends on that choice, which is worth preserving. One argument
-  against it — that a blocking `bsub -I` would occupy a Dask worker slot — was
-  retracted on 2026-08-04 after reading what `distributed.secede()` actually
-  does; the register carries the retraction and what survives it.
+- ~~**Who drives readiness.**~~ **Answered 2026-08-04 (user direction): Dask,
+  via `ass_run.graph`.** One argument against it — that a blocking `bsub -I`
+  would occupy a Dask worker slot — was retracted after measuring what
+  `distributed.secede()` actually does; the register carries the retraction,
+  the measurements, and what survives them.
+
+  **Nothing in this unit changed, which is the point.** `ass-exec` imports no
+  Dask, and the boundary result holds: reconciliation still reads no topology,
+  so graph authority sits outside this unit no matter which kernel holds it.
+  That neutrality is what made the adoption a driver change rather than a
+  redesign, and it is what would make reversing it one too. Preserve it: a
+  Dask import here would be the first thing to make the choice irreversible.
 - **Retry lineage.** `sequence` exists in the identity and is otherwise unused.
 
 ## Would change our minds

@@ -24,20 +24,20 @@ from typing import Any, Callable, Mapping, Sequence
 
 from ass_exec.attempt import AttemptError
 from ass_exec.durability import Durability, execute
-from ass_exec.planned import PlannedInvocation, plan_bundles
+from ass_exec.planned import plan_bundles
 from ass_exec.transport import Transport, TransportError
 
+# Binding rules are shared with the Dask kernel rather than restated, so that
+# changing which kernel decides readiness cannot change what a plan means.
+from ass_run.binding import (
+    UnsupportedPlacement,
+    available_transports,
+    build_bundle,
+    produced_by,
+    select_transport as _select_transport,
+)
+
 __all__ = ["InvocationOutcome", "RunReport", "UnsupportedPlacement", "run_plan"]
-
-
-class UnsupportedPlacement(RuntimeError):
-    """An invocation asked for a placement this run cannot provide.
-
-    Deliberately fatal rather than a fallback. Silently running work somewhere
-    other than where it was asked to run is how a study quietly stops meaning
-    what it says: a corner that needed a large-memory queue is not the same
-    experiment when it lands on a laptop.
-    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,72 +94,6 @@ class RunReport:
         )
 
 
-class _AnyPlacement(dict):
-    """One transport standing in for every placement a plan may ask for."""
-
-    def __init__(self, transport: Transport) -> None:
-        super().__init__()
-        self._transport = transport
-
-    def get(self, _name: str, _default: Any = None) -> Transport:
-        return self._transport
-
-    def __iter__(self):
-        return iter(())
-
-
-def _resolve(reference: Any, produced: Mapping[str, Any]) -> Any:
-    """Turn an input reference into the value or address it names."""
-
-    if isinstance(reference, list):
-        return [_resolve(item, produced) for item in reference]
-    if isinstance(reference, str) and reference.startswith("output:"):
-        return produced.get(reference)
-    # A source reference resolves to nothing here: this unit does not read
-    # addresses, and an operation that needs one declares it in its command.
-    return None
-
-
-def _record_outputs(
-    item: PlannedInvocation, result: Any, produced: dict[str, Any]
-) -> None:
-    """Publish what this invocation produced under the keys that reference it.
-
-    A file output contributes its address, because that is what a downstream
-    command opens. Anything else contributes its value.
-    """
-
-    for name in item.output_names or ("",):
-        key = f"output:{item.input_digest}:{name}"
-        artifact = result.artifacts.get(name)
-        if artifact is not None:
-            produced[key] = artifact.get("address", artifact.get("value"))
-        else:
-            produced[key] = result.value
-
-
-def _select_transport(
-    item: PlannedInvocation,
-    transports: Mapping[str, Transport],
-) -> tuple[str, Transport]:
-    """Honour the placement the Plan already resolved for this invocation.
-
-    ASS Flow resolves call override, operation default, plan default, then
-    local at planning time, and stores the result on the invocation. This is
-    where that decision finally has an effect.
-    """
-
-    name = (item.policy or {}).get("name") or "local"
-    chosen = transports.get(name)
-    if chosen is None:
-        raise UnsupportedPlacement(
-            f"{item.authored_key or item.invocation_id} asks for placement "
-            f"{name!r}, which this run does not provide "
-            f"(have: {', '.join(sorted(transports)) or 'none'})"
-        )
-    return name, chosen
-
-
 def run_plan(
     document: Mapping[str, Any],
     transport: Transport | None = None,
@@ -193,12 +127,7 @@ def run_plan(
     ``blocked`` rather than run against inputs that do not exist.
     """
 
-    if transports is None:
-        if transport is None:
-            raise ValueError("provide either transport or transports")
-        available: Mapping[str, Transport] = _AnyPlacement(transport)
-    else:
-        available = transports
+    available = available_transports(transport, transports)
 
     produced: dict[str, Any] = {}
     outcomes: list[InvocationOutcome] = []
@@ -240,18 +169,13 @@ def run_plan(
                 on_event(outcome)
             continue
 
-        bundle = dict(item.bundle)
-        bundle["placement"] = {
-            "requested": dict(item.policy or {}),
-            "resolved": {"placement": placement_name, "transport": chosen.name},
-        }
-        bundle["resolved_inputs"] = {
-            name: _resolve(reference, produced)
-            for name, reference in item.bundle["inputs"].items()
-        }
-        declared = (outputs or {}).get(item.operation)
-        if declared:
-            bundle["outputs"] = dict(declared)
+        bundle = build_bundle(
+            item,
+            produced=produced,
+            placement_name=placement_name,
+            transport=chosen,
+            outputs=outputs,
+        )
 
         try:
             result = execute(
@@ -281,7 +205,7 @@ def run_plan(
             continue
 
         if result.outcome == "succeeded":
-            _record_outputs(item, result, produced)
+            produced.update(produced_by(item, result))
         else:
             failed = True
 

@@ -56,6 +56,15 @@ class BindingError(AuthoringError):
     """An operation call does not satisfy its declared contract."""
 
 
+class HandleUsedAsValue(AuthoringError, TypeError):
+    """A planned result was read as though it already had a value.
+
+    Also a ``TypeError``, because that is what Python means by using an object
+    as a truth value or an operand, and an author who catches either should
+    catch this.
+    """
+
+
 @dataclass(frozen=True, slots=True)
 class Parameter:
     """An operation configuration declaration awaiting its authored name."""
@@ -101,21 +110,51 @@ class _MaterializableArtifact:
             )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, eq=False)
 class ArtifactValue:
-    """A plan-owned artifact reference used to connect authored calls."""
+    """A plan-owned artifact reference used to connect authored calls.
+
+    Carries a name and a kind, never a value: the artifact it refers to exists
+    only once the plan runs. Reading it as a value is refused rather than
+    answered, because every available answer would be about the reference and
+    silently wrong about the result.
+    """
 
     reference: ArtifactSourceReference | OutputReference
     artifact: ArtifactContract
     _draft: PlanDraft = field(repr=False, compare=False)
     _boundary_id: str | None = field(default=None, repr=False, compare=False)
 
+    # A handle is its own identity: sources dedupe to one object per
+    # declaration, so hashing by identity agrees with how they are shared.
+    __hash__ = object.__hash__
 
-@dataclass(frozen=True, slots=True)
+    def __bool__(self) -> bool:
+        raise HandleUsedAsValue(
+            _no_value_yet(_describes(self), "used as a truth value")
+        )
+
+    def __eq__(self, other: object) -> bool:
+        raise HandleUsedAsValue(_no_value_yet(_describes(self), "compared"))
+
+
+@dataclass(frozen=True, slots=True, eq=False)
 class InvocationResult:
     """Immutable named outputs from one planned operation invocation."""
 
     _values: tuple[tuple[str, ArtifactValue], ...]
+
+    __hash__ = object.__hash__
+
+    def __bool__(self) -> bool:
+        raise HandleUsedAsValue(
+            _no_value_yet(_describes_result(self), "used as a truth value")
+        )
+
+    def __eq__(self, other: object) -> bool:
+        raise HandleUsedAsValue(
+            _no_value_yet(_describes_result(self), "compared")
+        )
 
     @property
     def outputs(self) -> Mapping[str, ArtifactValue]:
@@ -1228,6 +1267,35 @@ def _bind_operation(
     return bound
 
 
+def _no_value_yet(description: str, use: str) -> str:
+    """Explain why a handle refuses, and where the decision belongs instead."""
+
+    return (
+        f"{description} has no value while the plan is being authored, so it "
+        f"cannot be {use}. A Plan says what will run before anything runs, so a "
+        "decision that depends on a result belongs inside an operation, "
+        "declared as one of its outputs."
+    )
+
+
+def _describes(value: ArtifactValue) -> str:
+    kind = value.artifact.kind
+    reference = value.reference
+    if isinstance(reference, OutputReference):
+        return (
+            f"output {reference.output_name!r} of {reference.invocation_id!r} "
+            f"(artifact kind {kind!r})"
+        )
+    return f"input source {reference.source_id!r} (artifact kind {kind!r})"
+
+
+def _describes_result(result: InvocationResult) -> str:
+    if len(result._values) == 1:
+        return _describes(result._values[0][1])
+    names = ", ".join(result.declared_outputs) or "none"
+    return f"an operation result with outputs {names}"
+
+
 def _concise_artifact(value: Any) -> ArtifactValue:
     if isinstance(value, InvocationResult):
         return value._as_concise_input()
@@ -1269,6 +1337,7 @@ __all__ = [
     "BindingError",
     "Flow",
     "FlowCall",
+    "HandleUsedAsValue",
     "InvocationResult",
     "Operation",
     "OperationCall",

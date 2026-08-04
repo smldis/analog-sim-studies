@@ -41,6 +41,13 @@ planning and runtime authority.
   operation bodies do not execute during planning.
 - Flow bodies are ordinary authored Python that constructs a static graph;
   avoiding external side effects in those bodies is an authoring responsibility.
+- A planning handle carries a reference and an artifact kind, never a value.
+  Reading one as a value is refused: `HandleUsedAsValue` — both an
+  `AuthoringError` and a `TypeError` — is raised for truth-testing and for
+  equality, the two readings Python would otherwise answer silently. Ordering,
+  arithmetic, iteration and attribute access already raise. Handles remain
+  hashable by identity, which is the identity under which repeated source
+  declarations are shared.
 - Plan IR is immutable, validates operation bindings and artifact dependencies,
   preserves nested flow boundaries, and provides deterministic plain-data and
   JSON inspection.

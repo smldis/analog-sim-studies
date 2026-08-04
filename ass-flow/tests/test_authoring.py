@@ -8,6 +8,7 @@ from ass_flow import (
     BindingError,
     CollectionInputBinding,
     FlowCall,
+    HandleUsedAsValue,
     InputBinding,
     PlanningScopeError,
     PlanValidationError,
@@ -995,3 +996,57 @@ def test_invalid_authored_key_syntax_fails_before_graph_mutation(invalid_key):
 
     assert [item.id for item in normalized.invocations] == ["invoke:0001"]
     assert normalized.boundaries == ()
+
+
+def test_a_handle_refuses_to_answer_about_a_value_it_does_not_have():
+    """The failure mode was silence, not error.
+
+    Every other way of reading a handle already raised, but `if raw:` answered
+    True and `raw == 0` answered False — both about the reference, while
+    looking like answers about the result. That is the one thing a planning
+    handle must never do, because it is how result-dependent control arrives
+    without anyone deciding to add it.
+    """
+
+    @operation(inputs={"deck": DECK}, outputs={"raw": RAW})
+    def simulate(deck):
+        raise AssertionError("must not run")
+
+    with plan() as draft:
+        result = simulate(_source("input.spice", DECK))
+        handle = result.raw
+
+        for candidate in (result, handle):
+            with pytest.raises(HandleUsedAsValue, match="no value"):
+                bool(candidate)
+            with pytest.raises(HandleUsedAsValue, match="no value"):
+                _ = candidate == 0
+            with pytest.raises(HandleUsedAsValue, match="no value"):
+                _ = candidate != 0
+
+        # Ordering already refused, and still does: Python has no answer for
+        # it either, so there was nothing here to fix.
+        with pytest.raises(TypeError):
+            _ = handle > 0
+
+        # The refusal says which call it is about, so an author can find it.
+        with pytest.raises(HandleUsedAsValue, match="'raw'.*'simulation-raw'"):
+            bool(handle)
+
+        # Still a usable key: a handle is its own identity, and dict lookup
+        # settles on identity before it would ever ask about equality.
+        assert {handle: "kept"}[handle] == "kept"
+
+    normalized = draft.finish(outputs={"raw": result})
+    assert len(normalized.invocations) == 1
+
+
+def test_reading_a_handle_is_refused_as_both_kinds_of_mistake():
+    """It is an authoring error in this system, and a TypeError in Python.
+
+    An author reaching for either name should catch it, so the refusal answers
+    to both rather than making them guess which vocabulary applies.
+    """
+
+    assert issubclass(HandleUsedAsValue, AuthoringError)
+    assert issubclass(HandleUsedAsValue, TypeError)

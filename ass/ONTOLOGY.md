@@ -61,6 +61,12 @@ What it has not met: a farm. Every placement it has run is `local`, so the
   thread.
 - `StudyRun` is addressable the way the study was authored: `run["cold:simulate"]`
   is that invocation's outcome, and `run.value` is the plan's conclusion.
+- A study may begin from a file it did not write. An operation declaring an
+  `input_artifact` source as an input is handed its located path, and the same
+  reading that locates it fingerprints it, so delivery and staleness cannot
+  disagree about which file was meant. The path is resolved where the study is
+  submitted, which assumes a shared filesystem for any placement that is not
+  local.
 - Nothing about the site is authored into the study. Placements, roots, address
   spaces and thread counts come from a `Site`, which a profile file can supply.
 

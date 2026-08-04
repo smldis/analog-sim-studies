@@ -141,6 +141,11 @@ its siblings are reused and the superseded results stay nameable.
   resolving an address is not this unit's work. Without it, editing an input in
   place changes no declared fact and the work that read it is reused — stale,
   and the reason the parameter exists.
+- `source_references(document, fingerprints)` returns the string each source's
+  input bindings carry, paired with that source's own declaration. It exists so
+  a run can deliver a declared external file to the body that named it, and it
+  hands the address back **unresolved**: this unit still locates nothing, and
+  returning a declaration is not acquiring the authority to read it.
 - `resolved_inputs` carries upstream values for execution and never
   participates in identity: which values they are is already implied by the
   declared input digests.

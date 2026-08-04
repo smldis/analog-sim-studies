@@ -38,6 +38,7 @@ from pathlib import Path
 from typing import Any, Callable, Mapping
 import os
 
+from ass_exec.planned import source_references
 from ass_exec.transport import Transport
 
 __all__ = ["Site", "SiteError", "fingerprint_file", "fingerprint_sources"]
@@ -115,6 +116,28 @@ class Site:
         """Identify every source this Plan declares, by content."""
 
         return fingerprint_sources(document, self.resolve)
+
+    def source_addresses(
+        self, document: Mapping[str, Any], fingerprints: Mapping[str, str]
+    ) -> dict[str, str]:
+        """Locate every declared source, keyed as its input bindings name it.
+
+        This is what lets a body declare an external file as an input and be
+        handed it. Resolution happens here, on the machine that submits, using
+        the same address space fingerprinting already read — so a run resolves
+        an address in one place, and a path that reaches a farm job is a path
+        this site could see.
+
+        ``fingerprints`` is required rather than optional because the key each
+        source takes is derived from it. Passing a different mapping than the
+        run uses would name strings nothing looks up, and sources would resolve
+        to nothing again without saying so.
+        """
+
+        return {
+            reference: str(self.resolve(source.get("address") or {}))
+            for reference, source in source_references(document, fingerprints).items()
+        }
 
     @classmethod
     def from_file(cls, path: str | os.PathLike[str]) -> "Site":

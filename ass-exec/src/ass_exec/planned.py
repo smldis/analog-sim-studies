@@ -33,6 +33,7 @@ __all__ = [
     "PlanDerivationError",
     "PlannedInvocation",
     "plan_bundles",
+    "source_references",
 ]
 
 SUPPORTED_SCHEMA = frozenset({2, 3})
@@ -157,6 +158,35 @@ def _ordered(invocations: Sequence[Mapping[str, Any]]) -> list[Mapping[str, Any]
                 f"plan has a dependency cycle or dangling edge among: {unresolved}"
             )
     return ordered
+
+
+def source_references(
+    document: Mapping[str, Any],
+    source_fingerprints: Mapping[str, str] | None = None,
+) -> dict[str, Mapping[str, Any]]:
+    """Name each declared source the way an input binding already names it.
+
+    An input bound to an operation output carries ``output:<digest>:<name>``;
+    one bound to a source carries ``source:<digest>``. Identity has always
+    treated a source as something produced before it is used — `_source_identity`
+    digests it as an invocation named ``source`` — but nothing ever delivered
+    it, so a body declaring a source as an input was called with nothing.
+
+    This returns the string an input binding will carry, paired with the
+    source's own declaration. The address inside is still unresolved: locating
+    one is the run's authority, and this unit does not acquire it by handing
+    the declaration back.
+
+    ``source_fingerprints`` must be the same mapping given to ``plan_bundles``.
+    The fingerprint is part of the digest, so a different one names a different
+    string and matches nothing.
+    """
+
+    return {
+        f"source:{_source_identity(source, (source_fingerprints or {}).get(source['id']))}":
+            source
+        for source in document.get("sources", [])
+    }
 
 
 def plan_bundles(

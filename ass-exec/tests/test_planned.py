@@ -7,7 +7,7 @@ declaration or any ancestor's declaration changes.
 
 import pytest
 
-from ass_exec.planned import PlanDerivationError, plan_bundles
+from ass_exec.planned import PlanDerivationError, plan_bundles, source_references
 
 SOURCE = {
     "id": "source:0001",
@@ -77,6 +77,40 @@ def test_producers_are_ordered_before_consumers():
     doc["invocations"] = list(reversed(doc["invocations"]))
     order = [item.authored_key for item in plan_bundles(doc)]
     assert order.index("summary") == 2
+
+
+def test_a_source_is_named_the_way_an_input_binding_names_it():
+    """The agreement that makes a declared source deliverable.
+
+    A run hands a body its external file by putting the located path in the
+    map under the string an input binding carries. If this named it any other
+    way the map would be looked up and miss, and the body would be called with
+    nothing — which is exactly what happened before runs seeded sources.
+    """
+
+    fingerprints = {"source:0001": "blake2b:abc"}
+    bound = {
+        item.bundle["inputs"]["design"]
+        for item in plan_bundles(document(), source_fingerprints=fingerprints)
+        if "design" in item.bundle["inputs"]
+    }
+
+    assert bound, "the fixture must bind a source somewhere"
+    assert bound == set(source_references(document(), fingerprints))
+
+
+def test_a_source_named_with_a_different_fingerprint_is_a_different_source():
+    """Why the fingerprint is required rather than optional.
+
+    It is part of the digest, so naming a source with one mapping while the
+    run derived bundles with another produces strings nothing looks up — a
+    miss that would look exactly like having no sources at all.
+    """
+
+    named = set(source_references(document(), {"source:0001": "blake2b:abc"}))
+
+    assert named != set(source_references(document(), {"source:0001": "blake2b:def"}))
+    assert named != set(source_references(document()))
 
 
 def test_a_changed_config_invalidates_only_its_own_branch_and_downstream():

@@ -72,14 +72,22 @@ def available_transports(
 
 
 def resolve(reference: Any, produced: Mapping[str, Any]) -> Any:
-    """Turn an input reference into the value or address it names."""
+    """Turn an input reference into the value or address it names.
+
+    One lookup serves both kinds. An operation output is in ``produced``
+    because the invocation that made it ran; a declared source is in there
+    because the run seeded it before walking, which is what the identity model
+    already claimed — a source is produced before it is used.
+
+    A reference that is not there resolves to nothing, which is what a source
+    did unconditionally before runs seeded them. Callers that do not supply
+    source addresses therefore see exactly the behaviour they saw before.
+    """
 
     if isinstance(reference, list):
         return [resolve(item, produced) for item in reference]
-    if isinstance(reference, str) and reference.startswith("output:"):
+    if isinstance(reference, str):
         return produced.get(reference)
-    # A source reference resolves to nothing here: this unit does not read
-    # addresses, and an operation that needs one declares it in its command.
     return None
 
 

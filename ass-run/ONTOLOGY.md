@@ -97,6 +97,19 @@ dashboard, and failure isolation are untested against anything but fakes.
   churn on `git checkout`; a directory source covers everything under it; a
   source that cannot be resolved or does not exist is fatal before anything
   runs. A run that supplies no fingerprints keeps the old, stale behaviour.
+- `site.source_addresses(document, fingerprints)` locates each declared source
+  under the string its input bindings carry, and both kernels seed that map
+  before walking the plan. A source has always been *identified* as something
+  produced before it is used; this is what finally delivers it, so an operation
+  may declare an external file as an input and receive it. The fingerprints are
+  a required argument because the key is derived from them, and a mismatched
+  mapping would name strings nothing looks up — a miss indistinguishable from
+  having no sources. A run that supplies no addresses leaves such an input
+  resolving to nothing, as every run did before.
+- Addresses resolve on the submitting machine, which asserts that a path means
+  the same thing on whatever host runs the work. True on a shared filesystem
+  and assumed rather than checked; a site without one would need staging, which
+  this unit does not do.
 - `commands` and `outputs` bind an operation to how it actually runs — a
   command line, and which files or streams count as results. The Plan declares
   meaning; a run binds mechanism. Operations absent from both run in-process.

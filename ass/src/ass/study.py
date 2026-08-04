@@ -114,12 +114,17 @@ class Study:
             transports = {"local": BoundTransport(self.implementations)}
 
         report_to = _reporter(on_event, watch)
+        # One reading of every declared source serves both: its content decides
+        # whether work is stale, and its location is what the body receives.
+        # They are computed together because the second is keyed by the first.
+        fingerprints = site.fingerprints(document)
         common = dict(
             transports=transports,
             plan_id=_plan_id(document),
             root=site.root,
             workspace_root=site.workspace_root,
-            source_fingerprints=site.fingerprints(document),
+            source_fingerprints=fingerprints,
+            source_addresses=site.source_addresses(document, fingerprints),
             on_event=report_to,
         )
 

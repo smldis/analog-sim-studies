@@ -106,6 +106,7 @@ def run_plan(
     outputs: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
     identity_env: Mapping[str, str] | None = None,
     source_fingerprints: Mapping[str, str] | None = None,
+    source_addresses: Mapping[str, str] | None = None,
     stop_on_failure: bool = True,
     on_event: Callable[[InvocationOutcome], None] | None = None,
 ) -> RunReport:
@@ -123,6 +124,11 @@ def run_plan(
     uniform run and wrong as soon as placements differ. A placement no
     transport provides is fatal, never a silent fallback.
 
+    ``source_addresses`` locates each source the Plan declares, so an operation
+    naming an external file as an input is handed it. Resolving an address is
+    the caller's authority, never this unit's: omitting the mapping leaves such
+    an input resolving to nothing, which is what every run did before.
+
     Work whose inputs are unchanged since a previous run is reused rather than
     repeated. On failure the default is to stop: successors are reported as
     ``blocked`` rather than run against inputs that do not exist.
@@ -130,7 +136,9 @@ def run_plan(
 
     available = available_transports(transport, transports)
 
-    produced: dict[str, Any] = {}
+    # Sources are produced before anything runs, so seeding them is the whole
+    # of delivering a declared external file to the body that asked for it.
+    produced: dict[str, Any] = dict(source_addresses or {})
     outcomes: list[InvocationOutcome] = []
     failed = False
 

@@ -76,6 +76,12 @@ class _RunConfig:
     root: str
     workspace_root: str | None = None
     outputs: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None
+    sources: Mapping[str, str] = field(default_factory=dict)
+    """Declared sources, already located, keyed as input bindings name them.
+
+    Travels to every task because any invocation may declare one, and a task
+    reads it exactly as it reads an upstream output.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,7 +136,9 @@ def _run_one(
         # branches of the plan are unaffected.
         return _Step(_outcome(item, disposition="skipped", outcome="blocked"))
 
-    produced: dict[str, Any] = {}
+    # Sources first: they are produced before anything runs, so they are the
+    # floor every upstream output is laid on top of.
+    produced: dict[str, Any] = dict(config.sources)
     for step in upstream:
         produced.update(step.produced)
 
@@ -243,6 +251,7 @@ def run_plan_graph(
     outputs: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
     identity_env: Mapping[str, str] | None = None,
     source_fingerprints: Mapping[str, str] | None = None,
+    source_addresses: Mapping[str, str] | None = None,
     on_event: Callable[[InvocationOutcome], None] | None = None,
 ) -> RunReport:
     """Execute a Plan as a Dask graph and report in the Plan's own order.
@@ -251,6 +260,11 @@ def run_plan_graph(
     here: the cluster's shape is an operational decision — how many concurrent
     jobs the site tolerates, whether a dashboard is served — and a library that
     silently started one would be choosing it for the operator.
+
+    ``source_addresses`` locates each declared source and travels to every
+    task, so an operation naming an external file as an input receives it
+    wherever it lands. The path is resolved on this machine, which is a claim
+    about the site: it must mean the same thing on whatever host runs the work.
 
     ``on_event`` fires as tasks complete, in completion order, so a long sweep
     is observable while it runs. The returned report stays in plan order, so a
@@ -268,6 +282,7 @@ def run_plan_graph(
         root=root,
         workspace_root=workspace_root,
         outputs=outputs,
+        sources=dict(source_addresses or {}),
     )
 
     items = plan_bundles(

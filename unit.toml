@@ -5,6 +5,7 @@ id = "analog-sim-studies"
 name = "Analog Sim Studies"
 ontology = "ONTOLOGY.md"
 children = [
+    "ass",
     "ass-flow",
     "ass-exec",
     "ass-run",

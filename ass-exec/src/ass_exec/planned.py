@@ -35,7 +35,7 @@ __all__ = [
     "plan_bundles",
 ]
 
-SUPPORTED_SCHEMA = 2
+SUPPORTED_SCHEMA = frozenset({2, 3})
 
 
 class PlanDerivationError(ValueError):
@@ -184,18 +184,36 @@ def plan_bundles(
     """
 
     schema = document.get("schema_version")
-    if schema != SUPPORTED_SCHEMA:
+    if schema not in SUPPORTED_SCHEMA:
         raise PlanDerivationError(
             f"unsupported Plan schema {schema!r}; this unit reads schema "
-            f"{SUPPORTED_SCHEMA}"
+            f"{', '.join(str(item) for item in sorted(SUPPORTED_SCHEMA))}"
         )
 
     sources = {source["id"]: source for source in document.get("sources", [])}
-    outputs_by_operation = {
-        definition["identity"]["name"]: tuple(
-            item["name"] for item in definition.get("outputs", [])
-        )
+    definitions = {
+        definition["identity"]["name"]: definition
         for definition in document.get("operations", [])
+    }
+    outputs_by_operation = {
+        name: tuple(item["name"] for item in definition.get("outputs", []))
+        for name, definition in definitions.items()
+    }
+    # Schema 3 declares where each output lands and what implements the
+    # operation. Both are authored facts, so a run no longer supplies them and
+    # a Plan can finally say what it will compute.
+    bindings_by_operation = {
+        name: {
+            item["name"]: dict(item["binding"])
+            for item in definition.get("outputs", [])
+            if item.get("binding")
+        }
+        for name, definition in definitions.items()
+    }
+    implementations = {
+        name: definition.get("implementation")
+        for name, definition in definitions.items()
+        if definition.get("implementation")
     }
     digests: dict[str, str] = {}
     planned: list[PlannedInvocation] = []
@@ -229,6 +247,17 @@ def plan_bundles(
             "arguments": arguments,
             "inputs": resolved,
         }
+        declared_bindings = bindings_by_operation.get(operation)
+        if declared_bindings:
+            bundle["outputs"] = dict(declared_bindings)
+        implementation = implementations.get(operation)
+        if implementation:
+            # Identity-bearing: an edited body must invalidate what it produced,
+            # rather than resting on an author remembering to bump a version.
+            bundle["implementation"] = {
+                "entry_point": implementation.get("entry_point"),
+                "fingerprint": implementation.get("fingerprint"),
+            }
         if commands and operation in commands:
             bundle["command"] = list(commands[operation])
         if identity_env:

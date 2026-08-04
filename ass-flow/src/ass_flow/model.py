@@ -297,11 +297,25 @@ class OutputContract:
     name: str
     artifact: ArtifactContract
     can_materialize_as: MaterializationSpec | None = None
+    binding: FrozenObject | Mapping[str, Any] | None = None
+    """Where this output actually lands: ``{"path": ...}`` for a file the work
+    writes, ``{"stream": "stdout"}`` for a tool whose result is what it printed,
+    ``{"value": True}`` for an in-process return.
+
+    Deliberately the same vocabulary the executor already reads. Declaring it
+    here is what removes the run-time ``outputs=`` dictionary: an operation that
+    states what it produces is stating it once, where it is authored, rather
+    than again wherever it happens to be run."""
 
     def __post_init__(self) -> None:
         _require_name(self.name, "output name")
         if not isinstance(self.artifact, ArtifactContract):
             raise ContractError("output artifact must be an ArtifactContract")
+        if self.binding is not None:
+            frozen = freeze_data(self.binding, label=f"output {self.name} binding")
+            if not isinstance(frozen, FrozenObject):
+                raise ContractError("output binding must be a mapping")
+            object.__setattr__(self, "binding", frozen)
         if self.can_materialize_as is not None and not isinstance(
             self.can_materialize_as, MaterializationSpec
         ):
@@ -409,10 +423,15 @@ class OperationDefinition:
     outputs: tuple[OutputContract, ...] = ()
     resources: tuple[ResourceContract, ...] = ()
     default_policy: Policy | None = None
+    implementation: Implementation | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.identity, OperationIdentity):
             raise ContractError("operation identity must be an OperationIdentity")
+        if self.implementation is not None and not isinstance(
+            self.implementation, Implementation
+        ):
+            raise ContractError("operation implementation must be an Implementation")
         object.__setattr__(self, "inputs", tuple(self.inputs))
         object.__setattr__(self, "config", tuple(self.config))
         object.__setattr__(self, "outputs", tuple(self.outputs))
@@ -423,6 +442,30 @@ class OperationDefinition:
         _require_instances(self.resources, ResourceContract, "operation resources")
         if self.default_policy is not None and not isinstance(self.default_policy, Policy):
             raise ContractError("operation default_policy must be a Policy or None")
+
+
+@dataclass(frozen=True, slots=True)
+class Implementation:
+    """How an operation is carried out, recorded with the Plan that uses it.
+
+    ``entry_point`` is ``module:qualname`` — importable, portable, and free of
+    machine paths. ``fingerprint`` digests the body's normalized source, so a
+    changed implementation invalidates the work it produced instead of relying
+    on an author remembering to bump ``version``.
+
+    This is what stops a Plan being executor-complete but implementation-blind:
+    before it, the command a run would issue arrived out of band, so the Plan
+    could not say what it would compute.
+    """
+
+    entry_point: str
+    fingerprint: str
+    kind: str = "python"
+
+    def __post_init__(self) -> None:
+        _require_text(self.entry_point, "implementation entry_point")
+        _require_text(self.fingerprint, "implementation fingerprint")
+        _require_text(self.kind, "implementation kind")
 
 
 @dataclass(frozen=True, slots=True)
@@ -641,7 +684,7 @@ class Plan:
     edges: tuple[DependencyEdge, ...] = ()
     boundaries: tuple[FlowBoundary, ...] = ()
     outputs: tuple[NamedOutput, ...] = ()
-    schema_version: int = 2
+    schema_version: int = 3
 
     def __post_init__(self) -> None:
         sequence_fields = (
@@ -657,8 +700,8 @@ class Plan:
             values = tuple(getattr(self, name))
             object.__setattr__(self, name, values)
             _require_instances(values, expected, f"plan {name}")
-        if self.schema_version != 2:
-            raise ContractError("plan schema_version must be 2")
+        if self.schema_version != 3:
+            raise ContractError("plan schema_version must be 3")
 
     def validate(self) -> "Plan":
         issues: list[ValidationIssue] = []
@@ -1545,6 +1588,9 @@ def _operation_data(value: OperationDefinition) -> dict[str, Any]:
                     if item.can_materialize_as is not None
                     else None
                 ),
+                "binding": (
+                    plain_data(item.binding) if item.binding is not None else None
+                ),
             }
             for item in sorted(value.outputs, key=lambda item: item.name)
         ],
@@ -1555,6 +1601,15 @@ def _operation_data(value: OperationDefinition) -> dict[str, Any]:
         "default_policy": (
             _policy_data(value.default_policy)
             if value.default_policy is not None
+            else None
+        ),
+        "implementation": (
+            {
+                "entry_point": value.implementation.entry_point,
+                "fingerprint": value.implementation.fingerprint,
+                "kind": value.implementation.kind,
+            }
+            if value.implementation is not None
             else None
         ),
     }
@@ -1658,6 +1713,7 @@ __all__ = [
     "ValidationIssue",
     "freeze_data",
     "local",
+    "Implementation",
     "named_policy",
     "plain_data",
     "resolve_policy",

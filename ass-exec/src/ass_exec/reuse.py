@@ -44,6 +44,7 @@ __all__ = [
 IDENTITY_KEYS = (
     "operation",
     "operation_version",
+    "implementation",
     "command",
     "arguments",
     "cwd",
@@ -55,7 +56,9 @@ IDENTITY_KEYS = (
 
 ``operation_version`` is here because a reimplemented operation may produce a
 different answer from the same inputs; omitting it would reuse results across a
-change in meaning.
+change in meaning. ``implementation`` carries the same argument further: a
+fingerprint of the body that will run turns that from a promise an author has
+to remember into something the record notices by itself.
 """
 
 

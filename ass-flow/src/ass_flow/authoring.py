@@ -5,9 +5,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from contextvars import ContextVar, Token
 from dataclasses import dataclass, field
+from hashlib import blake2b
 import inspect
 from types import MappingProxyType
-from typing import Any, Callable, Iterable, Mapping
+from typing import Any, Callable, Iterable, Iterator, Mapping
 
 from .model import (
     ArtifactAddress,
@@ -38,6 +39,7 @@ from .model import (
     _keyed_plan_id,
     _stable_edge_id,
     normalize_authored_key,
+    Implementation,
     resolve_policy,
 )
 
@@ -83,14 +85,17 @@ class _MaterializableArtifact:
     """Output-only declaration carrying optional materialization capability."""
 
     artifact: ArtifactContract
-    materialization: MaterializationSpec
+    materialization: MaterializationSpec | None = None
+    binding: Mapping[str, Any] | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.artifact, ArtifactContract):
             raise ContractError(
                 "materializable artifact must contain an ArtifactContract"
             )
-        if not isinstance(self.materialization, MaterializationSpec):
+        if self.materialization is not None and not isinstance(
+            self.materialization, MaterializationSpec
+        ):
             raise ContractError(
                 "materializable as_ must be a MaterializationSpec"
             )
@@ -323,10 +328,104 @@ def materializable(
     return _MaterializableArtifact(artifact_contract, as_)
 
 
+
+def file(path: str, *, kind: str = "file") -> _MaterializableArtifact:
+    """An output the work writes, at ``path`` inside its own workspace.
+
+    Declared where the operation is authored rather than supplied wherever it
+    is run. A declared file that does not exist when the work reports success
+    fails the invocation, which is what keeps a downstream address from
+    resolving to nothing.
+    """
+
+    return _MaterializableArtifact(artifact(kind), None, {"path": path})
+
+
+def stdout(*, kind: str = "text") -> _MaterializableArtifact:
+    """An output that is what the work printed.
+
+    Rarely right. Standard output is diagnostics unless an operation says
+    otherwise, because a tool that prints progress while writing its real
+    answer to disk is the ordinary case.
+    """
+
+    return _MaterializableArtifact(artifact(kind), None, {"stream": "stdout"})
+
+
+def returned(*, kind: str = "value") -> _MaterializableArtifact:
+    """An output that is the body's return value, for work done in process."""
+
+    return _MaterializableArtifact(artifact(kind), None, {"value": True})
+
+
 def parameter(value_type: type) -> Parameter:
     """Declare the literal Python type of an operation configuration value."""
 
     return Parameter(value_type)
+
+
+_IMPLEMENTATION_SALT = "ass-flow/implementation/1"
+
+
+def _implementation_of(function: Callable[..., Any]) -> Implementation | None:
+    """Record what will actually run, and a fingerprint of it.
+
+    The fingerprint digests the body's source with blank lines and trailing
+    whitespace removed. That is all it forgives: an added comment or a rewrapped
+    line does change it, and the work that operation produced reruns. Deliberate
+    — a needless rerun costs time, a missed one costs correctness — but it is a
+    coarser signal than "the behaviour changed", and worth knowing before
+    reformatting a study mid-sweep. A body whose source
+    cannot be read (a C extension, an interactive session) is recorded without
+    one rather than pretended about: it keeps its entry point, and reuse then
+    rests on ``version`` as it always did.
+    """
+
+    module = getattr(function, "__module__", None)
+    qualname = getattr(function, "__qualname__", None)
+    if not module or not qualname:
+        return None
+    try:
+        source = inspect.getsource(function)
+    except (OSError, TypeError):
+        return None
+    normalized = "\n".join(
+        line.rstrip() for line in source.splitlines() if line.strip()
+    )
+    digest = blake2b(
+        f"{_IMPLEMENTATION_SALT}\x1f{normalized}".encode(), digest_size=16
+    ).hexdigest()
+    return Implementation(entry_point=f"{module}:{qualname}", fingerprint=digest)
+
+
+_SWEEP_KEY: ContextVar[str | None] = ContextVar("ass_flow_sweep_key", default=None)
+
+
+def sweep(items: Iterable[Any], key: Callable[[Any], str] | str) -> Iterator[Any]:
+    """Iterate a set of points, keying every invocation inside the loop.
+
+    Authored keys are what make reuse survive editing: an unkeyed invocation is
+    numbered in authored order and renumbers when earlier work is inserted,
+    silently discarding every result downstream of the insertion. Writing them
+    by hand means writing one per call per point, and keys must be unique
+    within a scope rather than per operation — so three operations across three
+    corners is nine strings to keep distinct, and the failure mode of getting it
+    wrong is silent staleness rather than an error.
+
+    This opens a keyed scope per point instead. Calls inside the loop take
+    ``<point>:<operation>`` unless they name a key themselves.
+
+        for corner in sweep(CORNERS, key=lambda point: point["key"]):
+            raw = simulate(write_deck(**corner))
+    """
+
+    resolve = key if callable(key) else (lambda item: str(item[key]))
+    for item in items:
+        token = _SWEEP_KEY.set(str(resolve(item)))
+        try:
+            yield item
+        finally:
+            _SWEEP_KEY.reset(token)
 
 
 def operation(
@@ -413,11 +512,17 @@ def operation(
                         if isinstance(declaration, _MaterializableArtifact)
                         else None
                     ),
+                    binding=(
+                        declaration.binding
+                        if isinstance(declaration, _MaterializableArtifact)
+                        else None
+                    ),
                 )
                 for item_name, declaration in output_items
             ),
             resources=resource_items,
             default_policy=selected_policy,
+            implementation=_implementation_of(function),
         )
         return Operation(definition, function, signature)
 
@@ -617,6 +722,15 @@ class PlanDraft:
                     raise BindingError(str(error)) from error
 
             boundary_id = self._boundary_stack[-1] if self._boundary_stack else None
+            if authored_key is None:
+                # A sweep scope names the point; the operation names itself.
+                # Together they are unique within the scope without the author
+                # repeating a key at every call.
+                sweeping = _SWEEP_KEY.get()
+                if sweeping is not None:
+                    authored_key = _optional_authored_key(
+                        f"{sweeping}:{authored.__name__}"
+                    )
             if authored_key is None:
                 invocation_id = f"invoke:{self._next_invocation:04d}"
                 self._next_invocation += 1
@@ -1042,6 +1156,16 @@ def _sorted_named_items(
     return tuple(sorted(items, key=lambda item: item[0]))
 
 
+WORKSPACE_PARAMETER = "out"
+"""The one parameter name an operation may take without declaring it.
+
+A body that writes files needs somewhere to write them, and that somewhere is
+its own attempt's workspace — a fact of execution, not an authored input, so
+declaring it as one would put a runtime detail in the Plan's contract. Reserved
+rather than magic: an operation that computes a value simply does not name it.
+"""
+
+
 def _validate_operation_signature(
     signature: inspect.Signature, declared_names: set[str], label: str
 ) -> None:
@@ -1056,7 +1180,7 @@ def _validate_operation_signature(
         raise AuthoringError(
             f"operation {label!r} may not use variadic parameters: {', '.join(variadic)}"
         )
-    signature_names = {item.name for item in parameters}
+    signature_names = {item.name for item in parameters} - {WORKSPACE_PARAMETER}
     missing_declarations = sorted(signature_names - declared_names)
     absent_parameters = sorted(declared_names - signature_names)
     if missing_declarations or absent_parameters:

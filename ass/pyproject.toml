@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ass"
+version = "0.1.0"
+description = "Author a study, plan it, and run it, in one place."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["ass-flow", "ass-exec", "ass-run"]
+
+[project.optional-dependencies]
+dask = ["distributed==2026.7.1"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "../ass-flow/src", "../ass-exec/src", "../ass-run/src"]
+testpaths = ["tests"]

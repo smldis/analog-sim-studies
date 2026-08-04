@@ -31,7 +31,7 @@ altered by evidence), **deferred** (still wanted, not started), **dropped**
 | Concept | Original stance | Now |
 | --- | --- | --- |
 | Direct-LSF job lifetime | A job outlives its submitter, so a durable protocol must own its identity | User direction: work is owner-bound. `bsub -I` plus process-group and `PR_SET_PDEATHSIG`. The protocol survives with a changed justification. |
-| Dask as the kernel | The main's *preferred hypothesis*: Dask owns graph dependencies, readiness, priorities, retries | Weakened twice. Owner-bound lifetime removed the identity objection that made Dask necessary *and* the one that made it unsound. Then the file-based artifact decision removed its strongest remaining argument: when steps exchange paths on a shared store there are no in-memory values to keep warm and no locality to schedule around. What remains is concurrency and scale, and bounded concurrency is a small addition to `ass-run`. Dask stays relevant for *pooled* execution — many short jobs wanting warm workers — which is a different question from readiness. A third argument, worker occupancy under mixed placement, was **retracted** on 2026-08-04; see below. |
+| Dask as the kernel | The main's *preferred hypothesis*: Dask owns graph dependencies, readiness, priorities, retries | Weakened twice. Owner-bound lifetime removed the identity objection that made Dask necessary *and* the one that made it unsound. Then the file-based artifact decision removed its strongest remaining argument: when steps exchange paths on a shared store there are no in-memory values to keep warm and no locality to schedule around. (Scoped 2026-08-04: that holds for the steps that use artifacts, not for every step; see the correction below.) What remains is concurrency and scale, and bounded concurrency is a small addition to `ass-run`. Dask stays relevant for *pooled* execution — many short jobs wanting warm workers — which is a different question from readiness. A third argument, worker occupancy under mixed placement, was **retracted** on 2026-08-04; see below. |
 | Component boundary and name | One rebuilt "ASS Flow" | Split into `ass-flow` (planning) and `ass-exec` (attempts), coupled through the Plan document. Nothing yet owns "run the plan", so no unit is operator-facing "flow". Open. |
 | "Resume" | Reattaching to running work | Result reuse: rerun and skip work whose inputs are unchanged. |
 
@@ -171,10 +171,20 @@ count and leave `secede()` alone.
 
 ### What is left against Dask in slot A
 
-- **Locality is gone.** Steps exchange file addresses on a shared store, so
-  there are no in-memory values to keep warm and nothing to schedule around.
-  This is still true, but note its shape: it says Dask *adds nothing* here, not
-  that it costs something.
+- **Locality is gone — but only for the steps that use artifacts.**
+  Corrected 2026-08-04 by user direction: *simple tasks do not use artifacts*.
+  The unit already says so — an output may be declared `{"value": True}`, and
+  `EPHEMERAL` exists precisely for a step that computes a number from two other
+  numbers and writes nothing. So the sweeping form of this claim was wrong.
+  What is true, scoped: the *expensive* steps exchange file addresses on a
+  shared store, so there is nothing to keep warm where it would matter, and the
+  cheap value-passing steps exchange scalars too small for locality to mean
+  anything either way. Note the shape of even the corrected claim: it says Dask
+  *adds nothing* here, not that it costs something.
+  **Trigger:** if steps ever pass in-memory values of real size — a loaded
+  waveform array going from a measurement step to an evaluation step rather
+  than through a file — locality returns as a live argument, and it is Dask's
+  strongest one.
 - **Defaults that are wrong for us.** `nthreads` sized for cores, and a nanny
   that may restart a worker under memory pressure. Under owner-bound lifetime a
   restarted worker kills every `bsub -I` client it held, and with it that many

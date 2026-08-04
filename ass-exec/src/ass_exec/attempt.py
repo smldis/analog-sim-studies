@@ -393,7 +393,10 @@ def reconcile(
                 "handle": {
                     key: value
                     for key, value in (state.handle or {}).items()
-                    if key in ("job_id", "identity", "transport", "workdir")
+                    # `settings` is what the substrate was actually asked for,
+                    # which only exists once a transport has resolved the
+                    # request; it is evidence, not the plan's declaration.
+                    if key in ("job_id", "identity", "settings", "transport", "workdir")
                 },
             },
         }

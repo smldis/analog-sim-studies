@@ -154,6 +154,36 @@ execute(
 )
 ```
 
+The constructor sets site defaults. What an individual job asks for comes from
+the placement the Plan resolved for it, which the driver puts on the bundle:
+
+```python
+{
+    "command": ["ngspice", "-b", "corner_ss.spice"],
+    "placement": {
+        "requested": {
+            "name": "lsf-direct",
+            "options": {
+                "queue": "bigmem",
+                "cores": 16,
+                "memory_mb": 32000,
+                "licences": {"spectre": 1},
+            },
+        }
+    },
+}
+```
+
+That job, and no other, is submitted with
+`-q bigmem -n 16 -R rusage[mem=32000,spectre=1]`. A licence is *declared*, never
+counted here: LSF knows how many exist and who holds them, so the request goes
+to the scheduler that can arbitrate it — use the resource name your site
+configured, and check it with `lsf_preflight.py --licence <name>`. An option
+this transport cannot express as a `bsub` argument refuses before submission
+rather than being dropped, because running the work without a resource it asked
+for is not the same experiment. None of it reaches the input digest: retuning a
+corner's memory reuses the result it already produced.
+
 Interactive submission is the mechanism, not a concession to human use: LSF
 ties the job to the submitting client, so it cannot outlive the work that
 wanted it. The client stays in this process's group and asks the kernel to
@@ -181,9 +211,11 @@ a submit host when you have one:
 python examples/lsf_preflight.py --queue normal
 ```
 
-It verifies command availability, interactive admission, `bjobs -J` lookup, and
-whether a running job actually disappears once its client is killed. If the
-last check fails, the direct mode's premise is wrong.
+It verifies command availability, interactive admission, `bjobs -J` lookup, that
+a composed resource requirement is admitted (add `--licence <name>` to include
+one of your site's licence resources), and whether a running job actually
+disappears once its client is killed. If the last check fails, the direct
+mode's premise is wrong.
 
 Worker pools, placement enforcement, retries, and graph scheduling are outside
 this unit — see

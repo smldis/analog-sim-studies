@@ -25,6 +25,7 @@ __all__ = [
     "Transport",
     "TransportError",
     "InProcessTransport",
+    "placement_options",
 ]
 
 _OBSERVED_STATES = frozenset(
@@ -48,6 +49,43 @@ class SubmissionRefused(TransportError):
     before any call that could have created external work. This is the only
     submission failure that permits a later resubmission without discovery.
     """
+
+
+def placement_options(bundle: Mapping[str, Any]) -> Mapping[str, Any]:
+    """What this invocation asked for where it was sent.
+
+    A Plan resolves one policy per invocation — a queue, a core count, a
+    simulator licence — and the caller records it on the bundle before anything
+    is submitted. A transport reads its settings from here rather than only from
+    construction, which is what lets one transport serve a cheap extraction and
+    a large-memory corner in the same run.
+
+    These are scheduling facts, and none of them reaches the input digest: an
+    invocation moved to another queue or given more cores must still reuse the
+    result it already produced.
+
+    A malformed declaration is `SubmissionRefused` rather than an indeterminate
+    error: it is established before the substrate is contacted, so holding the
+    attempt in the crash window over a badly shaped dictionary would be wrong.
+    """
+
+    placement = bundle.get("placement") or {}
+    if not isinstance(placement, Mapping):
+        raise SubmissionRefused(
+            f"bundle placement must be a mapping, got {type(placement).__name__}"
+        )
+    requested = placement.get("requested") or {}
+    if not isinstance(requested, Mapping):
+        raise SubmissionRefused(
+            f"placement.requested must be a mapping, got {type(requested).__name__}"
+        )
+    options = requested.get("options") or {}
+    if not isinstance(options, Mapping):
+        raise SubmissionRefused(
+            "placement.requested.options must be a mapping, got "
+            f"{type(options).__name__}"
+        )
+    return options
 
 
 @dataclass(frozen=True, slots=True)

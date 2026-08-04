@@ -41,6 +41,11 @@ file written by one step to the step that reads it.
 - A single `transport` provides every placement, which suits a uniform run and
   is wrong as soon as placements differ.
 - Each attempt records requested, resolved, and observed placement separately.
+- The placement's *options* travel with it on the bundle. This unit does not
+  interpret them: which queue or licence an option names is a fact about the
+  substrate, so the transport reads them. A transport that cannot express a
+  declared option refuses, and the run reports the invocation as failed rather
+  than running it under conditions nobody asked for.
 - `commands` and `outputs` bind an operation to how it actually runs — a
   command line, and which files or streams count as results. The Plan declares
   meaning; a run binds mechanism. Operations absent from both run in-process.

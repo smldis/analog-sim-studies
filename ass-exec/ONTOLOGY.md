@@ -88,6 +88,24 @@ its siblings are reused and the superseded results stay nameable.
   binds the job to the submitting client; the client stays in this process's
   group and requests `PR_SET_PDEATHSIG` on Linux, so the job does not survive
   its owner. External work is a command line, not an in-process callable.
+- What a job asks for is resolved per invocation. `placement_options(bundle)`
+  reads what the Plan requested; `settings_for(...)` resolves it over the
+  transport's site defaults, which the invocation's own options win against.
+  `queue`, `cores`, `memory_mb`, `licences`, `resources`, and `walltime` become
+  `-q`, `-n`, `-R`, and `-W` on that job alone, and the resolved `JobSettings`
+  is carried on the handle into the published manifest, so a run can be asked
+  what it requested without reparsing a command line.
+- A declared licence is a request LSF arbitrates, not a count this unit keeps:
+  `licences={"<name>": n}` becomes a `rusage` term, because the scheduler is
+  the only party that knows how many exist and who holds them. Resource names
+  are the site's, never invented here, and a name that could not be one is
+  refused rather than interpolated into a requirement string.
+- The placement vocabulary is closed. An option this transport cannot express
+  as a `bsub` argument is refused before submission, because dropping a stated
+  resource need would run the work under conditions nobody asked for. Two
+  `rusage` sections are refused for the same reason rather than merged by
+  guesswork; other sections, such as a site's `span[...]`, compose into the one
+  requirement string LSF's grammar allows.
 - `ass_exec.lsf.LSFPooledTransport` is a refusing boundary. Pooled execution
   should adopt `dask_jobqueue.LSFCluster` rather than reimplement worker
   lifetime.
@@ -143,7 +161,9 @@ its siblings are reused and the superseded results stay nameable.
   substrate is touched and published in the manifest alongside what was
   observed. Requested, resolved, and observed are kept apart deliberately: a
   run that came out slow or misplaced is only explainable if they do not
-  collapse into one fact. Placement never reaches the input digest.
+  collapse into one fact. Placement never reaches the input digest, including
+  its options: retuning a corner's memory or moving it to another queue reuses
+  the result it already produced rather than recomputing it.
 - `Durability` is declared per invocation, never inferred from placement.
   `EPHEMERAL` touches no filesystem, requires no identity or root, and reruns
   on every call. `RECORDED` runs the full protocol and completes from an
@@ -178,6 +198,15 @@ and unverified, and `examples/lsf_preflight.py` exists to check it on a real
 submit host. The subprocess layer is exercised end to end against a fake
 `bsub`/`bjobs`/`bkill` on PATH. Queue admission, scheduling, and resource
 enforcement are untested.
+
+Resource requests are *stated*, never enforced or reasoned about here. Whether
+a site admits the requirement string this unit composes, whether its licence
+resource names match what a plan authored, and whether contention resolves
+sensibly are all facts about the farm; `examples/lsf_preflight.py --licence
+<name>` is where they can be checked. Nothing counts licences locally, queues
+work, or waits for a token: handing the need to the scheduler that owns the
+count is the design, and a placement whose substrate cannot arbitrate its
+declared resources will not say so.
 
 Reuse soundness depends on inputs being *declared*. An operation whose result
 depends on an undeclared file, wall-clock time, or a mutable network resource

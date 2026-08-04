@@ -5,12 +5,21 @@ These tests are where that decision finally has an effect.
 """
 
 import json
+import os
 
 import pytest
 
 from ass_exec.journal import AttemptJournal
+from ass_exec.lsf import LSFInteractiveTransport, SubprocessRunner
 from ass_exec.transport import InProcessTransport
 from ass_run.driver import UnsupportedPlacement, run_plan
+
+FARM = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "ass-exec",
+    "tests",
+    "fakefarm",
+)
 
 
 class Recorder(InProcessTransport):
@@ -135,6 +144,58 @@ def test_placement_is_recorded_before_the_substrate_is_touched(tmp_path):
         for item in AttemptJournal(tmp_path, direct.seen[0]).events()
     ]
     assert events.index("placement") < events.index("submit_intent")
+
+
+def test_an_authored_resource_need_survives_all_the_way_to_the_submission(
+    tmp_path, monkeypatch
+):
+    """Plan → driver → transport → the command a scheduler would actually read.
+
+    The three units each carry part of this: ASS Flow resolves the policy, the
+    driver puts it on the bundle, the transport turns it into `bsub` arguments.
+    A per-unit test can show any one of those and still miss the seam, so this
+    one goes through the real subprocess layer and inspects what the submission
+    command was given. The farm is a fake, so this is evidence about our half
+    of the exchange only: whether LSF admits the request is preflight's job.
+    """
+
+    monkeypatch.setenv("PATH", FARM + os.pathsep + os.environ["PATH"])
+    monkeypatch.setenv("FAKE_LSF_STATE", str(tmp_path / "lsf"))
+
+    report = run_plan(
+        document(
+            (
+                "corner",
+                {
+                    "name": "lsf-direct",
+                    "options": {
+                        "queue": "bigmem",
+                        "cores": 8,
+                        "memory_mb": 16000,
+                        "licences": {"spectre": 1},
+                    },
+                },
+            )
+        ),
+        transports={
+            "lsf-direct": LSFInteractiveTransport(
+                walltime="5", runner=SubprocessRunner()
+            )
+        },
+        plan_id="study",
+        root=str(tmp_path / "attempts"),
+        commands={"work": ["/bin/echo", "ran"]},
+    )
+
+    assert report.succeeded, report.summary()
+    submitted = list((tmp_path / "lsf").glob("*.json"))
+    assert len(submitted) == 1
+    options = json.loads(submitted[0].read_text())["options"]
+
+    assert options["-q"] == "bigmem"
+    assert options["-n"] == "8"
+    assert options["-R"] == "rusage[mem=16000,spectre=1]"
+    assert options["-W"] == "5", "the site default bounds a job that asks for none"
 
 
 def test_placement_does_not_change_result_identity(tmp_path):

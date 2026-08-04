@@ -77,6 +77,48 @@ def check_name_lookup(name: str) -> bool:
     return True
 
 
+def check_resource_request(
+    queue: str | None, name: str, licence: str | None
+) -> bool:
+    """Whether the resource requirement this unit composes is admitted.
+
+    Two assumptions are being checked, and both are ours rather than LSF's.
+    The first is the shape: one `-R` argument holding whitespace-separated
+    sections, which is how `LSFInteractiveTransport` combines a site default
+    with a composed `rusage`. The second only runs with `--licence`: that a
+    named licence resource can be requested at all, which is the whole point
+    of declaring one — LSF knows the count and arbitrates it, we do not.
+
+    A failure here does not mean the design is wrong; it means the site's
+    resource names or requirement syntax differ from what a plan is authoring.
+    """
+
+    request = "rusage[mem=64]"
+    if licence:
+        request = f"rusage[mem=64,{licence}=1]"
+    argv = ["bsub", "-I", "-J", name, "-W", "5", "-R", request]
+    if queue:
+        argv += ["-q", queue]
+    argv += ["/bin/echo", "ass-exec-preflight"]
+
+    label = f"resource request {request}"
+    try:
+        completed = subprocess.run(argv, capture_output=True, text=True, timeout=300)
+    except subprocess.TimeoutExpired:
+        # Pending forever is a real answer for a licence nobody can grant.
+        report(FAIL, label, "timed out after 300s — never dispatched")
+        return False
+    if completed.returncode != 0:
+        report(
+            FAIL,
+            label,
+            f"rc={completed.returncode} {completed.stderr.strip()[:200]}",
+        )
+        return False
+    report(PASS, label, "accepted and dispatched")
+    return True
+
+
 def check_owner_bound(queue: str | None, name: str) -> bool:
     """The assumption the direct mode rests on: job dies with its client."""
 
@@ -139,6 +181,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--queue", default=None, help="queue to submit to")
     parser.add_argument(
+        "--licence",
+        default=None,
+        help=(
+            "a licence resource name configured at this site (e.g. the "
+            "simulator token an analog sweep contends for); checks that a job "
+            "can request it"
+        ),
+    )
+    parser.add_argument(
         "--skip-lifetime",
         action="store_true",
         help="skip the slow owner-bound check",
@@ -153,6 +204,12 @@ def main() -> int:
 
     ok = check_interactive(args.queue, f"ass-preflight-{token}-a")
     ok = check_name_lookup(f"ass-preflight-{token}-a") and ok
+    ok = (
+        check_resource_request(
+            args.queue, f"ass-preflight-{token}-r", args.licence
+        )
+        and ok
+    )
     if not args.skip_lifetime:
         ok = check_owner_bound(args.queue, f"ass-preflight-{token}-b") and ok
     else:

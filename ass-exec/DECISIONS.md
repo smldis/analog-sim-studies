@@ -103,7 +103,10 @@ distinction they encode is what makes the orphan-reaping path expressible.
 | Does a transport exception mean the work was refused? | No. Only `SubmissionRefused` establishes that; everything else holds the attempt in the crash window. | `test_indeterminate_submission_blocks_a_blind_resubmission`. |
 | Does recovery require graph topology? | No. | `test_recovery_needs_no_knowledge_of_the_graph` — recovery succeeds from a bundle carrying no dependency information. |
 | Can cancellation be known? | No, only intended and later reconciled. | `test_success_after_requested_cancellation_is_not_normalized`. |
-| Does placement belong in result identity? | No. Queue, walltime, cores and host are excluded, so retuning resources never invalidates a result. | `test_placement_does_not_participate_in_identity`. |
+| Does placement belong in result identity? | No. Queue, walltime, cores and host are excluded, so retuning resources never invalidates a result. | `test_placement_does_not_participate_in_identity`, and `test_retuning_the_resource_request_still_reuses_the_result` now that options actually reach the job. |
+| Whose resource request is it? | The invocation's. One transport resolves each submission over its site defaults, so a cheap extraction and a large-memory corner can share it. | `test_one_transport_serves_invocations_with_different_needs`; end to end through a real `bsub` argument list in `ass-run`'s `test_an_authored_resource_need_survives_all_the_way_to_the_submission`. |
+| What happens to an option a transport cannot express? | It refuses before submission. Dropping a stated resource need would run the work under conditions nobody asked for, which is the silent-wrongness rule applied to placement. | `test_an_option_this_transport_cannot_express_is_refused`, `test_a_misspelled_option_does_not_silently_run_anywhere`. |
+| Who arbitrates a simulator licence? | LSF. A declared `licences={"name": n}` becomes a `rusage` term on that job; nothing here counts tokens or waits for one, because the scheduler owns the count. | `test_a_declared_licence_becomes_a_request_on_that_job`. The site's resource *names* are a fact to ask for, not derive. |
 | Can reuse return a result from different inputs? | No, once identity is content-addressed: changed inputs land on a different attempt. | `test_changed_inputs_do_not_reuse_the_old_result`. |
 | May a failed result be reused? | Not automatically. It is retained, the rerun takes a new sequence, and a human may accept it after inspection. | `test_a_failure_is_not_reused_and_the_work_runs_again`, `test_an_accepted_failure_is_reused_afterwards`. |
 | What happens to superseded results? | They are retained and nameable as stale, not overwritten. | `test_prior_results_are_named_as_superseded_not_discarded`. |
@@ -147,6 +150,11 @@ otherwise implies confidence the suite has not earned.
   client dies. This is IBM daemon behaviour, and the entire direct mode rests
   on it.
 - Queue admission, scheduling, resource enforcement, and real `-W` termination.
+- Whether the resource requirement we compose is *admitted*. Local tests fix
+  the string we build — one `-R` holding whitespace-separated sections, with
+  memory and licences in a single `rusage` — and can say nothing about whether
+  the site parses it that way or knows those licence names.
+  `lsf_preflight.py --licence <name>` submits one and reports.
 
 There is no free LSF to run against. OpenLava was a CLI-compatible fork but is
 unmaintained and legally clouded, so it is not a route we should take. A real
@@ -252,7 +260,10 @@ spots. Prefer evidence from something the unit did not write.
   owning address resolution, which belongs elsewhere.
 - **Who drives readiness.** Dask remains the hypothesis, and the lifetime
   correction removes the main objection to it owning the lifecycle. Nothing in
-  this unit depends on that choice, which is worth preserving.
+  this unit depends on that choice, which is worth preserving. One argument
+  against it — that a blocking `bsub -I` would occupy a Dask worker slot — was
+  retracted on 2026-08-04 after reading what `distributed.secede()` actually
+  does; the register carries the retraction and what survives it.
 - **Retry lineage.** `sequence` exists in the identity and is otherwise unused.
 
 ## Would change our minds

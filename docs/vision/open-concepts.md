@@ -40,8 +40,9 @@ altered by evidence), **deferred** (still wanted, not started), **dropped**
 | Concept | Trigger to revisit |
 | --- | --- |
 | Pooled LSF via `dask_jobqueue.LSFCluster` | **Many short invocations**, where per-job queue dispatch costs more than the work. Not "many invocations": one job each is a good fit for long-running corners regardless of count, and it buys per-corner resource requests, `bkill`, accounting, licence arbitration and failure isolation. `LSFPooledTransport` refuses today. |
-| Concurrency in the driver | `ass-run` executes one invocation at a time. Current preference is bounded concurrency here rather than adopting a scheduler, since file-based artifacts removed Dask's locality argument. Revisit if task counts or priority needs outgrow a thread pool. Note that with `bsub -I`, concurrency means one held client process per running job. |
-| One-scheduler mixed topology (labelled local, direct-gateway, pooled workers) | Requires pooled mode first; must be demonstrated, not assumed, since `LSFCluster` normally owns its own scheduler. See "Using Dask for both slots" below for why mixed, rather than wholly pooled, is the preferred shape. |
+| Concurrency in the driver | `ass-run` executes one invocation at a time. Measured 2026-08-04: a waiting invocation costs ~16 KiB of thread plus one client process, so this is a **safety rail with an arbitrary high default**, not a scheduler feature to tune. The real limiter is the site's MAX JOB policy, per-user process limits, and the licence count. Ask for those numbers rather than inventing one. |
+| Per-job status: a `bjobs` watcher and a sweep view | **Wanted, user direction 2026-08-04: a live view of a long sweep matters, and it should show the status of each `bsub -I`.** Nothing provides it today: with `-I` the transport blocks from submission to terminal, so the record cannot distinguish a corner pending in the queue from one simulating. `discover()` and `_state_from_bjobs` already read `PEND/RUN/DONE/EXIT`; nothing calls them while a direct submission is in flight. Shape proposed: one `bjobs` call per refresh for all live identities (job names are `ass-<digest>`), appending `observed` events to each attempt's record, with the view as a reader over journals. Two by-products: it measures **per-job queue latency**, which is the number the pooled-versus-direct question has always lacked, and being a reader rather than a driver feature it works unchanged whoever owns readiness. Site facts to check first, in preflight: whether `bjobs -o` is available and whether `-J` accepts a wildcard. |
+| One-scheduler mixed topology (labelled local, direct-gateway, pooled workers) | Requires pooled mode first; must be demonstrated, not assumed, since `LSFCluster` normally owns its own scheduler. See "What \"both slots\" must not be allowed to mean" below for why mixed, rather than wholly pooled, is the preferred shape. |
 | Delayed versus Futures comparison (evidence ladder 4) | Was to precede accepting `submit(...)`. Partly overtaken: `ass-exec` executes without Dask, so this now only matters if Dask becomes the driver. |
 | Real direct-LSF smoke test (evidence ladder 6) | Site access. `examples/lsf_preflight.py` is ready; not runnable now. |
 | Plugins and declarative flow configuration | A concrete multi-repository or non-Python authoring need. |
@@ -109,98 +110,151 @@ return. Dask never sees the plan — it sees independent submissions. The pool's
 real benefit, avoiding per-task `bsub` latency for many short steps, is
 available without handing over graph authority.
 
-### Retracted: the worker-occupancy argument (2026-08-04)
+### Measured rather than argued (2026-08-04)
+
+`prototypes/dask_secede_spike.py` runs the question instead of reasoning about
+it: a `LocalCluster` of 2 workers x 2 threads, 8 tasks each holding a child
+process for 3s, which is the shape of a transport waiting on `bsub -I`.
+
+| | result |
+| --- | --- |
+| 8 blocking tasks, 4 slots | **6.1s** — serialises at 4, exactly as the old argument claimed |
+| the same after `secede()` | **3.1s** — all 8 at once |
+| 64 waiters, measured while blocked | 63 threads held, **8.1 MiB** PSS of client processes, **1.0 MiB** of our own growth (~16 KiB per waiting thread) |
+| one Dask worker process | **51 MiB** PSS |
+
+Two things follow, and the second matters more than the first.
+
+### Retracted: the worker-occupancy argument
 
 The strongest argument this register made against Dask in slot A was that a
 task whose placement is `lsf-direct` would block a Dask worker slot for the
-whole external job, so ten pooled workers and fifty direct corners serialise at
-ten. **That is wrong, and it was recorded without checking.** It is retracted
-rather than quietly edited, because it was cited as reasoning elsewhere.
+whole external job, so ten workers and fifty direct corners serialise at ten.
+**It is retracted**, rather than quietly edited, because it was cited as
+reasoning elsewhere.
 
-`distributed.secede()` exists for exactly this case: called from inside a task,
-the thread leaves the worker's thread pool, the pool refills the slot, and the
-task changes to the `long-running` state which explicitly does not count
-against the worker's parallelism limit. `rejoin()` blocks to re-acquire a slot
-afterwards, and `worker_client()` is the documented wrapper that does both
-safely. The failure mode that would have vindicated the argument — seceded
-tasks driving scheduler occupancy negative so those workers hoarded all new
-work — was real in 2022.1.0–2022.3.0 and was fixed (dask/distributed#5975, PR
-#6351). Evidence is documentary; no spike was run, because `distributed` is not
-installed here.
+The measurement above shows the claim *does* describe Dask's default behaviour
+— 6.1s is real serialisation. What it gets wrong is the significance. The cap
+is `nthreads`, a configuration value chosen for tasks that *compute*; our tasks
+wait. And a waiter costs 16 KiB of thread plus one client process. Nothing is
+scarce, so the cap is arbitrary, and any of three settings removes it:
+`threads_per_worker=200` (~3 MiB), `secede()` (~3 MiB), or one worker process
+per job (~10-20 GB for 200 — it works, and it spends the entire memory budget
+on idle interpreters).
 
-What survives is smaller and worth stating exactly, because it is *neutral*
-rather than anti-Dask: a seceded task still holds a real OS thread and a worker
-process for the life of the external job, which is the same cost as a blocked
-thread in an `ass-run` pool. Dask does not make an outstanding `bsub -I` cheap;
-it makes it *no more expensive than doing it ourselves*. And `secede()` has to
-be called from within the task, so a blocking transport would need a
-Dask-aware wrapper — a small integration cost `ass-run` does not currently pay.
+So the honest correction is not "`secede()` rescues Dask". It is that **the
+concurrency question was never about cost**, and neither candidate for slot A
+has an advantage in it. That argument is closed in both directions.
 
-### Why Dask might still not take slot A
+### `secede()`: understood, and deliberately not used
+
+Its real purpose is keeping *one* pool honest when it serves both kinds of
+work: `nthreads` stays a truthful limit on CPU-bound measurements while waiters
+escape the count. If waiters and compute live on different workers, or if the
+pool only ever waits, configuration replaces it entirely.
+
+We do not want it here, for an observability reason rather than a technical
+one. Measured with 6 tasks against 4 slots:
+
+| | worker `task_counts` | scheduler `processing` |
+| --- | --- | --- |
+| no secede | `{'executing': 2, 'ready': 1}` per worker | 6 tasks, by name |
+| seceded | `{'long-running': 3}` per worker | 6 tasks, by name |
+
+Graph-level tooling is identical either way — futures, progress, task stream,
+and named keys all survive seceding, and every worker stays visible. The one
+difference is that `long-running` is excluded from the parallelism count, so
+the Workers table reads `executing = 0` while jobs are in flight. **User
+direction (2026-08-04): a submit worker holding at least one live `bsub -I`
+should read as running.** Not seceding gives exactly that, so raise the thread
+count and leave `secede()` alone.
+
+### What is left against Dask in slot A
 
 - **Locality is gone.** Steps exchange file addresses on a shared store, so
   there are no in-memory values to keep warm and nothing to schedule around.
-  That was Dask's strongest argument for owning readiness.
-- **Concurrency limits are a site question, not an architecture one.** Each
-  simultaneously running `bsub -I` holds a blocked client on the submit host,
-  bounded by the concurrency limit rather than the job count. The real ceiling
-  is per-user process and pending-job policy at the site, which has not been
-  measured; earlier claims of a threshold here were guesses.
-- **What remains** is concurrency, priorities, and backpressure. Bounded
-  concurrency is a small addition to `ass-run`; the other two are worth
-  revisiting only at task counts this project has not reached.
+  This is still true, but note its shape: it says Dask *adds nothing* here, not
+  that it costs something.
+- **Defaults that are wrong for us.** `nthreads` sized for cores, and a nanny
+  that may restart a worker under memory pressure. Under owner-bound lifetime a
+  restarted worker kills every `bsub -I` client it held, and with it that many
+  running farm jobs. The waiters themselves are far too small to cause this;
+  it only bites if memory-hungry in-process work shares their worker.
+- **It does not deliver the view that was asked for.** Dask can show tasks; it
+  cannot show `PEND` versus `RUN`, or a corner waiting on a licence. That is
+  LSF state, and something has to poll for it whoever owns readiness.
+- **Concurrency limits are a site question, not an architecture one.** The real
+  ceiling is the site's MAX JOB policy, per-user process limits, and the licence
+  count — none of which either candidate knows.
 
-### What a wholly pooled arrangement would cost
+### The case for Dask in both slots, as it now stands
 
-Recorded because it is the arrangement to avoid drifting into, not because
-anything proposes it. Routing *every* invocation through a pool would give up
-one visible LSF job per invocation, force a single worker shape on
-heterogeneous work, and remove simulator licences from the scheduler that could
-arbitrate them — LSF would see workers, not corners. Per-invocation placement is
-precisely what prevents this, provided placements are actually authored.
+Recorded because it was asked for, and because it is stronger than this file
+previously implied. "Both slots" means one library serving two distinct roles —
+**not** the slots merging, and emphatically not routing every invocation through
+a pool.
 
-### The counter-case, which this register had underweighted
+1. **The case against slot A has largely dissolved.** One argument was
+   retracted outright; the rest reduce to "Dask adds nothing here", which is a
+   reason not to *need* it, not a reason to refuse it.
+2. **The requirements that have arrived are a scheduler's feature list.**
+   Bounded concurrency, a live view, retries, cancellation. Building them into
+   `ass-run` one reasonable increment at a time is precisely the accretion the
+   inquiry warned against; adopting a mature scheduler is the compliant
+   alternative, not the transgression.
+3. **Slot B already points at `dask-jobqueue`.** `DECISIONS.md` records that
+   pooled mode should adopt `LSFCluster` for owner-bound worker lifetime
+   (`death_timeout` plus `bkill` on close) rather than rebuild it. If the
+   dependency is in the stack for B, using it for A costs an import, not a
+   dependency.
+4. **One mechanism instead of three.** Otherwise readiness lives in `ass-run`,
+   pooling in a transport, and progress in a watcher, each with its own
+   failure modes.
+5. **Data-parallel post-processing** over many raw files is Dask's home ground.
+   If a study needs it, Dask is present anyway.
 
-Recorded so the next reader argues both sides rather than inheriting one.
+### What "both slots" must not be allowed to mean
 
-- **`ass-run` accreting into a scheduler.** It already owns ordering,
-  readiness, failure handling, and placement selection. Concurrency, then
-  limits, backpressure, priorities, cancellation, progress reporting — each
-  increment is individually reasonable and collectively the workflow engine the
-  inquiry warned against building. **Treat the next scheduler-shaped feature
-  request as a tripwire, not a task**: if two arrive together, that is the
-  signal to reopen this section rather than implement them.
-- **Diagnostics.** Dask's dashboard is real operational value on a long sweep.
-  `ass-run` has nothing equivalent and no plan for one.
-- **Graph-level retries and error propagation** come free with Dask; both are
-  currently unmodelled here (`sequence` exists and is unused).
-- **Data-parallel post-processing** over many raw files is Dask's home ground.
-  If a study needs it, Dask is in the stack anyway and slot A costs less.
-- **The graduated main preferred Dask as the kernel**, formed with a
-  whole-system view. The arguments against it were assembled incrementally, and
-  one of them has now been retracted outright.
+- **Not wholly pooled.** Routing every invocation through pooled workers gives
+  up one visible LSF job per invocation, forces a single worker shape on
+  heterogeneous work, and removes simulator licences from the scheduler that
+  arbitrates them — LSF would see workers, not corners. Per-invocation
+  `-R rusage[...]`, `bkill`, accounting and failure isolation all depend on the
+  one-job-per-corner shape. Per-invocation placement is what prevents this,
+  provided placements are actually authored.
+- **Not pooled workers for slot A.** The cluster that owns readiness should be
+  local to the submit host. A worker that dies takes its blocked clients, and
+  therefore its running farm jobs, with it.
+- **Not inside `ass-exec`.** The durable protocol, identity, and journal stay
+  executor-neutral; Dask enters as a driver or adapter that is a peer of
+  `ass-run`. That neutrality is what makes this decision reversible, and it has
+  already survived two reversals.
+- **Not as a replacement for per-job status.** The `bjobs` watcher is needed
+  either way.
 
-### Where this stands, and what would settle it
+### What would still make it the wrong choice
 
-Provisionally unchanged: readiness stays in `ass-run`, three placements as
-peers, bounded concurrency added here rather than adopting a scheduler. But the
-justification is now narrower and should be stated as it actually is — not "a
-Dask kernel would serialise mixed placement", which was false, but "Dask's
-locality advantage does not apply to file artifacts, and its remaining benefits
-are ones no workload here has yet asked for." That is a default to challenge.
+- **Scale.** If the OTA/PVT study turns out to be a few dozen corners of several
+  minutes each, a thread pool and a watcher are enough, and the dependency buys
+  ceremony. This is the observation that decides, and it does not exist yet.
+- **Mixed topology proving awkward.** A local cluster for readiness plus a
+  separate `LSFCluster` used as a transport is two clusters in one process; that
+  it composes cleanly is assumed, not demonstrated.
 
-Discriminating observations, none of which exist yet:
+### The tripwire, revised
 
-- Real numbers from the OTA/PVT study: how many invocations, how long each, how
-  heterogeneous their resource needs. This is the reason to run it first.
-- Whether an operator wants a live dashboard for a long sweep. **Ask; do not
-  assume.**
-- Whether `ass-run` starts needing priorities or backpressure (the tripwire).
-- A spike, if the question turns live: `secede()` around a blocking `bsub -I`
-  under `LSFCluster`, which also answers whether `dask_jobqueue` tolerates being
-  used as a plain submit-and-wait transport for slot B.
+The accretion list — concurrency, limits, backpressure, priorities,
+cancellation, progress reporting — had two items live at once, which read as
+the moment to reopen the engine question. The measurement deflates one of them:
+with waiters this cheap, concurrency in `ass-run` is not a scheduler feature but
+a safety rail with an arbitrary high default, because the real limiter is the
+site's MAX JOB policy and the licence count. And progress reporting belongs in a
+watcher that reads journals and calls `bjobs`, which is a client of existing
+contracts rather than a driver feature — it works unchanged whoever owns
+readiness.
 
-Deciding before the study exists would be choosing on aesthetics.
+So one wire, not two, and the driver stays small either way. The decision is
+still open, and it is still the study that should settle it.
 
 ## New ideas raised during development
 

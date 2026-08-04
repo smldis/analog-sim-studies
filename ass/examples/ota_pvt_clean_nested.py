@@ -61,6 +61,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
+from hashlib import blake2b
 import cmath
 import json
 import math
@@ -93,6 +94,7 @@ from ass import (  # noqa: E402
     study,
     sweep,
 )
+from ass_run.site import fingerprint_file  # noqa: E402
 from sidecar_edits.render import (  # noqa: E402
     expand_param_matrix,
     load_editfile,
@@ -116,6 +118,7 @@ SIMULATOR_RAW = artifact("simulator-raw-results")
 MEASUREMENT_DEFINITION = artifact("ota-measurement-definition")
 POINT_MEASUREMENTS = artifact("ota-point-measurements")
 SPEC_LIMITS = artifact("ota-specification-limits")
+STUDY_RESULT = artifact("ota-pvt-study-result")
 
 REPOSITORY_DIRECTORY_TREE = materialization(
     codec=codec("directory-tree", version="1"),
@@ -352,7 +355,10 @@ def build_corner_study(jobs: list[dict[str, Any]]):
     },
     config={"records_root": parameter(str), "workspace_root": parameter(str)},
     outputs={
-        "evaluation": returned(kind="ota-pvt-evaluation"),
+        # One returned output, not two: a body returns one object, and every
+        # value-bound output would be handed all of it. So this carries the
+        # whole of what stage two produced, and is named for that.
+        "result": returned(kind="ota-pvt-study-result"),
         "plan": file("corner-plan.json", kind="ass-plan-document"),
     },
 )
@@ -422,9 +428,71 @@ def _root_of(delivered: Path, locator: str) -> Path:
     return delivered.resolve().parents[depth - 1]
 
 
+@operation(
+    name="ota_pvt_nested.report",
+    version="1",
+    inputs={
+        "result": STUDY_RESULT,
+        "jobs": SIDECAR_JOBS,
+        "base": SIDE_CAR_BASE,
+        "edits": SIDE_CAR_EDITS,
+        "definition": MEASUREMENT_DEFINITION,
+        "limits": SPEC_LIMITS,
+    },
+    outputs={
+        "report": file("report.md", kind="ota-pvt-report"),
+        "verdict": returned(kind="ota-pvt-verdict"),
+    },
+)
+def report(result, jobs, base, edits, definition, limits, out):
+    """The deliverable, as work rather than as an afterthought.
+
+    Being an operation changes what the report *is*. It has an identity, so the
+    same evidence produces the same report and a rerun that changes nothing
+    reuses it rather than regenerating it with a new date. It declares the four
+    sources as inputs, so it cannot describe inputs the study did not use. And
+    it is a declared artifact of the study, not a side effect of the script that
+    launched it.
+
+    Two consequences, both deliberate:
+
+    * **It cannot say what was reused.** Dispositions are the run's own
+      bookkeeping, and an operation that read them would produce a different
+      result on a rerun than on a reuse — the report would stop being a
+      function of the evidence. Stage two's dispositions *are* here, because
+      they travelled as data through `result`.
+    * **A reused report keeps its original date.** That is right: the date says
+      when this evidence was produced, and nothing about it has changed.
+
+    It also recomputes the source fingerprints, which its own identity already
+    depends on. An operation cannot see the identity of its own inputs, so the
+    one number that says which inputs produced this report has to be derived a
+    second time. Worth naming; nothing to do about it here.
+    """
+
+    evaluation = result.get("evaluation") or {}
+    text = _render_report(
+        evaluation=evaluation,
+        jobs=list(jobs),
+        inner=result.get("invocations") or [],
+        sources={
+            BASE_DIRECTORY_LOCATOR: base,
+            PVT_EDITS_LOCATOR: edits,
+            MEASUREMENT_DEFINITION_LOCATOR: definition,
+            SPEC_LIMITS_LOCATOR: limits,
+        },
+    )
+    out.report.write_text(text, encoding="utf-8")
+    return {
+        "overall_pass": bool(evaluation.get("overall_pass")),
+        "corners": len(evaluation.get("points") or {}),
+        "status": evaluation.get("status"),
+    }
+
+
 @flow(name="ota_pvt_nested.study", version="1")
 def pvt_study(base, edits, definition, limits, *, records_root, workspace_root):
-    """Three members: read the edit file, expand it, then plan and run it."""
+    """Read the edit file, expand it, plan and run it, and write the report."""
 
     described = load_edit_file.options(key="load")(edits)
     jobs = expand_jobs.options(key="expand")(described)
@@ -432,7 +500,10 @@ def pvt_study(base, edits, definition, limits, *, records_root, workspace_root):
         base, edits, definition, limits, jobs,
         records_root=records_root, workspace_root=workspace_root,
     )
-    return {"evaluation": result.evaluation}
+    written = report.options(key="report")(
+        result.result, jobs, base, edits, definition, limits
+    )
+    return {"report": written.report, "verdict": written.verdict}
 
 
 def build(*, records_root: str, workspace_root: str):
@@ -573,16 +644,30 @@ _METRICS = (
 )
 
 
-def render_report(
-    run, *, fingerprints: Mapping[str, str], document: Mapping[str, Any]
+def _fingerprint(path: Path) -> str:
+    """Identify one declared input by content, as the site does when planning."""
+
+    if path.is_dir():
+        digest = blake2b(digest_size=16)
+        for item in sorted(path.rglob("*")):
+            if item.is_file():
+                digest.update(str(item.relative_to(path)).encode())
+                digest.update(fingerprint_file(item).encode())
+        return f"tree:{digest.hexdigest()}"
+    return fingerprint_file(path)
+
+
+def _render_report(
+    *,
+    evaluation: Mapping[str, Any],
+    jobs: list[dict[str, Any]],
+    inner: list[Mapping[str, Any]],
+    sources: Mapping[str, str],
 ) -> str:
     """The deliverable, built from what the two stages produced."""
 
-    inner = run["corners"].value or {}
-    evaluation = inner.get("evaluation") or {}
     points = evaluation.get("points", {})
     limits = evaluation.get("limits", {})
-    jobs = run["expand"].value or []
     verdict = "PASS" if evaluation.get("overall_pass") else "FAIL"
 
     lines = [
@@ -591,9 +676,10 @@ def render_report(
         f"**Verdict: {verdict}** — {len(points)} corners, "
         f"{len(limits)} limits, status `{evaluation.get('status')}`.",
         "",
-        f"Generated {datetime.now(timezone.utc).isoformat(timespec='seconds')}. "
+        f"Evidence produced {datetime.now(timezone.utc).isoformat(timespec='seconds')}. "
         "The corner set was produced by the graph; the corners were then planned "
-        "and run as a study of their own.",
+        "and run as a study of their own; this report is an operation of that "
+        "same study, so it is reused rather than rewritten when nothing changed.",
         "",
         "## Corners",
         "",
@@ -630,36 +716,31 @@ def render_report(
         "",
         "## Provenance",
         "",
-        f"Stage one: plan schema {document.get('schema_version')}, "
-        f"{len(document.get('invocations', []))} invocations, "
-        f"{len(document.get('sources', []))} declared sources. Stage two is "
-        f"authored by the `corners` invocation and recorded as its `plan` output.",
+        "Every input below is declared by the operation that wrote this report, "
+        "so it cannot describe an input the study did not use.",
         "",
         "### Inputs, by content",
         "",
         "| source | fingerprint |",
         "|---|---|",
     ]
-    for source in document.get("sources", []):
-        locator = (source.get("address") or {}).get("locator", "?")
-        lines.append(f"| `{locator}` | `{fingerprints.get(source['id'], '—')}` |")
+    for locator, delivered in sources.items():
+        lines.append(f"| `{locator}` | `{_fingerprint(Path(delivered))}` |")
 
     lines += [
         "",
-        "### What ran",
+        "### What stage two ran",
         "",
-        "| stage | invocation | operation | placement | outcome | |",
-        "|---|---|---|---|---|---|",
+        "Stage one's own dispositions are absent deliberately: they are the "
+        "run's bookkeeping, and a report that read them would say something "
+        "different on a rerun than on a reuse.",
+        "",
+        "| invocation | operation | placement | outcome | |",
+        "|---|---|---|---|---|",
     ]
-    for outcome in run.report.outcomes:
+    for item in inner:
         lines.append(
-            f"| one | `{outcome.authored_key}` | `{outcome.operation}` | "
-            f"{outcome.placement or '—'} | {outcome.outcome} | "
-            f"{'reused' if outcome.reused else 'ran'} |"
-        )
-    for item in inner.get("invocations", []):
-        lines.append(
-            f"| two | `{item['authored_key']}` | `{item['operation']}` | "
+            f"| `{item['authored_key']}` | `{item['operation']}` | "
             f"{item['placement'] or '—'} | {item['outcome']} | "
             f"{'reused' if item['reused'] else 'ran'} |"
         )
@@ -689,22 +770,19 @@ def main() -> int:
     print("No corner appears above: stage one cannot name them, because the\n"
           "corner list is a result. `corners` authors stage two, which can.\n")
 
-    document = subject.document
     run = subject.submit(site=site, watch=True)
+    if not run.succeeded:
+        print(run.summary())
+        return 1
 
-    report = render_report(
-        run, fingerprints=site.fingerprints(document), document=document
-    )
-    work.mkdir(parents=True, exist_ok=True)
-    (work / "report.md").write_text(report, encoding="utf-8")
-    (work / "report.json").write_text(
-        json.dumps(run.value, indent=2, default=str), encoding="utf-8"
-    )
-
+    # The deliverable is an artifact of the study, not something this script
+    # produced afterwards. All that is left to do is say where it is.
+    written = Path(run["report"].artifacts["report"]["address"])
     print()
-    print(report)
-    print(f"deliverable: {work / 'report.md'}")
-    return 0 if run.succeeded else 1
+    print(written.read_text(encoding="utf-8"))
+    print(f"verdict:     {run.value}")
+    print(f"deliverable: {written}")
+    return 0
 
 
 if __name__ == "__main__":

@@ -255,7 +255,7 @@ def test_materialization_values_are_deeply_immutable_canonical_data_only():
         ArtifactAddress("bad space", "opaque")
 
     data = branching_plan().to_data()
-    assert data["schema_version"] == 2
+    assert data["schema_version"] == 3
     assert data["sources"][0]["materialized_as"]["codec"] == {
         "name": "json",
         "version": "1",
@@ -266,7 +266,7 @@ def test_materialization_values_are_deeply_immutable_canonical_data_only():
         "locator": "inputs/amplifier.spice",
     }
     assert data["operations"][0]["outputs"][0]["can_materialize_as"] is None
-    with pytest.raises(ContractError, match="schema_version must be 2"):
+    with pytest.raises(ContractError, match="schema_version must be 3"):
         Plan(schema_version=1)
 
     malformed_codec = replace(JSON_CODEC)

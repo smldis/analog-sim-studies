@@ -787,7 +787,7 @@ def test_characterization_command_is_semantic_repeatable_and_uses_injected_sourc
                 "invocations": [item.id for item in normalized.invocations],
                 "sources": [item.id for item in normalized.sources],
             },
-            "schema_version": 2,
+            "schema_version": 3,
         },
         "results": {
             "corners__ff": {

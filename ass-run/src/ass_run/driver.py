@@ -105,6 +105,7 @@ def run_plan(
     commands: Mapping[str, Sequence[str]] | None = None,
     outputs: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
     identity_env: Mapping[str, str] | None = None,
+    source_fingerprints: Mapping[str, str] | None = None,
     stop_on_failure: bool = True,
     on_event: Callable[[InvocationOutcome], None] | None = None,
 ) -> RunReport:
@@ -134,7 +135,10 @@ def run_plan(
     failed = False
 
     for item in plan_bundles(
-        document, commands=commands, identity_env=identity_env
+        document,
+        commands=commands,
+        identity_env=identity_env,
+        source_fingerprints=source_fingerprints,
     ):
         if failed and stop_on_failure:
             outcome = InvocationOutcome(

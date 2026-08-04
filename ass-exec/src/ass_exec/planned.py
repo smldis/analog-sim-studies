@@ -61,13 +61,23 @@ class PlannedInvocation:
     """
 
 
-def _source_identity(source: Mapping[str, Any]) -> str:
-    """Identify a source by what it declares, never by its position.
+def _source_identity(
+    source: Mapping[str, Any], fingerprint: str | None = None
+) -> str:
+    """Identify a source by what it declares, and by what is there.
 
     Source IDs are authored-order and can renumber when earlier work is
     inserted; the declared address and codec are what actually determine the
     data. Using the declaration means adding an unrelated source does not
     invalidate anything.
+
+    The declaration alone is not enough for reuse to be honest, though: editing
+    an input netlist in place leaves every declared fact unchanged, so without
+    ``fingerprint`` a rerun reuses results computed from a file that no longer
+    exists in that form. This unit resolves no addresses and should not start,
+    so the fingerprint is supplied by the run, which knows what an address
+    space means on this machine. Absent one, behaviour is as before —
+    declaration-only, and stale on an in-place edit.
     """
 
     return input_digest(
@@ -77,6 +87,7 @@ def _source_identity(source: Mapping[str, Any]) -> str:
                 "artifact": source.get("artifact"),
                 "address": source.get("address"),
                 "materialized_as": source.get("materialized_as"),
+                "fingerprint": fingerprint,
             },
         }
     )
@@ -86,6 +97,7 @@ def _reference_identity(
     reference: Mapping[str, Any],
     sources: Mapping[str, Mapping[str, Any]],
     digests: Mapping[str, str],
+    fingerprints: Mapping[str, str] | None = None,
 ) -> str:
     kind = reference.get("type")
     if kind == "source":
@@ -93,7 +105,8 @@ def _reference_identity(
         source = sources.get(source_id)
         if source is None:
             raise PlanDerivationError(f"input names unknown source {source_id!r}")
-        return f"source:{_source_identity(source)}"
+        fingerprint = (fingerprints or {}).get(source_id)
+        return f"source:{_source_identity(source, fingerprint)}"
     if kind == "output":
         producer = reference.get("invocation_id")
         if producer not in digests:
@@ -151,6 +164,7 @@ def plan_bundles(
     *,
     commands: Mapping[str, Sequence[str]] | None = None,
     identity_env: Mapping[str, str] | None = None,
+    source_fingerprints: Mapping[str, str] | None = None,
 ) -> tuple[PlannedInvocation, ...]:
     """Turn a validated Plan document into content-addressed bundles.
 
@@ -161,6 +175,12 @@ def plan_bundles(
 
     ``identity_env`` names environment values that genuinely change results —
     a PDK root, a model corner library — and folds them into every digest.
+
+    ``source_fingerprints`` identifies each declared source by its content, so
+    that editing an input in place invalidates the work that read it. It is
+    supplied by the caller because identifying a source means resolving its
+    address, which this unit does not do. Omitting it reuses on declaration
+    alone, which is stale after an in-place edit.
     """
 
     schema = document.get("schema_version")
@@ -189,11 +209,13 @@ def plan_bundles(
             name = binding["name"]
             if "reference" in binding:
                 resolved[name] = _reference_identity(
-                    binding["reference"], sources, digests
+                    binding["reference"], sources, digests, source_fingerprints
                 )
             else:
                 resolved[name] = [
-                    _reference_identity(reference, sources, digests)
+                    _reference_identity(
+                        reference, sources, digests, source_fingerprints
+                    )
                     for reference in binding.get("references", [])
                 ]
 

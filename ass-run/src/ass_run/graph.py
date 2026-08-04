@@ -242,6 +242,7 @@ def run_plan_graph(
     commands: Mapping[str, Sequence[str]] | None = None,
     outputs: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
     identity_env: Mapping[str, str] | None = None,
+    source_fingerprints: Mapping[str, str] | None = None,
     on_event: Callable[[InvocationOutcome], None] | None = None,
 ) -> RunReport:
     """Execute a Plan as a Dask graph and report in the Plan's own order.
@@ -269,7 +270,12 @@ def run_plan_graph(
         outputs=outputs,
     )
 
-    items = plan_bundles(document, commands=commands, identity_env=identity_env)
+    items = plan_bundles(
+        document,
+        commands=commands,
+        identity_env=identity_env,
+        source_fingerprints=source_fingerprints,
+    )
     futures: dict[str, Any] = {}
     taken: set[str] = set()
     for item in items:

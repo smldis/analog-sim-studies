@@ -136,7 +136,11 @@ its siblings are reused and the superseded results stay nameable.
   transitive and staleness propagates downstream.
 - Sources are identified by their declared address, codec, and artifact kind
   rather than by authored-order source ID, so inserting an unrelated source
-  invalidates nothing.
+  invalidates nothing. `plan_bundles(..., source_fingerprints=...)` folds in an
+  identity for what is *at* each address, supplied by the caller because
+  resolving an address is not this unit's work. Without it, editing an input in
+  place changes no declared fact and the work that read it is reused — stale,
+  and the reason the parameter exists.
 - `resolved_inputs` carries upstream values for execution and never
   participates in identity: which values they are is already implied by the
   declared input digests.

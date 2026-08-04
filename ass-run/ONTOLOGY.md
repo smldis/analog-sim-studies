@@ -80,6 +80,23 @@ dashboard, and failure isolation are untested against anything but fakes.
   substrate, so the transport reads them. A transport that cannot express a
   declared option refuses, and the run reports the invocation as failed rather
   than running it under conditions nobody asked for.
+- `ass_run.site.Site` holds what a run needs and a Plan must not carry: which
+  substrate provides each placement, the roots records and workspaces are
+  written under, the address spaces a declared source resolves through, and the
+  thread count the graph kernel runs at. `Site.from_file` reads it from TOML,
+  anchoring relative paths to the profile rather than the working directory, so
+  a study run from elsewhere means the same thing. A placement kind it cannot
+  build is refused rather than skipped, since a missing placement would surface
+  later as `UnsupportedPlacement` and blame the Plan for a configuration error.
+- `site.fingerprints(document)` identifies each declared source by its
+  **content**, and both kernels pass the result to `plan_bundles`. This closes a
+  real defect: a source's declared address does not change when the file at it
+  is edited, so before this an edited netlist was invisible and a study reported
+  results computed from a file that no longer existed in that form. Content
+  rather than mtime, because an authored input is kilobytes and a hash does not
+  churn on `git checkout`; a directory source covers everything under it; a
+  source that cannot be resolved or does not exist is fatal before anything
+  runs. A run that supplies no fingerprints keeps the old, stale behaviour.
 - `commands` and `outputs` bind an operation to how it actually runs — a
   command line, and which files or streams count as results. The Plan declares
   meaning; a run binds mechanism. Operations absent from both run in-process.

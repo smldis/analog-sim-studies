@@ -10,6 +10,11 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+# Units are not installed; each one's tests name its siblings' source roots in
+# its own pyproject, and integration tests reach across every unit, so they name
+# all of them here.
+for _unit in ("netlist-decomposition", "spice-canonical", "sidecar-edits"):
+    sys.path.insert(0, str(ROOT / _unit / "src"))
 
 import composition
 
@@ -109,11 +114,16 @@ def test_child_command_failure_propagates_and_stops_parent(tmp_path: Path) -> No
     assert not marker.exists()
 
 
-def test_repository_tree_has_four_direct_units_and_no_root_src() -> None:
+def test_repository_tree_has_its_declared_units_and_no_root_src() -> None:
     unit = composition.load_unit(ROOT)
 
+    # Sorted, not in declaration order: `ass` composes the three ASS units, and
+    # the remaining three siblings supply real circuit work.
     assert [child.unit_id for child in unit.children] == [
+        "ass",
+        "ass-exec",
         "ass-flow",
+        "ass-run",
         "netlist-decomposition",
         "sidecar-edits",
         "spice-canonical",

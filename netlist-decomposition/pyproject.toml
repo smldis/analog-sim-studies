@@ -13,4 +13,4 @@ dependencies = ["spice-canonical>=0.1.0"]
 where = ["src"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+pythonpath = ["src", "../spice-canonical/src"]

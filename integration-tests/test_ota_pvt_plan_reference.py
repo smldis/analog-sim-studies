@@ -286,7 +286,10 @@ def test_reference_has_the_exact_versioned_normalized_shape_and_named_outputs():
     normalized = reference.build_plan()
 
     assert normalized.validate() is normalized
-    assert normalized.schema_version == 2
+    # Schema 3: an operation definition may carry what implements it and where
+    # each output lands. The reference declares neither, so its shape below is
+    # unchanged — only the version it is written in moved.
+    assert normalized.schema_version == 3
     assert (
         len(normalized.sources),
         len(normalized.operations),

@@ -83,6 +83,34 @@ class Site:
     """Concurrency for the graph kernel. Not a tuning knob this project owns:
     size it from the site's MAX JOB policy and per-user process limits."""
 
+    def __post_init__(self) -> None:
+        """Anchor every root, because a relative one is silently wrong.
+
+        A command is run *in* its attempt's workspace and told where to write
+        by a path built from that same workspace. Absolute, those agree.
+        Relative, the command resolves the path a second time against the
+        directory it was just placed in, and writes nowhere — reported as a
+        simulator that could not open its own output file, which is a long way
+        from the truth.
+
+        `from_file` already anchors relative paths to the profile directory, so
+        this only closes the gap for a `Site` built in Python.
+        """
+
+        object.__setattr__(self, "root", str(Path(self.root).resolve()))
+        if self.workspace_root is not None:
+            object.__setattr__(
+                self, "workspace_root", str(Path(self.workspace_root).resolve())
+            )
+        object.__setattr__(
+            self,
+            "address_spaces",
+            {
+                name: str(Path(location).resolve())
+                for name, location in self.address_spaces.items()
+            },
+        )
+
     def with_transports(self, **transports: Transport) -> "Site":
         """Add substrates a configuration file cannot describe.
 

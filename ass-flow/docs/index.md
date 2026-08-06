@@ -25,6 +25,19 @@ run as ordinary Python to author the static graph, so avoiding external side
 effects inside them remains an authoring responsibility rather than an enforced
 property.
 
+Calling an operation or a flow returns a handle — `ArtifactValue` or
+`InvocationResult` — never the value it will eventually stand for. Both
+refuse `bool()` and `==` by raising `HandleUsedAsValue` (also a `TypeError`)
+rather than answering: every available answer would be about the reference,
+not the result, since no invocation has run yet when a flow body executes.
+This is also what keeps a flow body honestly unable to branch on a result —
+there is nothing yet to branch on.
+
+The composition-root unit `ass` builds on this package to add the piece it
+deliberately excludes: a `submit` that actually runs the operations a Plan
+names, by pairing this package's Plan with `ass_run`'s kernels and
+`ass_exec`'s durable record. See `ass`'s own documentation for that.
+
 ## Experimental local lowering evidence
 
 The non-reexported `ass_flow.experimental.local_dask` module is a bounded

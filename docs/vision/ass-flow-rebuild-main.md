@@ -251,7 +251,7 @@ The later human-curated graduation is identified by source run
 `cd5c54e288bc5008b316650ec2a7a8920c645678ec4acf25f3d499e9fd69efc7`.
 Its ASS Flow concepts and the evidence produced by subsequent authorized work
 are classified in the component-owned
-[architecture and research ledger](../../ass-flow/docs/architecture.md). This
+[architecture and research ledger](../children/ass-flow/docs/architecture.md). This
 older seed is retained as inquiry provenance, not as the current implementation
 contract.
 

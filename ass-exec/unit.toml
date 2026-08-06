@@ -12,3 +12,4 @@ test = ["python", "-m", "pytest", "-q", "tests"]
 [docs]
 source = "docs"
 index = "index.md"
+resources = ["DECISIONS.md"]

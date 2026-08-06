@@ -481,6 +481,91 @@ edited plan by hand. Until then, editing the plan and rerunning is both the
 honest answer and, given content-addressed reuse, a cheap one: only the
 affected branch recomputes.
 
+## Two concurrency limits, not one (2026-08-05)
+
+### The defect
+
+`LSFTransport.submit` is documented as *"Submit and wait. With `-I` the call
+returns when the job is over."* So one in-flight farm job holds one Dask thread
+for its whole life, queue wait included, and `threads_per_worker` **is** the
+maximum number of concurrent `bsub -I` jobs.
+
+That welds two unrelated facts together. Local concurrency is a property of the
+submit host's CPU. Farm concurrency is the site's LSF MAX JOB policy for this
+user. Today you cannot say "two hundred farm jobs, little local parallelism" —
+to get the jobs you must declare the threads, which also authorises two hundred
+concurrent *local* invocations nobody asked for. `Site.threads` exists, is
+parsed from `[kernel] threads`, and is read by nothing, so the number is written
+once in the profile and again in the operator's `LocalCluster(...)` call with
+nothing comparing them.
+
+### The resolution: a dedicated in-process worker, bounded by a Dask resource
+
+User direction, and it is better than the alternative this register previously
+leaned toward. The secede entry above already predicted it — *"if waiters and
+compute live on different workers … configuration replaces it entirely"* — and
+measurement confirms it. Two in-process workers, `local` at one thread and
+`farm` at many, with farm jobs routed by `resources={"lsf": 1}`:
+
+| farm worker declares | 8 jobs × 0.5 s | expected |
+| --- | --- | --- |
+| `{"lsf": 2}` | 2.06 s | 2.0 s |
+| `{"lsf": 4}` | 1.05 s | 1.0 s |
+| `{"lsf": 8}` | 0.53 s | 0.5 s |
+
+The declared resource *is* the MAX JOB limit, enforced by the scheduler,
+exactly. It beats `secede()` on the one axis secede was rejected for: the farm
+worker genuinely reads as busy while jobs are in flight, so the observability
+requirement is met rather than traded away. It also removes a
+`threading.Semaphore` that would otherwise have gone into `LSFTransport` — and
+with it, a limit that would have been silently wrong across processes. `ass_exec`
+does not change at all.
+
+Shape:
+
+```toml
+[kernel]
+threads = 1                    # local concurrency; unrelated to farm jobs
+
+[placement.lsf]
+kind = "lsf-interactive"
+max_jobs = 200                 # the site's LSF MAX JOB policy for this user
+```
+
+Two things to write down rather than discover: the farm worker's `nthreads`
+must be **derived** from the total of the declared caps, or the thread count
+binds first and silently; and the farm worker must be in-process (`cls=Worker`,
+no nanny), because a nanny restarting it under memory pressure would take its
+`bsub -I` clients and, under owner-bound lifetime, that many running farm jobs.
+
+Not built. `Site.cluster_spec()`, `resources=` on the kernel's `client.submit`,
+and a refusal when a caller-supplied client does not offer the declared
+resources.
+
+### Deferred, wanted: an async LSF transport
+
+The cleanest end-state, and explicitly deferred for time (2026-08-05, user
+direction: *"i would like to explore the async path, but i dont have time now"*).
+
+A coroutine awaiting `asyncio.create_subprocess_exec` holds **no thread at
+all**, so two hundred waiting jobs would cost zero threads and no worker slots,
+and the dedicated farm worker above would stop being necessary — the cap would
+be the only limit left, which is the honest model. Dask runs coroutine tasks on
+the worker's event loop rather than its thread pool, so the kernel already
+supports it.
+
+What it costs: `execute()` and the journal are synchronous throughout, and
+`ass_exec` has no async anywhere. Adding it is not a transport change, it is an
+async path through the durable-record machinery — the part of this system with
+the strongest correctness requirements. Owner-bound lifetime looks preservable
+(`preexec_fn` is available on the asyncio subprocess API) but is unverified.
+
+What would make it live: thread count actually hurting. It does not yet — a
+waiter was measured at about 16 KiB, so two hundred jobs is roughly 3 MB. The
+dedicated-worker resolution above is enough until the farm says otherwise, and
+the async path should be judged against a real MAX JOB number rather than a
+hypothetical one.
+
 ## How to use this file
 
 Add to it when a concept is raised and not immediately built. Move rows between

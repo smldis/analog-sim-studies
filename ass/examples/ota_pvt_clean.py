@@ -1,6 +1,6 @@
 """The OTA/PVT study reduced to the simulation path, with a written deliverable.
 
-    python examples/ota_pvt_clean.py
+    .toolchain/venv/bin/python ass/examples/ota_pvt_clean.py [--fresh]
 
 `ota_pvt.py` carries the whole reference, structural analysis included. This is
 the same study with SPICE Canonical and Netlist Decomposition removed, leaving
@@ -25,6 +25,25 @@ is cheap here — but on a study whose rendering is expensive it would not be.
 the verdict, the corner table, the limits applied, and the provenance —
 including each declared source's content fingerprint, so the report says which
 inputs produced it rather than asserting a date.
+
+**It runs on Dask.** This is the one example that does. A `LocalCluster` is
+built here rather than inside `submit`, because how many corners a site
+tolerates at once is an operational fact and a library choosing it silently
+would be choosing wrong somewhere. The corners then run concurrently instead of
+one after another, and the dashboard — opened before submission, since the
+sweep outlives a browser launch by only a few seconds — shows which corner is
+running under its authored key.
+
+Reuse and watching pull against each other, which is worth understanding rather
+than working around: a second run of an unchanged study reuses every record,
+never calls a body, and is over before the browser repaints. That is the system
+working. `--fresh` runs against records nothing has written yet when what you
+want is to watch, and leaves the existing ones alone.
+
+That dashboard needs `bokeh`, which the units deliberately do not depend on, so
+this example is run through the project-local `.toolchain/venv` described in
+`.toolchain/README.md`. The study itself is unchanged: the same Plan, the same
+identities, the same reuse. Only readiness moved.
 """
 
 from __future__ import annotations
@@ -37,7 +56,26 @@ import json
 import math
 import shutil
 import struct
+import subprocess
 import sys
+import time
+
+from distributed import Client, LocalCluster
+
+DASHBOARD_HEAD_START = 5.0
+"""Seconds given to the browser before the first corner is submitted."""
+
+SIMULATOR_HOLD_SECONDS = 5.0
+"""Seconds each corner waits before launching ngspice, so a sweep is watchable.
+
+Three corners of this OTA are over in about a second — less time than it takes
+to reach the dashboard's Graph tab, which draws only tasks the scheduler
+currently holds. The hold puts each corner in `processing` long enough to see.
+
+Declared as configuration rather than slipped into the body, so the Plan states
+that the hold is there and a run that held is not confused with one that did
+not. Set it to `0.0` for the study at its real speed.
+"""
 
 _HERE = Path(__file__).resolve().parent
 _REPO = _HERE.parents[1]
@@ -155,13 +193,17 @@ def prepare(base, edits, out, *, jobs):
     name="ota_pvt_clean.simulate_ac",
     version="1",
     inputs={"runs": PREPARED_RUNS},
-    config={"point_id": parameter(str), "analysis": parameter(str)},
+    config={
+        "point_id": parameter(str),
+        "analysis": parameter(str),
+        "hold_seconds": parameter(float),
+    },
     outputs={"raw": file("ota_ac.raw", kind="simulator-raw-results")},
     # Give the site an `lsf` transport and this line places each corner on its
     # own job:  policy=lsf(cores=1, memory_mb=2048, licences={"ngspice": 1}),
     policy=local(),
 )
-def simulate_ac(runs, out, *, point_id, analysis):
+def simulate_ac(runs, out, *, point_id, analysis, hold_seconds):
     """A launcher: the ngspice run is what the placement places."""
 
     if analysis != "ac":
@@ -169,6 +211,12 @@ def simulate_ac(runs, out, *, point_id, analysis):
     deck = Path(runs) / point_id / DECK_NAME
     if not deck.exists():
         raise FileNotFoundError(f"prepared deck not found at {deck} for {point_id}")
+    if hold_seconds:
+        # The body runs on the worker, inside the task, so this holds the task
+        # itself — which is what the dashboard draws. Held before the launch
+        # rather than after, so a corner that fails to find its deck fails at
+        # once instead of five seconds late.
+        time.sleep(hold_seconds)
     return shell("ngspice", "-b", "-r", out.raw, deck)
 
 
@@ -242,7 +290,12 @@ def pvt_study(base, edits, definition, limits, jobs):
 
     measured = []
     for job in sweep(jobs, key=lambda item: item["name"]):
-        raw = simulate_ac(prepared, point_id=job["name"], analysis="ac")
+        raw = simulate_ac(
+            prepared,
+            point_id=job["name"],
+            analysis="ac",
+            hold_seconds=SIMULATOR_HOLD_SECONDS,
+        )
         measured.append(measure_ac(raw, definition, point_id=job["name"]))
 
     evaluation = evaluate_pvt.options(key="evaluate")(
@@ -521,12 +574,51 @@ def render_report(
     return "\n".join(lines) + "\n"
 
 
+def _open_dashboard(url: str) -> bool:
+    """Show the dashboard before the work starts, not after it finishes.
+
+    A sweep this size is over in seconds. Opening the browser first is the
+    difference between watching the corners run and being handed a cluster that
+    has already gone idle.
+    """
+
+    browser = next(
+        (
+            name
+            for name in ("chromium", "chromium-browser", "google-chrome-stable")
+            if shutil.which(name)
+        ),
+        None,
+    )
+    if browser is None:
+        print(f"no chromium on PATH; the dashboard is at {url}")
+        return False
+    subprocess.Popen(
+        [browser, "--new-window", url],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    return True
+
+
 def main() -> int:
     if shutil.which("ngspice") is None:
         print("ngspice is not on PATH; this study needs a real simulator")
         return 1
 
+    # `--fresh` runs against records nothing has written yet, so every corner
+    # really simulates. Not a cache flush: the previous records are untouched
+    # and still valid, this run simply looks somewhere else. A second ordinary
+    # run reuses everything and finishes in milliseconds — correct, and
+    # nothing to watch, which is the only reason this option exists.
+    fresh = "--fresh" in sys.argv[1:]
     work = _HERE / "_runs" / "ota-clean"
+    if fresh:
+        work = work.with_name(
+            f"ota-clean-{datetime.now(timezone.utc):%Y%m%dT%H%M%S}"
+        )
+        print(f"fresh records: {work}")
     site = Site(
         root=str(work / "attempts"),
         workspace_root=str(work / "work"),
@@ -541,20 +633,46 @@ def main() -> int:
     print(subject.summary(), "\n")
 
     document = subject.document
-    run = subject.submit(site=site, watch=True)
 
-    report = render_report(
-        run, jobs=jobs, fingerprints=site.fingerprints(document), document=document
+    # Threads, in this process, as `ass_run.graph` argues at length: an
+    # invocation waiting on a simulator costs a blocked thread and nothing
+    # scarce, and a process pool would only copy the transport further.
+    cluster = LocalCluster(
+        processes=False,
+        n_workers=1,
+        threads_per_worker=len(jobs),
+        dashboard_address=":8787",
     )
-    work.mkdir(parents=True, exist_ok=True)
-    (work / "report.md").write_text(report, encoding="utf-8")
-    (work / "report.json").write_text(
-        json.dumps(run.value, indent=2, default=str), encoding="utf-8"
-    )
+    with cluster, Client(cluster) as client:
+        print(f"dashboard: {client.dashboard_link}")
+        if _open_dashboard(client.dashboard_link):
+            # The corners finish faster than chromium starts; give it the head
+            # start so the task stream has something to draw into.
+            time.sleep(DASHBOARD_HEAD_START)
+        run = subject.submit(site=site, client=client, watch=True)
 
-    print()
-    print(report)
-    print(f"deliverable: {work / 'report.md'}")
+        report = render_report(
+            run, jobs=jobs, fingerprints=site.fingerprints(document), document=document
+        )
+        work.mkdir(parents=True, exist_ok=True)
+        (work / "report.md").write_text(report, encoding="utf-8")
+        (work / "report.json").write_text(
+            json.dumps(run.value, indent=2, default=str), encoding="utf-8"
+        )
+
+        print()
+        print(report)
+        print(f"deliverable: {work / 'report.md'}")
+
+        # The cluster is torn down on the way out of this block, and the
+        # dashboard with it. A finished task stream is most of what there is to
+        # read, so the run waits here rather than taking it away.
+        print("dashboard is live; press Enter to shut the cluster down")
+        try:
+            input()
+        except EOFError:
+            pass
+
     return 0 if run.succeeded else 1
 
 

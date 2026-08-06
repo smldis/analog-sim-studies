@@ -7,6 +7,8 @@ in that form — a plausible answer that could be false, which this project
 treats as a defect rather than a limitation.
 """
 
+from pathlib import Path
+
 import pytest
 
 from ass_exec.transport import InProcessTransport
@@ -196,3 +198,27 @@ def test_a_placement_kind_this_site_cannot_build_is_refused(tmp_path):
 def test_implementations_are_added_where_configuration_cannot_reach(tmp_path):
     site = Site(root=str(tmp_path)).with_transports(local=transport())
     assert site.transports["local"].name == "in-process"
+
+
+def test_a_relative_root_is_anchored_before_anything_uses_it(tmp_path, monkeypatch):
+    """A relative root is silently wrong, so it never survives construction.
+
+    A command runs *in* its attempt's workspace and is told where to write by a
+    path built from that same workspace. Absolute, those agree. Relative, the
+    command resolves the path again against the directory it was just placed
+    in and writes nowhere — surfacing as a simulator that could not open its
+    own output file. `from_file` already anchors; this closes the same gap for
+    a Site built in Python.
+    """
+
+    monkeypatch.chdir(tmp_path)
+    site = Site(
+        root="records",
+        workspace_root="scratch",
+        address_spaces={"here": "inputs"},
+    )
+
+    assert Path(site.root).is_absolute()
+    assert Path(site.workspace_root).is_absolute()
+    assert Path(site.address_spaces["here"]).is_absolute()
+    assert Path(site.root) == tmp_path / "records"

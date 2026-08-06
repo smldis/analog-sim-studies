@@ -106,3 +106,11 @@ a general executor prototype: `run_study.py` binds only this Plan's six named
 operations, by name, the same way the ASS Exec example binds a two-operation
 plan. All four child ontologies and packages remain unchanged; only `ass-exec`
 and `ass-run`, already public execution units, are used as documented.
+
+```{toctree}
+:hidden:
+:maxdepth: 1
+
+PLANNING
+IMPLEMENTATION
+```

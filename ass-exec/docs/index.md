@@ -30,9 +30,17 @@ decides readiness or releases successors. Its `discovery_is_authoritative` flag
 governs the *negative* answer only: a positive match is always usable, because
 the identity predates the submission that created it.
 
-The only working substrate today is in-process execution — the honest
-degenerate case, where accepted work cannot outlive its caller and discovery is
-therefore trivially authoritative. LSF and Dask transports do not exist yet.
+The only substrate proven against a real farm is in-process execution — the
+honest degenerate case, where accepted work cannot outlive its caller and
+discovery is therefore trivially authoritative. `ass_exec.lsf.LSFInteractiveTransport`
+submits one `bsub -I` job per attempt and does exist, but has never contacted a
+real cluster; `ass_exec.lsf.LSFPooledTransport` is a refusing boundary rather
+than an implementation — pooled execution should adopt `dask_jobqueue.LSFCluster`
+rather than reimplement worker lifetime. A Dask *transport* (one that submits
+attempts as Dask work) does not exist; that is a different thing from
+`ass-run`'s Dask *kernel* (`ass_run.graph`), which decides readiness over
+whatever transports this unit provides and does not belong to this unit at
+all — see `DECISIONS.md` and `ass-run`'s own documentation.
 
 ## Evidence
 
@@ -45,3 +53,10 @@ authority.
 
 See [`DECISIONS.md`](../DECISIONS.md) for what is settled, what is open, and
 what would change our minds.
+
+```{toctree}
+:hidden:
+:maxdepth: 1
+
+../DECISIONS
+```

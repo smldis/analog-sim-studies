@@ -88,3 +88,54 @@ def test_structure_needs_neither_dask_nor_graphviz(monkeypatch):
 
     monkeypatch.setitem(sys.modules, "graphviz", None)
     assert structure(study(build()))["nodes"]
+
+
+def test_a_drawing_sizes_itself_to_whatever_holds_it():
+    """Graphviz fixes the size it computed; a phone has a different one.
+
+    Needs no graphviz: this is the string rewrite that makes one file read on
+    a monitor and a handset, so it is worth holding on its own.
+    """
+
+    from ass.visualize import _scale_to_its_container
+
+    given = (
+        '<?xml version="1.0"?>\n<svg width="1101pt" height="374pt"\n'
+        ' viewBox="0.00 0.00 1101.00 374.00" xmlns="http://www.w3.org/2000/svg">'
+        '<g><title>study</title></g></svg>'
+    )
+    scaled = _scale_to_its_container(given)
+
+    assert 'width="1101pt"' not in scaled
+    assert 'height="374pt"' not in scaled
+    assert 'viewBox="0.00 0.00 1101.00 374.00"' in scaled
+    assert "width:100%" in scaled
+    assert "<title>study</title>" in scaled, "only the root element is rewritten"
+
+
+def test_a_drawing_with_nothing_to_scale_against_is_left_alone():
+    from ass.visualize import _scale_to_its_container
+
+    given = '<svg width="10pt" height="10pt"></svg>'
+    assert _scale_to_its_container(given) == given
+
+
+def test_the_drawing_is_labelled_the_way_the_study_was_authored():
+    """The reason this view exists: a corner has to be findable in it."""
+
+    pytest.importorskip("graphviz")
+    from ass.visualize import _authored_digraph, structure
+
+    body = _authored_digraph(structure(study(build())), rankdir="TB").source
+
+    for authored in ("ab:write_note", "cde:measure"):
+        assert authored in body, authored
+    # Plan ids carry colons, which dot reads as node:port. Names must not.
+    assert "invoke:key:" not in body.replace("<B>", "").split("label=")[0]
+
+
+def test_an_unknown_view_is_refused_rather_than_guessed(tmp_path):
+    from ass.visualize import render
+
+    with pytest.raises(ValueError, match="authored"):
+        render(study(build()), str(tmp_path / "x.svg"), view="sideways")

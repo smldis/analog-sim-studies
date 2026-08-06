@@ -16,13 +16,23 @@ all seven into one inspectable Plan.
 _composed-children
 ```
 
+Each unit's page is written for someone *using* it. Where a unit also has an
+`internals` page, that one is written for someone *working on it* — `ass`
+splits this way today, and the rest will follow.
+
 ```{toctree}
 :maxdepth: 1
-:caption: The composed system
+:caption: Using the system
+
+OTA/PVT plan reference <reference/ota-pvt-plan/README>
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Working on the packages
 
 Recursive ownership and composition <architecture>
 Governing manifesto <manifesto>
-OTA/PVT plan reference <reference/ota-pvt-plan/README>
 ```
 
 ```{toctree}

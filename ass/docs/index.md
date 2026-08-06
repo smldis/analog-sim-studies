@@ -7,20 +7,13 @@ one import.
 from ass import Site, artifact, file, flow, local, operation, plan, shell, study, sweep
 ```
 
-`ass_flow` still owns authoring and the Plan. `ass_exec` still owns one
-attempt's durable record and imports neither this package nor Dask. `ass_run`
-still owns binding and readiness. This package composes them and adds the one
-thing none of them could own alone: a `submit` that runs what was authored,
-because it holds both halves. Before it, an `@operation` body was dead code —
-`ass_flow` kept the function but nothing ever called it — and a study needed a
-second file to supply real implementations, command lines and output paths.
-For the OTA/PVT reference that file was six hundred lines whose only job was
-to agree with the first one. See `ass/ONTOLOGY.md` for the fuller argument and
-its evidence.
+This page is the user guide, and covers all of that. How the package is put
+together, and why it exists at all, is in [ASS internals](internals.md) — a
+contributor's page that nothing here depends on.
 
-The runnable examples referenced throughout this page live in
-[`examples/`](../examples/rc_corners.py), and are the source of every snippet below —
-nothing here is invented.
+The runnable examples referenced throughout live in
+[`examples/`](../examples/rc_corners.py), and are the source of every snippet
+below — nothing here is invented.
 
 ## Authoring an operation
 
@@ -400,23 +393,6 @@ node) that the record cannot tell apart from a real failure — so failed
 attempts are retained rather than silently retried, and a human decision to
 accept one is a separate, durable action (`ass_exec.reuse.accept_for_reuse`).
 
-## Staged plans
-
-An invocation may itself author and submit an inner Plan — see
-`ass/examples/ota_pvt_clean_nested.py`. Nothing here is result-dependent
-control: no plan branches on its own result. Plans are *staged* instead —
-each one is fully determined at the moment it is authored, and a later stage
-is authored only after the earlier stage has already produced the ordinary
-Python values it needs. The invariant ("a Plan predicts what will run before
-anything runs") holds per plan, exactly where it was always stated; it is
-just that "a study" may now be more than one plan, submitted in sequence by
-ordinary Python code inside one invocation. This is recorded as "already
-demonstrated: staged plans" in `docs/vision/open-concepts.md` at the
-repository root, along with the open questions it leaves (a coarse source
-fingerprint that invalidates every corner when only the corner list changed;
-an inner run's records root arriving as authored config, baking a machine
-path into the outer plan's identity).
-
 ## `ass.visualize` — looking at a study before running it
 
 `ass_flow.experimental.local_dask` lowers a Plan to Dask `Delayed` values, as
@@ -454,14 +430,6 @@ authoring surface. `graphviz` (and, for the Dask dashboard shown above,
 into the project-local `.toolchain/venv` described in `.toolchain/README.md`
 rather than into the unit's own environment.
 
-## What this unit does not do
-
-`ass` owns no attempt record, no identity, no reuse policy, no transport, no
-readiness, and no Plan validation. It composes those four responsibilities
-into one operator gesture; each of them remains exactly where it was, and
-`ass_exec` in particular still imports neither `ass_flow` nor Dask, which is
-what keeps the durable record and this façade independently replaceable.
-
 ## Further reading
 
 - [`ass/ONTOLOGY.md`](https://github.com/smldis/analog-sim-studies/blob/main/ass/ONTOLOGY.md)
@@ -473,7 +441,15 @@ what keeps the durable record and this façade independently replaceable.
   real `ngspice`, real spec checking.
 - `examples/ota_pvt_clean.py` — the same study reduced to the sign-off path:
   a written `report.md` deliverable, run on the Dask graph kernel.
-- `examples/ota_pvt_clean_nested.py` — the staged-plan variant, above.
+- `examples/ota_pvt_clean_nested.py` — the staged-plan variant, described in
+  [ASS internals](internals.md).
 - [`docs/reference/ota-pvt-plan/`](../../../reference/ota-pvt-plan/README.md)
   at the repository root — the root-owned, cross-unit Plan declaration this
   study's shape is drawn from, plus its own real-execution binding.
+
+```{toctree}
+:maxdepth: 1
+:caption: Working on this package
+
+internals
+```

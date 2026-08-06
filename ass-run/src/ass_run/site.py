@@ -41,10 +41,23 @@ import os
 from ass_exec.planned import source_references
 from ass_exec.transport import Transport
 
-__all__ = ["Site", "SiteError", "fingerprint_file", "fingerprint_sources"]
+__all__ = [
+    "EXPOSURES",
+    "Site",
+    "SiteError",
+    "fingerprint_file",
+    "fingerprint_sources",
+]
 
 _MAX_HASHED_BYTES = 64 * 1024 * 1024
 _CHUNK = 1 << 20
+
+EXPOSURES = ("network", "loopback", "none")
+"""Every exposure a profile may declare, most open first.
+
+Vocabulary rather than behaviour, which is why it lives with the profile it is
+read from; `ass_run.cluster` turns each value into a cluster.
+"""
 
 
 class SiteError(RuntimeError):
@@ -83,6 +96,19 @@ class Site:
     """Concurrency for the graph kernel. Not a tuning knob this project owns:
     size it from the site's MAX JOB policy and per-user process limits."""
 
+    dashboard: str = "network"
+    """How much of the graph kernel's cluster this installation exposes.
+
+    A Dask scheduler and every worker open an HTTP listener on all interfaces,
+    whether or not anyone opens a browser, and a shared submit host has other
+    users on it. `"network"` is Dask's own behaviour and the default, so
+    nothing changes for an installation that declares nothing; `"loopback"`
+    keeps the dashboard off the network; `"none"` opens no socket at all.
+
+    Read by `ass_run.cluster`, which is also where the values are defined and
+    where a multi-process cluster is refused a silence it cannot have.
+    """
+
     def __post_init__(self) -> None:
         """Anchor every root, because a relative one is silently wrong.
 
@@ -110,6 +136,14 @@ class Site:
                 for name, location in self.address_spaces.items()
             },
         )
+        # Refused here rather than when a cluster is built: a profile naming an
+        # exposure this installation cannot honour is a configuration error,
+        # and finding it at construction means finding it before a study runs.
+        if self.dashboard not in EXPOSURES:
+            raise SiteError(
+                f"this site declares dashboard = {self.dashboard!r}, which is "
+                f"not one of {', '.join(repr(item) for item in EXPOSURES)}"
+            )
 
     def with_transports(self, **transports: Transport) -> "Site":
         """Add substrates a configuration file cannot describe.
@@ -124,6 +158,7 @@ class Site:
             workspace_root=self.workspace_root,
             address_spaces=self.address_spaces,
             threads=self.threads,
+            dashboard=self.dashboard,
         )
 
     def resolve(self, address: Mapping[str, Any]) -> Path:
@@ -209,6 +244,7 @@ class Site:
             },
             transports=_transports_from(data.get("placement") or {}),
             threads=(data.get("kernel") or {}).get("threads"),
+            dashboard=(data.get("kernel") or {}).get("dashboard", "network"),
         )
 
 

@@ -499,6 +499,11 @@ parsed from `[kernel] threads`, and is read by nothing, so the number is written
 once in the profile and again in the operator's `LocalCluster(...)` call with
 nothing comparing them.
 
+**Amended 2026-08-06.** The second half of that sentence no longer holds:
+`ass_run.cluster.cluster_for(site)` reads `Site.threads` and builds the cluster
+from it, so the number is written once. The first half is untouched — one
+number still means both limits, and the resolution below is still the way out.
+
 ### The resolution: a dedicated in-process worker, bounded by a Dask resource
 
 User direction, and it is better than the alternative this register previously

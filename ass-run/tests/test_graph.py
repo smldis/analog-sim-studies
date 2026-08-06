@@ -18,15 +18,15 @@ from ass_run.graph import _task_key, run_plan_graph
 
 distributed = pytest.importorskip("distributed")
 
+from ass_run.cluster import local_cluster  # noqa: E402
+
 
 @pytest.fixture(scope="module")
 def client():
-    cluster = distributed.LocalCluster(
-        processes=False,
-        n_workers=1,
-        threads_per_worker=4,
-        dashboard_address=None,
-    )
+    # Silent, because `dashboard_address=None` is not: a scheduler starts its
+    # HTTP server regardless and this suite used to bind :8787 on every run,
+    # colliding with whatever the developer was already watching.
+    cluster = local_cluster(threads=4, dashboard="none")
     with distributed.Client(cluster) as connected:
         yield connected
     cluster.close()

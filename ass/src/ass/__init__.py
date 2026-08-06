@@ -40,6 +40,7 @@ from ass_flow import (  # noqa: F401 - the authoring surface, re-exported
 )
 from ass_flow import operation as _operation
 from ass_flow.authoring import file, returned, stdout, sweep  # noqa: F401
+from ass_run.cluster import cluster_for, local_cluster  # noqa: F401
 from ass_run.site import Site, SiteError  # noqa: F401
 
 from ass.binding import BoundTransport, Shell, Workspace, shell  # noqa: F401
@@ -60,12 +61,14 @@ __all__ = [
     "address",
     "artifact",
     "artifacts",
+    "cluster_for",
     "codec",
     "file",
     "flow",
     "implementations",
     "input_artifact",
     "local",
+    "local_cluster",
     "lsf",
     "materialization",
     "named_policy",

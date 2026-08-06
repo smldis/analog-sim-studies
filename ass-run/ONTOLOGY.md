@@ -58,6 +58,14 @@ dashboard, and failure isolation are untested against anything but fakes.
   thread and one client process, so this is a safety rail rather than a scarce
   resource, and the real ceiling is the site's MAX JOB policy, per-user process
   limits, and the licence count.
+- `cluster_for(site)` builds that cluster from the profile — the concurrency,
+  and how much of it the installation exposes. It does not weaken the rule
+  above: `run_plan_graph` still requires a client and still creates none. A
+  site may declare `dashboard = "network"` (Dask's own behaviour, and the
+  default, passing no address at all), `"loopback"`, or `"none"`, which opens
+  no listening socket. `"none"` is refused for a multi-process cluster, whose
+  workers must dial a listener to exist. Exposure changes how a run can be
+  watched and nothing about what it computes.
 - A transport is copied to the worker that runs an invocation, because Dask
   serializes every task — even on an in-process cluster. A transport that
   cannot be serialized is refused by placement name before anything runs, and

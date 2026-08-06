@@ -40,13 +40,15 @@ PYTHONPATH=src:../ass-exec/src python -m pytest -q
 Dask (adopted 2026-08-04):
 
 ```python
-from distributed import Client, LocalCluster
+from distributed import Client
+from ass_run.cluster import cluster_for
 from ass_run.graph import run_plan_graph
 
 # Concurrency is this number. There is no limit parameter: a waiting
 # invocation costs ~16 KiB of thread and one client process, so size it from
 # your site's MAX JOB policy rather than from anything this library knows.
-cluster = LocalCluster(processes=False, threads_per_worker=32)
+# `cluster_for` reads it, and the exposure, from the profile.
+cluster = cluster_for(site)
 
 with Client(cluster) as client:
     report = run_plan_graph(
@@ -76,5 +78,37 @@ placement name before anything runs.
 by explicit import: a plan small enough to walk in one thread should not need a
 scheduler. What Dask still cannot tell you is whether a corner is `PEND` or
 `RUN` — that needs a watcher over the attempt records, and is not built yet.
+
+## What the cluster exposes
+
+A Dask scheduler starts an HTTP server whether or not anyone opens a browser —
+`dashboard=False` only drops the bokeh routes — and every worker starts one
+too, both on all interfaces. On a shared submit host that publishes your corner
+names, workspace paths and profiler to everyone who can reach it. So the site
+says how much of that it wants:
+
+```toml
+[kernel]
+threads = 32
+dashboard = "network"     # "network" | "loopback" | "none"
+```
+
+* `"network"` — the default, and exactly Dask's own behaviour: `cluster_for`
+  passes no address, so declaring nothing changes nothing.
+* `"loopback"` — scheduler *and* worker on `127.0.0.1:0`. Off the network;
+  still reachable by other users of the same host, because loopback is per host
+  and not per user.
+* `"none"` — no listening socket at all. Only possible for the in-process
+  cluster this kernel documents, since workers in their own processes must dial
+  a listener; asking for it with `processes=True` is refused rather than
+  quietly downgraded.
+
+`"none"` costs the dashboard, `/health` and `/metrics`. It does not cost the
+post-mortem: `distributed.performance_report(...)` is computed on the scheduler
+and travels over the comm channel, which is `inproc://` here, so it still
+writes its HTML with nothing bound. Live progress comes from `on_event`.
+
+Exposure changes how a run can be watched and nothing about what it computes —
+no identity, no reuse, no Plan content.
 
 See [`ONTOLOGY.md`](ONTOLOGY.md) for the owned boundary.

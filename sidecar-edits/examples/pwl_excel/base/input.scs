@@ -1,7 +1,0 @@
-simulator lang=spectre
-parameters vdd=1.2
-
-XLOAD vin vclk ireset load_block
-
-tran tran stop=5n
-save V(vin) V(vclk) V(ireset)

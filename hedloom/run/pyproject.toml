@@ -19,5 +19,4 @@ dask = ["distributed==2026.7.1"]
 where = ["src"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src", "../exec/src"]
 testpaths = ["tests"]

@@ -17,5 +17,4 @@ dask = ["dask==2026.7.1"]
 where = ["src"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
 testpaths = ["tests"]

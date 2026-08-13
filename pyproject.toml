@@ -1,0 +1,17 @@
+[tool.uv.workspace]
+members = ["spice-canonical", "netlist-decomposition", "sidecar-edits"]
+exclude = ["hedloom"]
+
+[dependency-groups]
+dev = ["hedloom", "spice-canonical", "netlist-decomposition",
+       "sidecar-edits[docs]",
+       "build", "pytest", "setuptools>=69", "wheel"]
+
+[tool.uv.dependency-groups]
+dev = { requires-python = ">=3.11" }
+
+[tool.uv.sources]
+hedloom               = { path = "hedloom" }
+spice-canonical       = { workspace = true }
+netlist-decomposition = { workspace = true }
+sidecar-edits         = { workspace = true }

@@ -30,4 +30,3 @@ where = ["src"]
 sidecar_edits = ["bin/*", "native/*.c"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]

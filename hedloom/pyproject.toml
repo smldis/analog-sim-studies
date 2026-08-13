@@ -13,9 +13,19 @@ dependencies = ["hedloom-flow", "hedloom-exec", "hedloom-run"]
 [project.optional-dependencies]
 dask = ["distributed==2026.7.1"]
 
+[tool.uv.workspace]
+members = ["flow", "exec", "run"]
+
+[tool.uv.sources]
+hedloom-flow = { workspace = true }
+hedloom-exec = { workspace = true }
+hedloom-run  = { workspace = true }
+
+[dependency-groups]
+dev = ["hedloom-flow[dask]", "pytest", "setuptools>=69"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src", "flow/src", "exec/src", "run/src"]
 testpaths = ["tests"]

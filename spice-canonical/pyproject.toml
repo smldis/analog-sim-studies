@@ -15,4 +15,3 @@ spice-canonical = "spice_canonical.canonical_netlist:main"
 where = ["src"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]

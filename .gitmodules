@@ -1,3 +1,6 @@
 [submodule "sidecar-edits"]
 	path = sidecar-edits
 	url = /home/smldis/working/AI/repos/sidecar-edits.git
+[submodule "spice-canonical"]
+	path = spice-canonical
+	url = /home/smldis/working/AI/repos/spice-canonical.git

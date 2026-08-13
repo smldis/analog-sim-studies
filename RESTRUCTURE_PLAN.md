@@ -4,7 +4,7 @@ Working document. Records decisions taken, the ordered operations, and the
 decisions still open. Supersedes nothing in `MANIFESTO.md` or `ONTOLOGY.md` —
 where this plan changes those, it says so explicitly.
 
-**Status:** Ops 0 through 3 COMPLETE on branch `hedloom-rename`. Op 4 next.
+**Status:** Ops 0 through 4 COMPLETE on branch `hedloom-rename`.
 **Date:** 2026-08-13
 
 | Op | State | Commit |
@@ -13,7 +13,7 @@ where this plan changes those, it says so explicitly.
 | 1 — Rename + re-nest | done | `6046e53` refactor: rename ass* to hedloom and nest flow/exec/run |
 | 2 — uv workspace | done | `2726626` build: replace pythonpath hacks with uv workspaces |
 | 3 — Manifesto rescope | done | this commit — docs: rescope manifesto for a domain-generic hedloom core |
-| 4 — Repo splits | not started | |
+| 4 — Repo splits | done | `0e98bee`, `a64825c`, `97fa314`, `00b2a3e`, `3d79556`, `b147e68`, `35b439d`, `567e558` |
 
 Op 1 verification: `composition.py tree` resolves with `hedloom` parenting
 `hedloom-{exec,flow,run}`; `py_compile` clean over all tracked `.py`; zero
@@ -324,6 +324,45 @@ filesystem paths, so submodules are transparent to it.
 
 Re-pointing to public remotes later is `git remote set-url` plus a `.gitmodules`
 edit — cheap, and deliberately deferred.
+
+### Completion findings
+
+Op 4 completed on 2026-08-13. The extracted repositories retain their unit
+history on `main` in these local bare origins:
+
+- `/home/smldis/working/AI/repos/sidecar-edits.git`
+- `/home/smldis/working/AI/repos/spice-canonical.git`
+- `/home/smldis/working/AI/repos/netlist-decomposition.git`
+- `/home/smldis/working/AI/repos/hedloom.git`
+
+Each unit used two focused superproject commits: remove then wire the submodule.
+In operation order those commits are `0e98bee` / `a64825c`, `97fa314` /
+`00b2a3e`, `3d79556` / `b147e68`, and `35b439d` / `567e558`.
+
+Three local-origin details were not visible in the original procedure:
+
+- `git rm -r` removes tracked files only. Ignored build artifacts can leave the
+  path occupied, so each path required an inspected, unit-scoped
+  `git clean -xfdn <path>` followed by `git clean -xfd <path>` before
+  `git submodule add`.
+- Local submodule clones require `protocol.file.allow=always`. It is set in this
+  superproject's repository-local Git configuration; the submodule-add commands
+  also needed the per-command `-c protocol.file.allow=always` form because the
+  local setting did not propagate into the nested clone in this environment.
+  A fresh clone using these local URLs must make the same allowance before
+  `git submodule update --init`.
+- `git init --bare` initially points `HEAD` at `refs/heads/master`, while these
+  splits push `main`. Every bare origin must explicitly set `HEAD` to
+  `refs/heads/main`; otherwise submodule checkout fails with `You are on a
+  branch yet to be born`.
+
+`hedloom/examples/_runs/` is ignored, untracked run evidence cited by the
+Hedloom ontology, including durable attempt journals and example reuse state.
+It therefore was not part of the extracted history. It was preserved across
+the path cleanup and restored from
+`/home/smldis/working/AI/hedloom-example-runs-backup.tgz`; it remains unstaged
+inside the Hedloom submodule. The root `uv lock`, `uv sync`, import smoke check,
+and `composition.py tree` all continued to work with submodule directories.
 
 ---
 

@@ -15,7 +15,7 @@ After this research snapshot, the repository built and then retired a bounded
 seam. The experiment exposed useful distinctions between transient handles,
 attempts, and artifacts, but its fixed graph and whole-run backend choice were
 not a suitable base to extend. The next hypothesis is recorded separately in
-[ASS Flow rebuild inquiry](ass-flow-rebuild-main.md); it does not retroactively
+[Hedloom Flow rebuild inquiry](hedloom-flow-rebuild-main.md); it does not retroactively
 turn this dated survey into an engine selection.
 
 CACE remains documented below as historical comparative research. Integrating
@@ -171,7 +171,7 @@ Pydra or jobflow during this pass.
 
 Until an actual runtime slice falsifies it, retain this hypothesis:
 
-> ASS owns a small, explicit analog study-state and artifact contract, while
+> Hedloom owns a small, explicit analog study-state and artifact contract, while
 > execution engines remain replaceable adapters.
 
 “Small” means domain contracts and atomic publication rules, not a homemade
@@ -181,7 +181,7 @@ when its value is demonstrated by the use case.
 
 The strongest alternative is to adopt AiiDA as the complete substrate. That
 becomes reasonable if managed database authority, its repository abstraction
-and its operational services are accepted as part of ASS. It is not aligned
+and its operational services are accepted as part of Hedloom. It is not aligned
 with the current plain-file and low-burden commitments by default.
 
 ## Triggers for reopening the choice

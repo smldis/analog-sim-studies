@@ -2,9 +2,9 @@
 
 Seven units compose one author-plan-execute-evaluate path.
 
-**Start with ASS.** It is the front door, and it composes the three units
-beneath it: `ass-flow` authors a Plan, `ass-exec` owns one attempt's durable
-record, and `ass-run` walks the Plan and executes it. `sidecar-edits`,
+**Start with Hedloom.** It is the front door, and it composes the three units
+beneath it: `hedloom-flow` authors a Plan, `hedloom-exec` owns one attempt's durable
+record, and `hedloom-run` walks the Plan and executes it. `sidecar-edits`,
 `spice-canonical` and `netlist-decomposition` contribute netlist preparation,
 canonicalization and structural recognition. The OTA/PVT reference composes
 all seven into one inspectable Plan.
@@ -17,7 +17,7 @@ _composed-children
 ```
 
 Each unit's page is written for someone *using* it. Where a unit also has an
-`internals` page, that one is written for someone *working on it* — `ass`
+`internals` page, that one is written for someone *working on it* — `hedloom`
 splits this way today, and the rest will follow.
 
 ```{toctree}
@@ -42,7 +42,7 @@ Governing manifesto <manifesto>
 Open concepts <vision/open-concepts>
 Documentation open points <vision/documentation-open-points>
 Conceptual flow foundation <vision/conceptual-flow-foundation>
-ASS Flow rebuild <vision/ass-flow-rebuild-main>
+Hedloom Flow rebuild <vision/hedloom-flow-rebuild-main>
 Deferred study-runtime research <vision/deferred-study-runtime-research>
 Manifesto challenges <vision/manifesto-challenges>
 Manifesto change catalog <vision/manifesto-change-catalog>
@@ -61,7 +61,7 @@ behaves should not have to walk through it first. Also in the sidebar.
 - [Documentation open points](vision/documentation-open-points.md) — questions
   the documentation pass could not settle, with a file and line for each.
 - [Conceptual flow foundation](vision/conceptual-flow-foundation.md),
-  [ASS Flow rebuild](vision/ass-flow-rebuild-main.md) and
+  [Hedloom Flow rebuild](vision/hedloom-flow-rebuild-main.md) and
   [deferred study-runtime research](vision/deferred-study-runtime-research.md)
   — the arguments that produced the current units.
 - [Manifesto challenges](vision/manifesto-challenges.md) and the

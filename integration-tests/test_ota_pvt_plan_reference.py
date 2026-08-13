@@ -15,13 +15,13 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 REFERENCE_DIR = ROOT / "docs" / "reference" / "ota-pvt-plan"
-ASS_FLOW_SRC = ROOT / "ass-flow" / "src"
+HEDLOOM_FLOW_SRC = ROOT / "hedloom" / "flow" / "src"
 SIDECAR_EDITS_SRC = ROOT / "sidecar-edits" / "src"
-for source_root in (ASS_FLOW_SRC, SIDECAR_EDITS_SRC, REFERENCE_DIR):
+for source_root in (HEDLOOM_FLOW_SRC, SIDECAR_EDITS_SRC, REFERENCE_DIR):
     sys.path.insert(0, str(source_root))
 
 import ota_pvt_plan as reference  # noqa: E402
-from ass_flow import (  # noqa: E402
+from hedloom_flow import (  # noqa: E402
     ArtifactSourceReference,
     BindingError,
     CollectionInputBinding,
@@ -672,7 +672,7 @@ def test_planning_avoids_common_file_open_paths_and_imports_no_sibling_or_runtim
         for node in ast.walk(tree)
         if isinstance(node, ast.ImportFrom) and node.module
     )
-    assert imported_roots == {"__future__", "ass_flow", "dataclasses"}
+    assert imported_roots == {"__future__", "hedloom_flow", "dataclasses"}
     assert "sidecar_edits" not in source
     assert "spice_canonical" not in source
     assert "netlist_decomposition" not in source

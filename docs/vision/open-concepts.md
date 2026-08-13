@@ -1,4 +1,4 @@
-# Open concepts from the ASS Flow rebuild inquiry
+# Open concepts from the Hedloom Flow rebuild inquiry
 
 The graduated inquiry raised more concepts than the units have implemented.
 Development since has been direct rather than work-order driven, which is
@@ -14,25 +14,25 @@ altered by evidence), **deferred** (still wanted, not started), **dropped**
 
 | Concept | Where | Note |
 | --- | --- | --- |
-| Static custom-flow composition; one normalized inspectable Plan | `ass-flow` | Accepted with the OTA/PVT domain reference. |
-| Declarative source handoff: address, codec, access scope | `ass-flow` | Schema-2 Plan IR. |
-| Local Dask Delayed lowering (evidence ladder 3) | `ass-flow` experimental | Bounded instrument, not an execution API. |
-| Immutable bundle and stable attempt ID chosen before submission | `ass-exec` | `attempt_identity`, content-addressed. |
-| `launch_or_attach` claiming, attaching, or completing | `ass-exec` | Exactly three dispositions or a loud failure. |
-| Idempotent `request_cancel` recording intent before acting | `ass-exec` | Cancellation is intent, never established by return. |
-| Success requires observed terminal state *and* atomic publication | `ass-exec` | Disagreement publishes `unreconciled`. |
-| Both loss windows (evidence ladder 5) | `ass-exec` | Failure injections against a fake substrate. |
-| File-first sidecar: identities, append-only attempts, job ID, timestamps, diagnostics, manifest, artifact references | `ass-exec` | Deliberately not a workflow database. |
-| Out-of-place execution, declared artifacts, atomic publication | `ass-exec` | Per-attempt workspace; declared outputs only. |
-| Materialization before data crosses to an external substrate | `ass-exec` | On a shared store this is recording an address, not moving bytes. |
+| Static custom-flow composition; one normalized inspectable Plan | `hedloom-flow` | Accepted with the OTA/PVT domain reference. |
+| Declarative source handoff: address, codec, access scope | `hedloom-flow` | Schema-2 Plan IR. |
+| Local Dask Delayed lowering (evidence ladder 3) | `hedloom-flow` experimental | Bounded instrument, not an execution API. |
+| Immutable bundle and stable attempt ID chosen before submission | `hedloom-exec` | `attempt_identity`, content-addressed. |
+| `launch_or_attach` claiming, attaching, or completing | `hedloom-exec` | Exactly three dispositions or a loud failure. |
+| Idempotent `request_cancel` recording intent before acting | `hedloom-exec` | Cancellation is intent, never established by return. |
+| Success requires observed terminal state *and* atomic publication | `hedloom-exec` | Disagreement publishes `unreconciled`. |
+| Both loss windows (evidence ladder 5) | `hedloom-exec` | Failure injections against a fake substrate. |
+| File-first sidecar: identities, append-only attempts, job ID, timestamps, diagnostics, manifest, artifact references | `hedloom-exec` | Deliberately not a workflow database. |
+| Out-of-place execution, declared artifacts, atomic publication | `hedloom-exec` | Per-attempt workspace; declared outputs only. |
+| Materialization before data crosses to an external substrate | `hedloom-exec` | On a shared store this is recording an address, not moving bytes. |
 
 ## Changed by evidence
 
 | Concept | Original stance | Now |
 | --- | --- | --- |
 | Direct-LSF job lifetime | A job outlives its submitter, so a durable protocol must own its identity | User direction: work is owner-bound. `bsub -I` plus process-group and `PR_SET_PDEATHSIG`. The protocol survives with a changed justification. |
-| Dask as the kernel | The main's *preferred hypothesis*: Dask owns graph dependencies, readiness, priorities, retries | **Adopted 2026-08-04 (user direction), after the case against it was measured and largely dissolved.** `ass_run.graph` gives readiness to Dask; `ass_run.binding` keeps the meaning of a run identical across kernels; `ass-exec` remains Dask-free. The route there is worth keeping: the hypothesis was weakened twice — owner-bound lifetime removed the identity objection, and file-based artifacts removed the locality argument for the steps that use them — then the strongest remaining objection was retracted on measurement. What decided it was not new evidence for Dask but the collapse of the evidence against it, plus a stated need for a live view. |
-| Component boundary and name | One rebuilt "ASS Flow" | Split into `ass-flow` (planning), `ass-exec` (attempts), and `ass-run` (binding a run, with readiness now Dask's), coupled through the Plan document. No unit is named operator-facing "flow"; whether one should be is still open. |
+| Dask as the kernel | The main's *preferred hypothesis*: Dask owns graph dependencies, readiness, priorities, retries | **Adopted 2026-08-04 (user direction), after the case against it was measured and largely dissolved.** `hedloom_run.graph` gives readiness to Dask; `hedloom_run.binding` keeps the meaning of a run identical across kernels; `hedloom-exec` remains Dask-free. The route there is worth keeping: the hypothesis was weakened twice — owner-bound lifetime removed the identity objection, and file-based artifacts removed the locality argument for the steps that use them — then the strongest remaining objection was retracted on measurement. What decided it was not new evidence for Dask but the collapse of the evidence against it, plus a stated need for a live view. |
+| Component boundary and name | One rebuilt "Hedloom Flow" | Split into `hedloom-flow` (planning), `hedloom-exec` (attempts), and `hedloom-run` (binding a run, with readiness now Dask's), coupled through the Plan document. No unit is named operator-facing "flow"; whether one should be is still open. |
 | "Resume" | Reattaching to running work | Result reuse: rerun and skip work whose inputs are unchanged. |
 
 ## Deferred, still wanted
@@ -40,11 +40,11 @@ altered by evidence), **deferred** (still wanted, not started), **dropped**
 | Concept | Trigger to revisit |
 | --- | --- |
 | Pooled LSF via `dask_jobqueue.LSFCluster` | **Many short invocations**, where per-job queue dispatch costs more than the work. Not "many invocations": one job each is a good fit for long-running corners regardless of count, and it buys per-corner resource requests, `bkill`, accounting, licence arbitration and failure isolation. `LSFPooledTransport` refuses today. |
-| ~~Concurrency in the driver~~ **Answered by adopting Dask.** | It is `threads_per_worker` on the cluster, and no code in `ass-run` owns it. Measured 2026-08-04: a waiting invocation costs ~16 KiB of thread plus one client process, so this is a safety rail rather than a scheduler feature, and the real limiter is the site's MAX JOB policy, per-user process limits, and the licence count. Ask for those numbers rather than inventing one. |
-| ~~Per-job status: a `bjobs` watcher and a sweep view~~ **Built as `ass_exec.watch`.** | One `bjobs -o "job_name stat"` per refresh for every live attempt, transitions appended to an `observations.jsonl` beside each record, and `examples/watch_sweep.py` as a terminal view. An observation is evidence about an attempt, never a transition of it, so the observer writes its own file and cannot change an outcome. **Queue latency is now derivable** — the gap between `submit_intent` and the first `running` observation is the per-job dispatch cost the pooled-versus-direct question needs. What is still missing is a real farm: the parsing has never met one, `lsf_preflight.py` checks that `-o` exists, and default `bjobs` output is refused rather than parsed because its columns shift for pending jobs. |
-| ~~Unified flow-level `submit()`~~ **Built as the `ass` unit (2026-08-04).** | One file authors and runs a study. The operation body is the implementation and receives `out`, a workspace of its declared file outputs; returning `shell(...)` makes it a launcher whose command runs at the invocation's placement; `sweep(points, key=...)` keys every call inside the loop; the Plan (now schema 3) records each operation's entry point and a fingerprint of its source, so an edited body reruns the work it produced and `operation_version` stops being a promise someone has to remember; declared output bindings live on the operation, retiring the run-time `outputs=` dict; `Site` holds placements, roots, address spaces and threads. Evidence: `ass/examples/rc_corners.py` runs three RC corners on real ngspice, reuses all ten invocations on a second run, reruns one corner when its temperature changes, and reruns every use of an operation when its body changes. `ass-exec` still imports neither `ass_flow` nor Dask. Not yet met: a farm — every placement exercised so far is `local`, so `shell` reaching a `bsub -I` job is designed and untested. |
+| ~~Concurrency in the driver~~ **Answered by adopting Dask.** | It is `threads_per_worker` on the cluster, and no code in `hedloom-run` owns it. Measured 2026-08-04: a waiting invocation costs ~16 KiB of thread plus one client process, so this is a safety rail rather than a scheduler feature, and the real limiter is the site's MAX JOB policy, per-user process limits, and the licence count. Ask for those numbers rather than inventing one. |
+| ~~Per-job status: a `bjobs` watcher and a sweep view~~ **Built as `hedloom_exec.watch`.** | One `bjobs -o "job_name stat"` per refresh for every live attempt, transitions appended to an `observations.jsonl` beside each record, and `examples/watch_sweep.py` as a terminal view. An observation is evidence about an attempt, never a transition of it, so the observer writes its own file and cannot change an outcome. **Queue latency is now derivable** — the gap between `submit_intent` and the first `running` observation is the per-job dispatch cost the pooled-versus-direct question needs. What is still missing is a real farm: the parsing has never met one, `lsf_preflight.py` checks that `-o` exists, and default `bjobs` output is refused rather than parsed because its columns shift for pending jobs. |
+| ~~Unified flow-level `submit()`~~ **Built as the `hedloom` unit (2026-08-04).** | One file authors and runs a study. The operation body is the implementation and receives `out`, a workspace of its declared file outputs; returning `shell(...)` makes it a launcher whose command runs at the invocation's placement; `sweep(points, key=...)` keys every call inside the loop; the Plan (now schema 3) records each operation's entry point and a fingerprint of its source, so an edited body reruns the work it produced and `operation_version` stops being a promise someone has to remember; declared output bindings live on the operation, retiring the run-time `outputs=` dict; `Site` holds placements, roots, address spaces and threads. Evidence: `hedloom/examples/rc_corners.py` runs three RC corners on real ngspice, reuses all ten invocations on a second run, reruns one corner when its temperature changes, and reruns every use of an operation when its body changes. `hedloom-exec` still imports neither `hedloom_flow` nor Dask. Not yet met: a farm — every placement exercised so far is `local`, so `shell` reaching a `bsub -I` job is designed and untested. |
 | One-scheduler mixed topology (labelled local, direct-gateway, pooled workers) | Requires pooled mode first; must be demonstrated, not assumed, since `LSFCluster` normally owns its own scheduler. See "What \"both slots\" must not be allowed to mean" below for why mixed, rather than wholly pooled, is the preferred shape. |
-| Delayed versus Futures comparison (evidence ladder 4) | **Now live, since Dask is the driver.** `ass_run.graph` uses Futures — `client.submit` with explicit keys, `pure=False`, and `as_completed` for live events — while `ass_flow.experimental.local_dask` lowers to Delayed. Futures were chosen for keys an operator can recognise and for reporting as work completes; whether Delayed would express the graph better is untested. |
+| Delayed versus Futures comparison (evidence ladder 4) | **Now live, since Dask is the driver.** `hedloom_run.graph` uses Futures — `client.submit` with explicit keys, `pure=False`, and `as_completed` for live events — while `hedloom_flow.experimental.local_dask` lowers to Delayed. Futures were chosen for keys an operator can recognise and for reporting as work completes; whether Delayed would express the graph better is untested. |
 | Real direct-LSF smoke test (evidence ladder 6) | Site access. `examples/lsf_preflight.py` is ready; not runnable now. |
 | Plugins and declarative flow configuration | A concrete multi-repository or non-Python authoring need. |
 | Artifact checksums and provenance | Deliberate: hashing multi-GB raw files every run is a real cost, and mtime plus size is the cheap staleness signal. Revisit if mtime proves unreliable on NFS. |
@@ -55,7 +55,7 @@ These fell out during direct development. None was rejected on merit.
 
 - ~~**Requested versus resolved versus observed placement.**~~ **Recovered.**
   A `placement` journal event records requested and resolved before submission;
-  observed is published with the manifest. `ass-run` selects a transport from
+  observed is published with the manifest. `hedloom-run` selects a transport from
   the policy the Plan already resolved, and a placement no transport provides
   is fatal rather than a silent fallback. Moving work between placements
   provably does not invalidate its result.
@@ -89,7 +89,7 @@ These fell out during direct development. None was rejected on merit.
 
 ## Decided: Dask takes both slots (2026-08-04, user direction)
 
-`ass_run.graph.run_plan_graph` is the kernel. What that does and does not mean:
+`hedloom_run.graph.run_plan_graph` is the kernel. What that does and does not mean:
 
 - **Slot A is Dask's.** Readiness, ordering, and concurrency belong to the
   graph. Concurrency is `threads_per_worker` — there is no limit parameter,
@@ -103,7 +103,7 @@ These fell out during direct development. None was rejected on merit.
   `LocalCluster(processes=False, threads_per_worker=N)`. No nanny to restart a
   worker holding live clients, and nothing secedes, so a worker with jobs in
   flight reads as running.
-- **`ass-exec` stays Dask-free**, which is what keeps this reversible. It has
+- **`hedloom-exec` stays Dask-free**, which is what keeps this reversible. It has
   already been reversed twice.
 
 Two things the adoption did not resolve. Per-job status still needs the `bjobs`
@@ -127,11 +127,11 @@ remains inspectable.
 
 Two independent questions were being asked with one word.
 
-**Slot A — who decides what runs next.** `ass-run`'s loop, or a Dask graph.
+**Slot A — who decides what runs next.** `hedloom-run`'s loop, or a Dask graph.
 
 **Slot B — where one invocation runs.** `local`, `lsf-direct`, or `lsf-pool`,
-already resolved per invocation by ASS Flow and honoured per invocation by
-`ass-run`.
+already resolved per invocation by Hedloom Flow and honoured per invocation by
+`hedloom-run`.
 
 They do not need merging, and `lsf-pool` is not a merge in any case: it is a
 third peer alongside the other two placements.
@@ -243,7 +243,7 @@ a pool.
    reason not to *need* it, not a reason to refuse it.
 2. **The requirements that have arrived are a scheduler's feature list.**
    Bounded concurrency, a live view, retries, cancellation. Building them into
-   `ass-run` one reasonable increment at a time is precisely the accretion the
+   `hedloom-run` one reasonable increment at a time is precisely the accretion the
    inquiry warned against; adopting a mature scheduler is the compliant
    alternative, not the transgression.
 3. **Slot B already points at `dask-jobqueue`.** `DECISIONS.md` records that
@@ -251,7 +251,7 @@ a pool.
    (`death_timeout` plus `bkill` on close) rather than rebuild it. If the
    dependency is in the stack for B, using it for A costs an import, not a
    dependency.
-4. **One mechanism instead of three.** Otherwise readiness lives in `ass-run`,
+4. **One mechanism instead of three.** Otherwise readiness lives in `hedloom-run`,
    pooling in a transport, and progress in a watcher, each with its own
    failure modes.
 5. **Data-parallel post-processing** over many raw files is Dask's home ground.
@@ -269,9 +269,9 @@ a pool.
 - **Not pooled workers for slot A.** The cluster that owns readiness should be
   local to the submit host. A worker that dies takes its blocked clients, and
   therefore its running farm jobs, with it.
-- **Not inside `ass-exec`.** The durable protocol, identity, and journal stay
+- **Not inside `hedloom-exec`.** The durable protocol, identity, and journal stay
   executor-neutral; Dask enters as a driver or adapter that is a peer of
-  `ass-run`. That neutrality is what makes this decision reversible, and it has
+  `hedloom-run`. That neutrality is what makes this decision reversible, and it has
   already survived two reversals.
 - **Not as a replacement for per-job status.** The `bjobs` watcher is needed
   either way.
@@ -290,7 +290,7 @@ a pool.
 The accretion list — concurrency, limits, backpressure, priorities,
 cancellation, progress reporting — had two items live at once, which read as
 the moment to reopen the engine question. The measurement deflates one of them:
-with waiters this cheap, concurrency in `ass-run` is not a scheduler feature but
+with waiters this cheap, concurrency in `hedloom-run` is not a scheduler feature but
 a safety rail with an arbitrary high default, because the real limiter is the
 site's MAX JOB policy and the licence count. And progress reporting belongs in a
 watcher that reads journals and calls `bjobs`, which is a client of existing
@@ -313,7 +313,7 @@ still open, and it is still the study that should settle it.
   (`docs/reference/ota-pvt-plan/run_study.py`, 2026-08-04). `plan_bundles`'s
   `_source_identity` hashes `{artifact, address, materialized_as}` only; there
   is no mtime/size check as there is for a declared *output* file
-  (`ass_exec.artifacts.ArtifactRef`). Editing `inputs/base/ota_ac.cir` or
+  (`hedloom_exec.artifacts.ArtifactRef`). Editing `inputs/base/ota_ac.cir` or
   `inputs/pvt_edits.py` in place, without touching their declared address in
   `ota_pvt_plan.py`, would not invalidate any cached attempt that reads them —
   a rerun would silently reuse a result computed from the old file content.
@@ -325,12 +325,12 @@ still open, and it is still the study that should settle it.
   participate in identity (point_id, process, vdd_v, temp_c) a declared Plan
   config value rather than fixture content, which is what the edited-corner
   reuse test actually exercised.
-- **`ass_exec`'s `Durability.RECORDED` path requires every in-process return
+- **`hedloom_exec`'s `Durability.RECORDED` path requires every in-process return
   value to be JSON-safe, not merely inspectable.** Raised by the same run:
   `reconcile()` appends `{"value": ...}` to the append-only journal via
   `json.dumps` before any output declaration is even consulted, and
-  `ass_run.run_plan` always executes at `Durability.RECORDED` — there is no
-  lighter path for a fast in-process step, unlike `ass_exec.durability`'s own
+  `hedloom_run.run_plan` always executes at `Durability.RECORDED` — there is no
+  lighter path for a fast in-process step, unlike `hedloom_exec.durability`'s own
   stated design ("an ordinary in-memory Python step... has nothing worth
   reconstructing"). Concretely, `spice_canonical.CanonicalNetlist` and
   `netlist_decomposition.BlockTag` are frozen dataclasses with a `frozenset`
@@ -343,10 +343,10 @@ still open, and it is still the study that should settle it.
   with no declared outputs, mirroring `execute()`'s own two-tier design, is
   open.
 - **A Plan-only reference's documentation-marker policy collides with
-  `ass_run`'s placement-name lookup.** `ota_pvt_plan.py`'s
+  `hedloom_run`'s placement-name lookup.** `ota_pvt_plan.py`'s
   `PLAN_DECLARATION_POLICY`/`SIMULATOR_BOUNDARY_POLICY` are named
   `reference.plan-only`, meant only as a status marker ("declaration-only",
-  "unimplemented"). `ass_run.binding.select_transport` reads
+  "unimplemented"). `hedloom_run.binding.select_transport` reads
   `(item.policy or {}).get("name")` as the *placement* to route an invocation
   to, falling back to `"local"` only when no name is present at all. Because
   this Plan does author a name, every invocation asks for placement
@@ -428,7 +428,7 @@ actually is.
 ### Already demonstrated: staged plans (2026-08-05)
 
 The "sequence of Plans" shape above is not hypothetical. It runs, in
-`ass/examples/ota_pvt_clean_nested.py`, and it arrived from the opposite
+`hedloom/examples/ota_pvt_clean_nested.py`, and it arrived from the opposite
 direction — not as a way to adapt to results, but as the answer to a limitation
 that looked fatal.
 
@@ -500,7 +500,7 @@ once in the profile and again in the operator's `LocalCluster(...)` call with
 nothing comparing them.
 
 **Amended 2026-08-06.** The second half of that sentence no longer holds:
-`ass_run.cluster.cluster_for(site)` reads `Site.threads` and builds the cluster
+`hedloom_run.cluster.cluster_for(site)` reads `Site.threads` and builds the cluster
 from it, so the number is written once. The first half is untouched — one
 number still means both limits, and the resolution below is still the way out.
 
@@ -523,7 +523,7 @@ exactly. It beats `secede()` on the one axis secede was rejected for: the farm
 worker genuinely reads as busy while jobs are in flight, so the observability
 requirement is met rather than traded away. It also removes a
 `threading.Semaphore` that would otherwise have gone into `LSFTransport` — and
-with it, a limit that would have been silently wrong across processes. `ass_exec`
+with it, a limit that would have been silently wrong across processes. `hedloom_exec`
 does not change at all.
 
 Shape:
@@ -560,7 +560,7 @@ the worker's event loop rather than its thread pool, so the kernel already
 supports it.
 
 What it costs: `execute()` and the journal are synchronous throughout, and
-`ass_exec` has no async anywhere. Adding it is not a transport change, it is an
+`hedloom_exec` has no async anywhere. Adding it is not a transport change, it is an
 async path through the durable-record machinery — the part of this system with
 the strongest correctness requirements. Owner-bound lifetime looks preservable
 (`preexec_fn` is available on the asyncio subprocess API) but is unverified.

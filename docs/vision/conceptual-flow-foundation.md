@@ -13,7 +13,7 @@ The current repository does not implement a complete durable study runtime.
 Its bounded `study-flow` experiment was retired after exposing the limits of a
 fixed preparation/map/reduce shape and whole-run backend selection. The code
 remains recoverable in Git history, while the next execution hypothesis is
-staged in [ASS Flow rebuild inquiry](ass-flow-rebuild-main.md). The manifesto
+staged in [Hedloom Flow rebuild inquiry](hedloom-flow-rebuild-main.md). The manifesto
 distinguishes authoring, planning, execution, evaluation, decision, and
 preservation as responsibilities of a coherent study system. The hypothesis
 below gives those responsibilities a vocabulary that can be tested by runnable
@@ -22,19 +22,19 @@ prototypes and revised from the resulting evidence.
 ## A flow is not a DAG
 
 A directed acyclic graph can represent one resolved plan, but it is not the
-being of a flow. An ASS study may begin with incomplete intent, branch after an
+being of a flow. An Hedloom study may begin with incomplete intent, branch after an
 observed result, revisit an earlier assumption, or require a human, script, or
 agent to decide what should happen next. Treating the graph as the authored
 flow would collapse strategy, planning, execution history, and engineering
 judgment into one object.
 
-Within ASS, a **flow** is instead a reusable strategy for moving a study toward
+Within Hedloom, a **flow** is instead a reusable strategy for moving a study toward
 evidence or a decision. Applying that strategy to the study's present intent,
 context, evidence, and policy produces a plan. The plan may be a DAG, a simple
 sequence, a set of independent jobs, or an increment that is followed by
 another planning decision.
 
-This is intended to be generic within ASS. It is not an attempt to define a
+This is intended to be generic within Hedloom. It is not an attempt to define a
 universal workflow platform.
 
 ## Foundational vocabulary
@@ -197,7 +197,7 @@ would be restrictive.
 
 The generic foundation should own the lifecycle nouns, identity boundaries,
 publication rules, and executor seams. It should not presume one kind of study,
-operation, artifact, or result. Independently owned ASS components may supply
+operation, artifact, or result. Independently owned Hedloom components may supply
 ordinary Python operations, evaluators, and authored vocabulary for
 comparisons, structural investigations, design changes, failure investigations,
 or work in which simulation is absent. Those components add domain meaning;

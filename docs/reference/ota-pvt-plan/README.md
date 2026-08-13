@@ -1,10 +1,10 @@
 # OTA PVT Plan Reference
 
 This directory owns one root-level, cross-unit reference workflow. Its original
-purpose was to test whether ASS Flow can describe a realistic static
+purpose was to test whether Hedloom Flow can describe a realistic static
 analog-study graph without acquiring simulation or runtime meaning. That
 question is answered and recorded below. A second question is now answered
-too: whether the three execution units (`ass-flow`, `ass-exec`, `ass-run`) can
+too: whether the three execution units (`hedloom-flow`, `hedloom-exec`, `hedloom-run`) can
 run that exact graph for real, against a real simulator, with honest reuse.
 
 **The Plan declaration is unchanged and still plan-only.** `ota_pvt_plan.py`'s
@@ -13,14 +13,14 @@ for a document meant to be inspected without acquiring runtime meaning, and
 nothing here edits it. What changed is that a *binding* now exists alongside
 it: [`run_study.py`](run_study.py) supplies a real implementation for every
 operation name and executes the same Plan end to end with
-`ass_run.run_plan`, exactly the split `ass-run`'s own README states — "The
+`hedloom_run.run_plan`, exactly the split `hedloom-run`'s own README states — "The
 Plan declares meaning; the run binds mechanism" — and the same shape as
-`ass-exec/examples/planned_characterization.py`.
+`hedloom-exec/examples/planned_characterization.py`.
 
 Run it, from the repository root, with every sibling source tree on the path:
 
 ```console
-PYTHONPATH=ass-flow/src:ass-run/src:ass-exec/src:sidecar-edits/src:\
+PYTHONPATH=hedloom/flow/src:hedloom/run/src:hedloom/exec/src:sidecar-edits/src:\
 spice-canonical/src:netlist-decomposition/src \
   python docs/reference/ota-pvt-plan/run_study.py
 ```
@@ -48,10 +48,10 @@ which `PLANNING.md` reserves for coordinated review.
 Names that correspond to Sidecar Edits, SPICE Canonical, or Netlist
 Decomposition are no longer merely proposed adapter boundaries for this
 reference's own use — `run_study.py` calls their real public APIs. They remain
-proposed boundaries for ASS Flow itself: ASS Flow has no adapter that accepts
+proposed boundaries for Hedloom Flow itself: Hedloom Flow has no adapter that accepts
 the declared bindings, locates or publishes their artifacts, or serializes the
 sibling values on its own. `run_study.py` is a companion binding script that
-lives beside the Plan declaration, not a change to ASS Flow, and it does not
+lives beside the Plan declaration, not a change to Hedloom Flow, and it does not
 promote this reference into a fifth component or a reusable OTA-study API.
 
 The proposed preparation boundary corresponds to the existing
@@ -70,7 +70,7 @@ in-process run needs.
 builds a validated Plan without reading its fixtures:
 
 ```console
-PYTHONPATH=ass-flow/src python docs/reference/ota-pvt-plan/ota_pvt_plan.py \
+PYTHONPATH=hedloom/flow/src python docs/reference/ota-pvt-plan/ota_pvt_plan.py \
   | python -m json.tool
 ```
 
@@ -93,8 +93,8 @@ source references have value class `artifact`. Nothing published by
 fact about the Plan document, not about whether some later binding chooses to
 materialize a result. `run_study.py` declares its own `outputs=` mapping at
 run time (`prepare_run`'s rendered directory, `simulate_ac`'s raw file) for
-`ass_exec` to verify and record a real address for; that is execution
-binding it, exactly as `ass-run`'s README describes, not a change to what the
+`hedloom_exec` to verify and record a real address for; that is execution
+binding it, exactly as `hedloom-run`'s README describes, not a change to what the
 Plan says.
 
 The authorized shape and stop conditions are recorded in
@@ -103,9 +103,9 @@ The authorized shape and stop conditions are recorded in
 
 This is not a fifth component, a reusable OTA-study API, an example catalog, or
 a general executor prototype: `run_study.py` binds only this Plan's six named
-operations, by name, the same way the ASS Exec example binds a two-operation
-plan. All four child ontologies and packages remain unchanged; only `ass-exec`
-and `ass-run`, already public execution units, are used as documented.
+operations, by name, the same way the Hedloom Exec example binds a two-operation
+plan. All four child ontologies and packages remain unchanged; only `hedloom-exec`
+and `hedloom-run`, already public execution units, are used as documented.
 
 ```{toctree}
 :hidden:

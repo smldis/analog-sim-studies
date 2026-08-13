@@ -43,7 +43,7 @@ any affected child ontology.
   units.
 - Root integration checks may verify explicit relationships such as
   `netlist-decomposition` consuming `spice-canonical`.
-- `docs/vision/open-concepts.md` registers every concept raised by the ASS Flow
+- `docs/vision/open-concepts.md` registers every concept raised by the Hedloom Flow
   rebuild inquiry with its current status, including concepts that fell out of
   direct development without a decision. It spans both units, so it belongs at
   the composition root rather than in either one.
@@ -51,38 +51,38 @@ any affected child ontology.
   declaration (`ota_pvt_plan.py`), its versioned input fixtures, and a
   companion real-execution binding (`run_study.py`). The Plan declaration
   itself remains non-executing: it tests static composition through public
-  ASS Flow contracts alone -- four repository-relative sources declared as
+  Hedloom Flow contracts alone -- four repository-relative sources declared as
   addressed artifact references with explicit data-only representation/access
   requirements, while all operation-output edges and the final evaluation
   remain ephemeral. The companion binding is a separate, ordinary consumer of
-  `ass-exec`/`ass-run`'s already-public execution contracts, in the same shape
-  as `ass-exec/examples/planned_characterization.py`: it supplies a real
+  `hedloom-exec`/`hedloom-run`'s already-public execution contracts, in the same shape
+  as `hedloom-exec/examples/planned_characterization.py`: it supplies a real
   implementation per declared operation name and runs the exact same Plan
   end to end against real `ngspice` and the real Sidecar Edits, SPICE
   Canonical, and Netlist Decomposition public APIs. Neither promotes this
   reference's analog-domain labels into a child API, claims a sibling adapter
-  ASS Flow itself provides, or adds a fifth component.
+  Hedloom Flow itself provides, or adds a fifth component.
 
 ## Contributions from children
 
-- `ass-flow` contributes generic Python-authored static operation/flow planning
+- `hedloom-flow` contributes generic Python-authored static operation/flow planning
   and immutable, deterministic Plan IR without executor or runtime authority.
-- `ass-exec` contributes the durable lifecycle of one attempt at one planned
+- `hedloom-exec` contributes the durable lifecycle of one attempt at one planned
   invocation: identity chosen before submission, an append-only record, atomic
   terminal publication, and reconciliation. It owns no graph and decides no
   readiness.
 
-- `ass-run` contributes plan traversal: dependency order, readiness, value and
+- `hedloom-run` contributes plan traversal: dependency order, readiness, value and
   address threading between invocations, and failure handling. It owns no
   attempt record and no Plan.
 
-`ass-exec` consumes `ass-flow`'s schema-2 Plan **document**, not its package.
+`hedloom-exec` consumes `hedloom-flow`'s schema-2 Plan **document**, not its package.
 The cross-unit contract is therefore the portable plain-data artifact: neither
 unit imports the other, and any producer of the same document composes equally
-well. `ass-flow` stays executor-neutral; `ass-exec` reads a Plan but neither
+well. `hedloom-flow` stays executor-neutral; `hedloom-exec` reads a Plan but neither
 produces nor validates one.
 
-`ass-run` depends on `ass-exec` as an ordinary Python package, which is the
+`hedloom-run` depends on `hedloom-exec` as an ordinary Python package, which is the
 honest shape of a consumer: a driver must call `execute`. That is deliberately
 different from the flow-to-exec coupling, which stays document-only so that
 planning cannot acquire executor knowledge. There is no top-level package and
@@ -94,17 +94,17 @@ no unified source tree; the units compose through `unit.toml` and
   canonical representation.
 
 These contributions compose into the larger vision. Flow execution is now
-partly owned. `ass-flow` and `ass-exec` together deliver one runnable vertical
+partly owned. `hedloom-flow` and `hedloom-exec` together deliver one runnable vertical
 slice — author a flow, plan it, execute it, edit one input, and rerun with
 unchanged work skipped and superseded results retained — demonstrated by
-`ass-exec/examples/planned_characterization.py`. No real batch or distributed
+`hedloom-exec/examples/planned_characterization.py`. No real batch or distributed
 transport has been exercised: direct `bsub -I` submission exists but has never
 contacted a cluster, and pooled execution refuses. The retired `study-flow`
 prototype remains
 recoverable in Git history at `528c02f`, while
-[`docs/vision/ass-flow-rebuild-main.md`](docs/vision/ass-flow-rebuild-main.md)
+[`docs/vision/hedloom-flow-rebuild-main.md`](docs/vision/hedloom-flow-rebuild-main.md)
 records the architectural inquiry that preceded the bounded planning work.
-The declared `ass-flow` child owns only static planning; its refusing
+The declared `hedloom-flow` child owns only static planning; its refusing
 `submit(...)` boundary confers no local, distributed, simulator, or study
 runtime authority.
 

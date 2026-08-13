@@ -117,13 +117,13 @@ def test_child_command_failure_propagates_and_stops_parent(tmp_path: Path) -> No
 def test_repository_tree_has_its_declared_units_and_no_root_src() -> None:
     unit = composition.load_unit(ROOT)
 
-    # Sorted, not in declaration order: `ass` composes the three ASS units, and
+    # Sorted, not in declaration order: `hedloom` composes the three Hedloom units, and
     # the remaining three siblings supply real circuit work.
     assert [child.unit_id for child in unit.children] == [
-        "ass",
-        "ass-exec",
-        "ass-flow",
-        "ass-run",
+        "hedloom",
+        "hedloom-exec",
+        "hedloom-flow",
+        "hedloom-run",
         "netlist-decomposition",
         "sidecar-edits",
         "spice-canonical",

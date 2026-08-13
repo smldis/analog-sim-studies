@@ -2,7 +2,7 @@
 
 ## Work-order identity and source hierarchy
 
-**Work-order ID:** `ASS-FLOW-WO-2026-08-03-OTA-PVT-PLAN`
+**Work-order ID:** `Hedloom-FLOW-WO-2026-08-03-OTA-PVT-PLAN`
 
 **Status:** completed on 2026-08-03 after implementation, focused and full
 verification, and independent source/boundary review.
@@ -17,12 +17,12 @@ The controlling architectural seed is the human-curated dialecticH graduation:
   `defb4d4885fbb439c6966cfb8efaba57bbee6588543d40ff74785b94fb69be80`.
 
 The graduated files under `.dialecticH/runs/20260802-095704/graduation/` are
-the exact continuation baseline. `docs/vision/ass-flow-rebuild-main.md` is an
+the exact continuation baseline. `docs/vision/hedloom-flow-rebuild-main.md` is an
 older pre-graduation seed and must not be substituted for the graduated main.
 `MANIFESTO.md` and the current root/child ontologies govern the repository;
-`ass-flow/PLANNING.md` records the later user authorization that turned the
+`hedloom-flow/PLANNING.md` records the later user authorization that turned the
 graduation's non-authorized planning candidate into bounded implementation;
-`ass-flow/IMPLEMENTATION.md` records the resulting evidence.
+`hedloom-flow/IMPLEMENTATION.md` records the resulting evidence.
 
 The attempted continuation run `20260802-220447` crashed before producing a
 Judge decision. Its partial proposals are not authority for this work order.
@@ -30,14 +30,14 @@ Judge decision. Its partial proposals are not authority for this work order.
 ## Authority and decision
 
 On 2026-08-03 the user authorized continued development after trying only the
-existing ASS Flow characterization example. That result is smoke-test evidence,
+existing Hedloom Flow characterization example. That result is smoke-test evidence,
 not acceptance of the larger architecture. This phase therefore introduces one
 representative, non-executing OTA/PVT plan before considering any executor
 lowering.
 
 A fresh Codex high-reasoning review inspected the root and all four child
 contracts. It recommended a root-owned reference because the root already owns
-cross-unit composition, while ASS Flow deliberately owns no analog-domain
+cross-unit composition, while Hedloom Flow deliberately owns no analog-domain
 meaning and a single reference does not justify a new permanent component.
 
 **Decision:** implement one bounded `OTA PVT Plan Reference` under
@@ -48,14 +48,14 @@ completion evidence is recorded at the end of this work order and in
 `IMPLEMENTATION.md`.
 
 The graduated main's initial planning work order has now been implemented and
-promoted as the `ass-flow` prototype. Its sequential convenience hypothesis was
+promoted as the `hedloom-flow` prototype. Its sequential convenience hypothesis was
 later explicitly archived by the user. Those later reviewed directions
 supersede that one candidate acceptance example without altering the main's
 generic-planner, explicit-plan, no-hidden-runtime boundaries.
 
 ## Decision question
 
-Can ordinary Python plus the current ASS Flow Plan IR express a small but
+Can ordinary Python plus the current Hedloom Flow Plan IR express a small but
 realistic, fully inspectable OTA/PVT strategy across preparation,
 canonicalization, structural decomposition, simulation, measurement, and
 evaluation boundaries without executing an operation or inventing a second
@@ -78,7 +78,7 @@ and documentation. It requires no simulator, scheduler, farm access, network,
 paid service, mutable external state, or generated evidence.
 
 Prerequisites are the committed four-child composition at `ce0ce5c`, the
-current ASS Flow public planning API, and the existing sibling public contracts.
+current Hedloom Flow public planning API, and the existing sibling public contracts.
 If implementation requires changing any prerequisite contract, the work order
 stops instead of expanding.
 
@@ -87,7 +87,7 @@ stops instead of expanding.
 The composition root owns this single reference because it combines meanings
 from multiple child units. The following alternatives remain rejected:
 
-- `ass-flow/`: would incorrectly give a generic planner OTA, PVT, simulator,
+- `hedloom-flow/`: would incorrectly give a generic planner OTA, PVT, simulator,
   measurement, or study-lifecycle meaning;
 - a new direct child: would promote one architectural probe into a component
   before it has a reusable API or independently useful capability;
@@ -134,14 +134,14 @@ structural context for evaluation, not a simulator prerequisite.
 
 | Operation identity | Inputs | Configuration | Output kind | Contract boundary |
 | --- | --- | --- | --- | --- |
-| `reference.ota_pvt.prepare_run@1` | `base: sidecar-base-directory`, `edits: sidecar-edit-file` | `point_id`, `param_set`, `process`, `vdd_v`, `temp_c` | `prepared-simulation-directory` | Declared plan stub corresponding conceptually to `sidecar-render`, edit loading, parameter selection, and `render_job`; no ASS Flow adapter currently accepts these bindings. |
+| `reference.ota_pvt.prepare_run@1` | `base: sidecar-base-directory`, `edits: sidecar-edit-file` | `point_id`, `param_set`, `process`, `vdd_v`, `temp_c` | `prepared-simulation-directory` | Declared plan stub corresponding conceptually to `sidecar-render`, edit loading, parameter selection, and `render_job`; no Hedloom Flow adapter currently accepts these bindings. |
 | `reference.ota_pvt.canonicalize_deck@1` | `run: prepared-simulation-directory` | `deck_relpath="ota_ac.cir"`, `spice_format="ngspice"`, `top_name="ota_pvt"` | `canonical-netlist` | Declared plan stub corresponding to `spice_canonical.canonical_netlist.from_file`; no adapter locates a planned deck or publishes a durable canonical artifact. |
 | `reference.ota_pvt.decompose_ota@1` | `canonical: canonical-netlist` | `circuit_name="ota_core"`, `vdd_nets=["vdd"]`, `vss_nets=["vss"]`, `max_level=4`, `suppress_false_stacks=true` | `ota-functional-decomposition` | Declared plan stub corresponding to circuit selection, `decompose`, and optional suppression; no combined adapter or serialized tag artifact exists. |
 | `reference.ota_pvt.simulate_ac@1` | `run: prepared-simulation-directory` | `point_id`, `process`, `vdd_v`, `temp_c`, `simulator_profile="ngspice-ac"`, `analysis="ac"` | `simulator-raw-results` | Pure declared stub; no simulator adapter or runtime exists. Descriptive resource requests make no scheduling claim. |
 | `reference.ota_pvt.measure_ac@1` | `raw: simulator-raw-results`, `definition: ota-measurement-definition` | `point_id` | `ota-point-measurements` | Declared stub for gain, gain-bandwidth, and phase-margin extraction; no waveform reader or measurement implementation exists. |
 | `reference.ota_pvt.evaluate_pvt@1` | `measurements: artifacts("ota-point-measurements")`, `decompositions: artifacts("ota-functional-decomposition")`, `limits: ota-specification-limits` | ordered `point_ids` | `ota-pvt-evaluation` | Declared evaluation stub; its planned output is neither published evidence nor a study decision. |
 
-The artifact kinds are local declared labels. ASS Flow validates kind equality;
+The artifact kinds are local declared labels. Hedloom Flow validates kind equality;
 it does not define their formats, schema versions, locations, checksums, or
 provenance.
 
@@ -164,7 +164,7 @@ current IR. The tests must preserve that distinction.
 
 ## What this slice may prove
 
-- Python can author this domain-specific static strategy while ASS Flow remains
+- Python can author this domain-specific static strategy while Hedloom Flow remains
   generic.
 - A fixed ordered tuple can expand into inspectable nested PVT branches.
 - Preparation can fork into independent structural and simulation paths.
@@ -177,7 +177,7 @@ current IR. The tests must preserve that distinction.
 
 ## What this slice may not claim
 
-- execution of any operation or existence of an ASS Flow adapter for a sibling;
+- execution of any operation or existence of an Hedloom Flow adapter for a sibling;
 - successful materialization, deck discovery, parsing, simulation, measurement,
   evaluation, or artifact publication;
 - portable serialization for `CanonicalNetlist`, `Circuit`, or `BlockTag`;
@@ -203,7 +203,7 @@ The implementation pass may add only this bounded material:
   determinism, fixture, and no-execution evidence;
 - links/status wording in root `README.md`, `docs/index.md`, and `ONTOLOGY.md`.
 
-`unit.toml`, `requirements-dev.txt`, all child packaging and ontologies, ASS
+`unit.toml`, `requirements-dev.txt`, all child packaging and ontologies, Hedloom
 Flow source, and the archived sequential-flow convenience remain unchanged.
 
 ## Delegated and reserved choices
@@ -249,7 +249,7 @@ Stop and report instead of broadening this slice if implementation requires:
 - executing an operation body to determine the graph;
 - durable object serialization, output directories, temporary files, attempts,
   publication, caches, or provenance;
-- changes to a sibling's public contract or ASS Flow's Plan IR;
+- changes to a sibling's public contract or Hedloom Flow's Plan IR;
 - a shared artifact-schema registry;
 - reusable OTA-study APIs, sequential-flow convenience, an executor, or a
   lowering interface.
@@ -260,7 +260,7 @@ Each is a separate ontology and authorization decision.
 
 1. `docs: plan root-owned OTA PVT reference`
    records this boundary, graph, trackers, acceptance criteria, exclusions, and
-   the component-owned review of every graduated ASS Flow research section.
+   the component-owned review of every graduated Hedloom Flow research section.
 2. `feat: add plan-only OTA PVT reference`
    adds the refusing workflow declarations, inputs, integration evidence, and
    root documentation updates.
@@ -290,10 +290,10 @@ and its failure-protocol requirements remain live.
 
 ## Follow-on record: schema-2 source-handoff adaptation
 
-The original `ASS-FLOW-WO-2026-08-03-OTA-PVT-PLAN` authorization above remains
+The original `Hedloom-FLOW-WO-2026-08-03-OTA-PVT-PLAN` authorization above remains
 completed historical evidence. It was not reopened. On 2026-08-03, the later
-`ASS-FLOW-WO-2026-08-03-ARTIFACT-HANDOFF` work order in
-`ass-flow/PLANNING.md` authorized this reference to serve as cross-unit
+`Hedloom-FLOW-WO-2026-08-03-ARTIFACT-HANDOFF` work order in
+`hedloom-flow/PLANNING.md` authorized this reference to serve as cross-unit
 acceptance evidence for the narrower schema-2 declarative source handoff.
 
 That follow-on permits only these changes here:
@@ -330,15 +330,15 @@ The prerequisite decision above asked for "the smallest generic
 artifact/adapter contract needed to give real boundary values an address,
 codec, publication rule, and handoff semantics" before any executor. That
 contract arrived by a different route than expected: not a new generic
-artifact layer, but `ass-exec`'s attempt protocol and `ass-run`'s
+artifact layer, but `hedloom-exec`'s attempt protocol and `hedloom-run`'s
 `run_plan`, both since built and evidenced against this same reference's Plan
-*shape* (see `ass-run/tests/test_file_flow.py`, which runs the two-step
+*shape* (see `hedloom-run/tests/test_file_flow.py`, which runs the two-step
 shape this reference generalizes, over real LSF-shaped subprocesses).
 
 This follow-on authorized only: adding `run_study.py` beside the Plan
 declaration as a companion binding, in the same shape as
-`ass-exec/examples/planned_characterization.py` — a real implementation per
-operation name, handed to a transport, walked by `ass_run.run_plan` — and
+`hedloom-exec/examples/planned_characterization.py` — a real implementation per
+operation name, handed to a transport, walked by `hedloom_run.run_plan` — and
 running it against real `ngspice`, real Sidecar Edits, real SPICE Canonical,
 and real Netlist Decomposition. `ota_pvt_plan.py` is unchanged; its six
 operation bodies still raise `NotImplementedError`, which remains the correct
@@ -358,6 +358,6 @@ seams this run surfaced without resolving are recorded in
 `docs/vision/open-concepts.md` rather than fixed here: source content is not
 part of an invocation's identity (only its declared address/codec is, so an
 edited fixture's *content* does not by itself invalidate a cached result),
-and this reference's `reference.plan-only` policy doubles as ass-run's
+and this reference's `reference.plan-only` policy doubles as hedloom-run's
 placement-name lookup key, which this binding sidesteps by running in
 single-transport mode rather than by authoring a real placement name.

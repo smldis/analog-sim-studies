@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hedloom-run"
+version = "0.1.0"
+description = "Walk a validated Plan and execute its invocations in dependency order."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["hedloom-exec"]
+
+[project.optional-dependencies]
+# The Dask kernel is an explicit import: a plan small enough to walk in one
+# thread should not have to install a scheduler to run.
+dask = ["distributed==2026.7.1"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "../exec/src"]
+testpaths = ["tests"]

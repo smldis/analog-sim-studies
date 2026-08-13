@@ -12,8 +12,8 @@ accepted; real execution binding complete (see below)
 **Runtime status:** `ota_pvt_plan.py`'s six operation bodies remain
 unimplemented by design. A companion binding, `run_study.py`, runs the exact
 same Plan end to end against real `ngspice`, real Sidecar Edits, real SPICE
-Canonical, and real Netlist Decomposition, through unmodified `ass-exec`/
-`ass-run`. See "Follow-on: real execution binding" below.
+Canonical, and real Netlist Decomposition, through unmodified `hedloom-exec`/
+`hedloom-run`. See "Follow-on: real execution binding" below.
 
 **Component impact:** none; the repository retains four direct children
 
@@ -24,13 +24,13 @@ Canonical, and real Netlist Decomposition, through unmodified `ass-exec`/
 | R1 | Freeze ownership, graph, acceptance criteria, and stop conditions | complete | `PLANNING.md`; independent Codex high architecture review |
 | R2 | Add six refusing operation declarations, two keyed flows, three ordered points, and `build_plan()` | complete | Validated Plan has 6 version-1 operations, 2 version-1 flows, 4 keyed boundaries, 16 keyed invocations, 18 keyed dependency edges, and 16 outputs |
 | R3 | Add small versioned input fixtures without executing them | complete | Four repository-relative source URIs exist; Sidecar loader accepts all typed edits and resolves the exact ordered point values |
-| R4 | Add root integration evidence for shape, branching, fan-in, determinism, validation, and non-execution | complete | 9 focused integration tests lock the exact operation contracts and Plan output producers; all 52 ASS Flow tests pass |
+| R4 | Add root integration evidence for shape, branching, fan-in, determinism, validation, and non-execution | complete | 9 focused integration tests lock the exact operation contracts and Plan output producers; all 52 Hedloom Flow tests pass |
 | R5 | Link the implemented reference from root documentation and record its narrow ontology evidence | complete | Root README, docs index, root ontology, and reference docs describe only plan-level evidence |
 | R6 | Independent source and boundary review | complete | Fresh Codex high review found no graph, source-boundary, fixture, ontology, or scope defect; two low-severity regression-evidence findings were corrected and reverified |
 | R7 | Decide whether this evidence is sufficient to design executor lowering | complete | The Plan IR is adequate for this fixed graph, but real boundary values lack address, codec, publication, and handoff semantics; resolve the minimal artifact/adapter contract before local Dask lowering |
 
 The R1-R7 table is the closed historical record of
-`ASS-FLOW-WO-2026-08-03-OTA-PVT-PLAN`; its authorization was not reopened.
+`Hedloom-FLOW-WO-2026-08-03-OTA-PVT-PLAN`; its authorization was not reopened.
 
 ## Follow-on schema-2 adaptation
 
@@ -40,29 +40,29 @@ The R1-R7 table is the closed historical record of
 | A2 | Preserve logical contracts and graph identity | implemented and verified | Ten artifact declarations, six version-1 operations, two version-1 flows, policies, resources, configuration, topology, keys, pinned source/invocation/edge/boundary IDs, and 16 named outputs remain unchanged |
 | A3 | Prove the artifact/ephemeral split without output materialization | implemented and verified | Schema 2 has four artifact source declarations; all 18 operation-output edges and every named output, including final evaluation, are ephemeral; every output capability is null |
 | A4 | Preserve canonical and no-runtime boundaries | implemented and verified | 10 focused tests cover repeated data/JSON, exact representations, legacy rejection, refusing bodies/submit, source-import audit, and guarded no-I/O construction |
-| A5 | Independent Phase 4 acceptance | complete | Fresh full-diff review accepted the reference and data-only boundary after one ASS Flow malformed-source validation defect was corrected and independently reverified |
+| A5 | Independent Phase 4 acceptance | complete | Fresh full-diff review accepted the reference and data-only boundary after one Hedloom Flow malformed-source validation defect was corrected and independently reverified |
 
 ## Follow-on: real execution binding (2026-08-04)
 
 | ID | Work | State | Evidence |
 | --- | --- | --- | --- |
-| E1 | Bind all six operation names to real implementations, per `ass-exec`'s own companion-binding pattern | implemented | `run_study.py`; `ota_pvt_plan.py` untouched |
+| E1 | Bind all six operation names to real implementations, per `hedloom-exec`'s own companion-binding pattern | implemented | `run_study.py`; `ota_pvt_plan.py` untouched |
 | E2 | Run the study against real `ngspice -b -r`, real Sidecar Edits, real SPICE Canonical, real Netlist Decomposition | implemented and observed | see verification log below |
-| E3 | Give `canonical-netlist` and `ota-functional-decomposition` a first JSON-safe serialization | implemented | required, not optional: `ass_exec` journals every observed result as JSON regardless of durability path, so an in-process return value that is not JSON-safe fails the invocation before this study's own logic runs (discovered by running it, see `run_study.py`'s module docstring) |
+| E3 | Give `canonical-netlist` and `ota-functional-decomposition` a first JSON-safe serialization | implemented | required, not optional: `hedloom_exec` journals every observed result as JSON regardless of durability path, so an in-process return value that is not JSON-safe fails the invocation before this study's own logic runs (discovered by running it, see `run_study.py`'s module docstring) |
 | E4 | Confirm reuse and transitive staleness against real attempts, not just the digest math | observed | second run reuses all 16; editing one corner's declared `temp_c` reruns exactly that corner's 5 invocations plus the shared `evaluate-pvt`, 6 of 16 |
 | E5 | Record what this run surfaced and did not resolve | recorded | `docs/vision/open-concepts.md`; see "Honest limitations" below |
 
 ### Verification log (2026-08-04)
 
-Run with `PYTHONPATH=ass-flow/src:ass-run/src:ass-exec/src:sidecar-edits/src:spice-canonical/src:netlist-decomposition/src python docs/reference/ota-pvt-plan/run_study.py`, from a clean `_runs/`:
+Run with `PYTHONPATH=hedloom/flow/src:hedloom/run/src:hedloom/exec/src:sidecar-edits/src:spice-canonical/src:netlist-decomposition/src python docs/reference/ota-pvt-plan/run_study.py`, from a clean `_runs/`:
 
 - **First run.** All 16 invocations `claimed` and `succeeded`. Per-invocation
-  wall clock (this process's own timing, not `ass_exec`'s):
+  wall clock (this process's own timing, not `hedloom_exec`'s):
   `prepare-run` 5.6-14.1 ms (×3), `canonicalize-deck` 3.5-4.7 ms (×3),
   `decompose-ota` 1.9-19.8 ms (×3), `simulate-ac` 10.1-33.2 ms (×3, real
   `ngspice`), `measure-ac` 2.1-4.3 ms (×3), `evaluate-pvt` 0.5 ms (×1). Sum of
   per-invocation work: ~148 ms. Wall clock measured around the whole
-  `run_plan` call: 749 ms; the ~600 ms difference is `ass_exec`/`ass_run`
+  `run_plan` call: 749 ms; the ~600 ms difference is `hedloom_exec`/`hedloom_run`
   overhead (journal appends, digest hashing, directory creation) per
   invocation, not simulation time — real for 16 short invocations, and the
   fact this task's item 1-3 numbers exist to inform.
@@ -112,7 +112,7 @@ Run with `PYTHONPATH=ass-flow/src:ass-run/src:ass-exec/src:sidecar-edits/src:spi
 ## Verification log
 
 - R2-R4 focused integration (2026-08-03):
-  `PYTHONPATH=ass-flow/src:sidecar-edits/src python -m pytest -q integration-tests/test_ota_pvt_plan_reference.py`
+  `PYTHONPATH=hedloom/flow/src:sidecar-edits/src python -m pytest -q integration-tests/test_ota_pvt_plan_reference.py`
   passed 9 tests. The assertions cover exact normalized cardinalities and
   identities; every operation's complete input kind/cardinality, output kind,
   configuration name/type/required, and resource contracts; the exact producer
@@ -123,15 +123,15 @@ Run with `PYTHONPATH=ass-flow/src:ass-run/src:ass-exec/src:sidecar-edits/src:spi
   bodies; and `submit(...)` refusal. A source-import audit excludes sibling and
   runtime modules, while build-time guards cover `builtins.open`, `io.open`,
   `os.open`, and common `pathlib.Path` open/read surfaces.
-- ASS Flow regression (2026-08-03): `python -m pytest -q` from `ass-flow/`
+- Hedloom Flow regression (2026-08-03): `python -m pytest -q` from `hedloom-flow/`
   passed all 52 unchanged component tests.
 - Root integration regression (2026-08-03):
-  `PYTHONPATH=ass-flow/src:sidecar-edits/src:spice-canonical/src:netlist-decomposition/src python -m pytest -q integration-tests`
+  `PYTHONPATH=hedloom/flow/src:sidecar-edits/src:spice-canonical/src:netlist-decomposition/src python -m pytest -q integration-tests`
   passed all 16 root integration tests, including the 9 focused reference
   checks and the existing four-child composition contracts.
 - Coordinating full composition verification (2026-08-03), using absolute
   source paths because the composition runner changes its working directory:
-  52 ASS Flow, 45 Netlist Decomposition, 77 Sidecar Edits, 28 SPICE Canonical,
+  52 Hedloom Flow, 45 Netlist Decomposition, 77 Sidecar Edits, 28 SPICE Canonical,
   and 16 root integration tests passed. The earlier relative-`PYTHONPATH`
   import error was an invocation-environment issue, not a product failure.
 - Independent R6 review (2026-08-03): a fresh read-only Codex high session
@@ -139,15 +139,15 @@ Run with `PYTHONPATH=ass-flow/src:ass-run/src:ass-exec/src:sidecar-edits/src:spi
   fixtures, public sibling boundaries, ontology placement, and documentation.
   It found no design or scope defect. Its two low-severity test-evidence
   findings were addressed by exhaustive operation/output assertions and wider
-  no-I/O guards, then reverified by the focused and ASS Flow suites.
+  no-I/O guards, then reverified by the focused and Hedloom Flow suites.
 - Follow-on A1-A5 verification (2026-08-03): the schema-2 focused suite passed
-  10 tests and the final ASS Flow suite passed 63. Root integration passed 17
-  tests with absolute source paths. Full composition passed 63 ASS Flow, 45
+  10 tests and the final Hedloom Flow suite passed 63. Root integration passed 17
+  tests with absolute source paths. Full composition passed 63 Hedloom Flow, 45
   Netlist Decomposition, 77 Sidecar Edits, 28 SPICE Canonical, and 17 root
   integration tests. All changed Python modules passed `py_compile`; both the
   characterization and OTA/PVT stdout parsed as JSON, with canonical repeated
   data/JSON locked by tests. Fresh independent review covered the full follow-on
-  diff, exposed one ASS Flow malformed-source validation leak, and returned
+  diff, exposed one Hedloom Flow malformed-source validation leak, and returned
   `ACCEPT` after the focused correction and regression were independently
   reverified.
 
@@ -205,7 +205,7 @@ Run with `PYTHONPATH=ass-flow/src:ass-run/src:ass-exec/src:sidecar-edits/src:spi
 
 ## Explicitly deferred
 
-- sibling ASS Flow adapters;
+- sibling Hedloom Flow adapters;
 - simulator and waveform integration;
 - address resolution, codec execution, real access checking, publication,
   materialized operation outputs, and runtime artifact values;
@@ -217,20 +217,20 @@ Run with `PYTHONPATH=ass-flow/src:ass-run/src:ass-exec/src:sidecar-edits/src:spi
 
 The lists above are the historical plan-only record and are left as written.
 `run_study.py` (2026-08-04) resolves some of them for its own binding, not for
-ASS Flow itself:
+Hedloom Flow itself:
 
-- **Resolved by `run_study.py`, not by ASS Flow:** simulator and waveform
+- **Resolved by `run_study.py`, not by Hedloom Flow:** simulator and waveform
   integration (real `ngspice`, a from-scratch AC raw-file reader), address
   resolution for the four sources (read directly from the same locators
-  `ota_pvt_plan.py` authored, since `ass_run.binding.resolve` only threads
+  `ota_pvt_plan.py` authored, since `hedloom_run.binding.resolve` only threads
   *output* references -- see its module docstring), materialized operation
   outputs and runtime artifact values (`prepare_run`'s rendered directory and
-  `simulate_ac`'s raw file, via `ass_exec`'s declared-output/manifest
-  machinery), execution (via unmodified `ass_run.run_plan`), and a first
+  `simulate_ac`'s raw file, via `hedloom_exec`'s declared-output/manifest
+  machinery), execution (via unmodified `hedloom_run.run_plan`), and a first
   JSON-safe serialization for the `canonical-netlist` and
   `ota-functional-decomposition` artifact kinds.
-- **Still true, unresolved, and out of this follow-on's scope:** sibling ASS
-  Flow adapters (ASS Flow itself still has none), provenance/evidence
+- **Still true, unresolved, and out of this follow-on's scope:** sibling Hedloom
+  Flow adapters (Hedloom Flow itself still has none), provenance/evidence
   promotion/decisions/durable study lifecycle, production hardening, a
   reusable OTA-study API, and LSF placement (unreachable from a development
   sandbox; this run is entirely `local`).
@@ -240,11 +240,11 @@ ASS Flow itself:
   never the referenced file's content, so editing `inputs/base/ota_ac.cir` or
   `inputs/pvt_edits.py` in place would not by itself invalidate a cached
   result (only editing `ota_pvt_plan.py`'s own declared config does, which is
-  what the edited-corner run above exercises); `ass_run.run_plan` always runs
+  what the edited-corner run above exercises); `hedloom_run.run_plan` always runs
   at `Durability.RECORDED`, which journals every observed result as JSON, so
   an in-process step cannot honestly return a value that cannot serialize to
   JSON, only discovered by hitting it; and this reference's Plan carries no
   authored placement name, only the `reference.plan-only` documentation
-  marker, which collides with what `ass_run.binding.select_transport` reads
+  marker, which collides with what `hedloom_run.binding.select_transport` reads
   as one -- resolved here by running in single-transport mode rather than by
   authoring a real placement.

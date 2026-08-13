@@ -3,11 +3,11 @@
 ``ota_pvt_plan.py`` stays exactly what it always was: a Plan declaration whose
 operation bodies raise ``NotImplementedError``. That is the right shape for a
 plan-only document, and this module does not touch it. What was still missing
-is what ``ass-run``'s own README calls the other half: "The Plan declares
+is what ``hedloom-run``'s own README calls the other half: "The Plan declares
 meaning; the run binds mechanism." This module is that binding, in the same
-shape as ``ass-exec/examples/planned_characterization.py`` -- a separate
+shape as ``hedloom-exec/examples/planned_characterization.py`` -- a separate
 implementation for every operation name, handed to a transport, walked by
-``ass_run.run_plan``.
+``hedloom_run.run_plan``.
 
 Invariant this binding exists to hold: every declared output that a step
 claims to produce is either a real file this process can point to afterward,
@@ -20,14 +20,14 @@ Two boundaries this script deliberately does not resolve for a caller:
 
 * The four external sources (base directory, edit file, measurement
   definition, spec limits) are declared in the Plan as repository-relative
-  addresses, but ``ass_run.binding.resolve`` only threads *output* references
+  addresses, but ``hedloom_run.binding.resolve`` only threads *output* references
   between invocations -- by design, source addresses are left to whatever
   reads them. This script reads them itself, from the same locators
   ``ota_pvt_plan.py`` authored, rather than trusting the (always ``None``)
   resolved input.
 * The Plan's only declared policy is ``reference.plan-only`` (a documentation
   marker recorded by ``PLAN_DECLARATION_POLICY``/``SIMULATOR_BOUNDARY_POLICY``
-  in ``ota_pvt_plan.py``, not a placement name). ``ass_run`` reads
+  in ``ota_pvt_plan.py``, not a placement name). ``hedloom_run`` reads
   ``policy.name`` as the placement to route an invocation to, so this binding
   runs in single-transport mode (``transport=...``, not ``transports={...}``)
   rather than pretending a "local" placement was authored. See
@@ -35,7 +35,7 @@ Two boundaries this script deliberately does not resolve for a caller:
 
 Usage, from the repository root, with every sibling source tree on the path::
 
-    PYTHONPATH=ass-flow/src:ass-run/src:ass-exec/src:sidecar-edits/src:\\
+    PYTHONPATH=hedloom/flow/src:hedloom/run/src:hedloom/exec/src:sidecar-edits/src:\\
 spice-canonical/src:netlist-decomposition/src \\
       python docs/reference/ota-pvt-plan/run_study.py
 """
@@ -53,8 +53,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from ass_exec.transport import InProcessTransport, Observation, SubmissionRefused
-from ass_run import run_plan
+from hedloom_exec.transport import InProcessTransport, Observation, SubmissionRefused
+from hedloom_run import run_plan
 
 from netlist_decomposition import BlockTag
 from netlist_decomposition import decompose as decompose_blocks
@@ -210,8 +210,8 @@ def measure_ac_metrics(
 # cross an invocation boundary: ``CanonicalNetlist``/``Circuit`` (SPICE
 # Canonical) and the ``BlockTag`` tuple (Netlist Decomposition). Neither
 # offers a portable representation today -- PLANNING.md records that as an
-# explicit honest limitation. It turned out not to be optional: ``ass_run``
-# always runs invocations at ``Durability.RECORDED``, and ``ass_exec``
+# explicit honest limitation. It turned out not to be optional: ``hedloom_run``
+# always runs invocations at ``Durability.RECORDED``, and ``hedloom_exec``
 # appends every observed result to a JSON journal line before an output is
 # ever inspected, so an in-process return value that is not JSON-safe fails
 # the invocation before this study's own logic ever sees it. Discovered by
@@ -327,7 +327,7 @@ def canonicalize_deck_impl(
 
     Returns the JSON-safe serialization (see above), not the live
     ``CanonicalNetlist``: this invocation's result is journaled as JSON by
-    ``ass_exec`` regardless of placement, and this is the first real,
+    ``hedloom_exec`` regardless of placement, and this is the first real,
     inspectable representation this artifact kind has had.
     """
 
@@ -494,7 +494,7 @@ class LocalTransport(InProcessTransport):
     the resolved values of its declared inputs, and -- only when this run
     declared a workspace -- the one directory this specific attempt, and no
     other attempt, may write into. It decides no readiness and owns no
-    identity; both stay with ``ass_run``/``ass_exec`` exactly as for any other
+    identity; both stay with ``hedloom_run``/``hedloom_exec`` exactly as for any other
     transport.
     """
 
@@ -578,7 +578,7 @@ def write_report(
     coordinated review. This is ordinary post-processing in the binding
     script, over data ``run_plan`` already returned -- it does not read a
     result and decide what to run next, so it is not the result-dependent
-    control ``ass-run`` is kept free of.
+    control ``hedloom-run`` is kept free of.
     """
 
     invocations = [

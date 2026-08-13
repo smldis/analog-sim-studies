@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ass_flow import (
+from hedloom_flow import (
     ResourceContract,
     address,
     artifact,

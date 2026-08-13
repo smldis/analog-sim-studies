@@ -6,7 +6,7 @@ design tools. The governing direction is [MANIFESTO.md](MANIFESTO.md), while
 
 ## Owned units
 
-- [`ass-flow/`](ass-flow/) owns executor-neutral Python authoring of static
+- [`hedloom-flow/`](hedloom-flow/) owns executor-neutral Python authoring of static
   operation/flow graphs and deterministic, inspectable Plan IR.
 - [`sidecar-edits/`](sidecar-edits/) prepares simulation directories through a
   typed Python edit API and owns its examples and Sphinx user/API guide.
@@ -42,7 +42,7 @@ python -m pip install -r requirements-dev.txt
 
 There is deliberately no root Python distribution, so `pip install -e .` is
 replaced by the explicit child bootstrap above. It installs the four editable
-distributions together and preserves the imports `ass_flow`, `sidecar_edits`,
+distributions together and preserves the imports `hedloom_flow`, `sidecar_edits`,
 `spice_canonical`, and `netlist_decomposition`, plus the `sidecar-render` and
 `spice-canonical` commands. Individual package installation is documented in
 each child README.
@@ -93,24 +93,24 @@ Run sidecar examples and native-helper flows from `sidecar-edits/`; run the
 canonical corpus verifier from `spice-canonical/`; and run decomposition
 dependency generation or OTA verification from `netlist-decomposition/`.
 Exact commands and external prerequisites live in the owning README.
-[`ass-flow/`](ass-flow/) is the bounded, non-executing static-planning
+[`hedloom-flow/`](hedloom-flow/) is the bounded, non-executing static-planning
 prototype. Its focused tests and simulator-free characterization example run
 from that directory:
 
 ```console
-cd ass-flow
+cd hedloom-flow
 python -m pytest -q
 PYTHONPATH=src python examples/characterization.py | python -m json.tool
 ```
 
-ASS Flow owns no executor or runtime contract. Its historical sequential-flow
+Hedloom Flow owns no executor or runtime contract. Its historical sequential-flow
 convenience proposal is inactive and recorded only in the component
-[archive](ass-flow/docs/archive/sequential-flow-convenience.md).
+[archive](hedloom-flow/docs/archive/sequential-flow-convenience.md).
 
 ## OTA/PVT reference: a Plan, and a real execution binding
 
 [`docs/reference/ota-pvt-plan/`](docs/reference/ota-pvt-plan/) contains one
-root-owned cross-unit reference that exercises ASS Flow against realistic
+root-owned cross-unit reference that exercises Hedloom Flow against realistic
 preparation, canonicalization, decomposition, simulation, measurement, and
 evaluation boundaries. `ota_pvt_plan.py` builds a validated, inspectable
 static Plan for three ordered PVT points; its six declared operations still
@@ -118,7 +118,7 @@ refuse execution, which is the right shape for a document meant to be
 inspected without acquiring runtime meaning. Build it for inspection with:
 
 ```console
-PYTHONPATH=ass-flow/src python docs/reference/ota-pvt-plan/ota_pvt_plan.py \
+PYTHONPATH=hedloom/flow/src python docs/reference/ota-pvt-plan/ota_pvt_plan.py \
   | python -m json.tool
 ```
 
@@ -126,13 +126,13 @@ A companion binding, `run_study.py`, now runs that exact Plan for real: real
 Sidecar Edits rendering, real SPICE Canonical extraction, real Netlist
 Decomposition, real `ngspice` AC simulation, measurements computed from the
 real raw waveform, and a real spec-limit check, through unmodified
-`ass-exec`/`ass-run`. It is a companion script beside the Plan declaration,
-in the same shape as `ass-exec/examples/planned_characterization.py`, not a
-change to ASS Flow and not a fifth component or reusable OTA-study API. Run
+`hedloom-exec`/`hedloom-run`. It is a companion script beside the Plan declaration,
+in the same shape as `hedloom-exec/examples/planned_characterization.py`, not a
+change to Hedloom Flow and not a fifth component or reusable OTA-study API. Run
 it with:
 
 ```console
-PYTHONPATH=ass-flow/src:ass-run/src:ass-exec/src:sidecar-edits/src:\
+PYTHONPATH=hedloom/flow/src:hedloom/run/src:hedloom/exec/src:sidecar-edits/src:\
 spice-canonical/src:netlist-decomposition/src \
   python docs/reference/ota-pvt-plan/run_study.py
 ```

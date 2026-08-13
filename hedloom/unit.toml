@@ -1,0 +1,15 @@
+schema_version = 1
+
+[unit]
+id = "hedloom"
+name = "Hedloom"
+ontology = "ONTOLOGY.md"
+children = ["flow", "exec", "run"]
+
+[workflows]
+test = ["python", "-m", "pytest", "-q", "tests"]
+
+[docs]
+source = "docs"
+index = "index.md"
+resources = ["examples"]

@@ -13,7 +13,7 @@ duplicated: this environment adds diagnostics, it does not fork the runtime.
 | package | what it unlocks |
 | --- | --- |
 | `bokeh` | the Dask dashboard, and `distributed.performance_report(...)` |
-| `graphviz` | `ass.visualize.render(...)`; also needs a system `dot` |
+| `graphviz` | `hedloom.visualize.render(...)`; also needs a system `dot` |
 
 Run anything that needs them with `.toolchain/venv/bin/python`. The test suite
 and both example studies run on plain `python` and do not need this.

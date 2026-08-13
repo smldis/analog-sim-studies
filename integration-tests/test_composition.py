@@ -121,12 +121,15 @@ def test_repository_tree_has_its_declared_units_and_no_root_src() -> None:
     # the remaining three siblings supply real circuit work.
     assert [child.unit_id for child in unit.children] == [
         "hedloom",
-        "hedloom-exec",
-        "hedloom-flow",
-        "hedloom-run",
         "netlist-decomposition",
         "sidecar-edits",
         "spice-canonical",
+    ]
+    hedloom = next(child for child in unit.children if child.unit_id == "hedloom")
+    assert [child.unit_id for child in hedloom.children] == [
+        "hedloom-exec",
+        "hedloom-flow",
+        "hedloom-run",
     ]
     assert not (ROOT / "src").exists()
     assert not (ROOT / "tests").exists()

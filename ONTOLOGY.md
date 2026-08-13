@@ -3,9 +3,17 @@
 ## Purpose and scope
 
 This repository is the composition node for independently useful analog-design
-capabilities governed by [MANIFESTO.md](MANIFESTO.md). It owns project-wide
-vision, the explicit child-unit contract, aggregate workflows, cross-unit
-integration checks, and documentation that explains how the units compose.
+capabilities and the domain-generic planning and execution core that serves
+analog use cases first, governed by [MANIFESTO.md](MANIFESTO.md). It owns
+project-wide vision, the explicit child-unit contract, aggregate workflows,
+cross-unit integration checks, and documentation that explains how the units
+compose.
+
+The repository name `analog-sim-studies` still states its first and present
+domain, but it is narrower than a composition that now includes a
+domain-generic core. Choosing a wider name is deliberately deferred until the
+core's use beyond analog studies supplies evidence for that name; the need is
+recorded here so the current name is not mistaken for the core's boundary.
 
 Filesystem containment expresses composition only. It grants no inheritance,
 override, precedence, or authority to a child, its parent, or a sibling.
@@ -65,16 +73,15 @@ any affected child ontology.
 
 ## Contributions from children
 
-- `hedloom-flow` contributes generic Python-authored static operation/flow planning
-  and immutable, deterministic Plan IR without executor or runtime authority.
-- `hedloom-exec` contributes the durable lifecycle of one attempt at one planned
-  invocation: identity chosen before submission, an append-only record, atomic
-  terminal publication, and reconciliation. It owns no graph and decides no
-  readiness.
-
-- `hedloom-run` contributes plan traversal: dependency order, readiness, value and
-  address threading between invocations, and failure handling. It owns no
-  attempt record and no Plan.
+- `hedloom` contributes the domain-generic, operator-facing join between
+  authored operations and their execution. Its three children retain their
+  narrower contracts: `hedloom-flow` owns static planning and deterministic
+  Plan IR, `hedloom-exec` owns the durable lifecycle of one attempt, and
+  `hedloom-run` owns plan traversal and readiness.
+- `sidecar-edits` contributes reviewable simulation-directory preparation.
+- `spice-canonical` contributes canonical netlist extraction.
+- `netlist-decomposition` contributes functional block recognition over the
+  canonical representation.
 
 `hedloom-exec` consumes `hedloom-flow`'s schema-2 Plan **document**, not its package.
 The cross-unit contract is therefore the portable plain-data artifact: neither
@@ -85,13 +92,10 @@ produces nor validates one.
 `hedloom-run` depends on `hedloom-exec` as an ordinary Python package, which is the
 honest shape of a consumer: a driver must call `execute`. That is deliberately
 different from the flow-to-exec coupling, which stays document-only so that
-planning cannot acquire executor knowledge. There is no top-level package and
-no unified source tree; the units compose through `unit.toml` and
-`composition.py`, and each remains independently installable.
-- `sidecar-edits` contributes reviewable simulation-directory preparation.
-- `spice-canonical` contributes canonical netlist extraction.
-- `netlist-decomposition` contributes functional block recognition over the
-  canonical representation.
+planning cannot acquire executor knowledge. Hedloom provides an operator-facing
+package over those contracts, while the composition root has no unified source
+tree or package distribution; units compose through `unit.toml` and
+`composition.py`, and each distribution remains independently installable.
 
 These contributions compose into the larger vision. Flow execution is now
 partly owned. `hedloom-flow` and `hedloom-exec` together deliver one runnable vertical
@@ -125,7 +129,9 @@ must use the current four implementations.
 
 ## Child composition
 
-The immediate children are authored in `unit.toml`. A future child may declare
-children with the same contract; the loader and test traversal already recurse.
-Deeper documentation composition can extend the same explicit source contract
-when a real nested unit requires it.
+The immediate children authored in `unit.toml` are `hedloom`, `sidecar-edits`,
+`spice-canonical`, and `netlist-decomposition`. Hedloom in turn declares its
+three constituent units. A future child may declare children with the same
+contract; the loader and test traversal already recurse. Deeper documentation
+composition can extend the same explicit source contract when a real nested
+unit requires it.

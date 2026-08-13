@@ -111,4 +111,7 @@ missed one costs correctness, but it is a limitation rather than a property.
 
 ## Child composition
 
-There are currently no child units.
+The immediate children are `hedloom-flow`, `hedloom-exec`, and `hedloom-run`,
+authored as `flow`, `exec`, and `run` in `unit.toml`. Their composition is the
+operator-facing join this ontology owns; containment grants Hedloom no
+authority over the narrower contracts each child retains.

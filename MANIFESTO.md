@@ -11,6 +11,12 @@ composition of narrow, independent modules. We favor composition over
 inheritance because explicit boundaries make the system easier to maintain,
 test, replace, and extend.
 
+The planning and execution core is deliberately domain-generic: Hedloom carries
+no analog-specific meaning in its planning, attempt, or run contracts. Analog
+simulation studies are its first use case and remain this system's proving
+ground; keeping that core generic serves the analog vision without baking one
+domain into reusable execution machinery.
+
 Plain files and CLI-first interfaces make the same capabilities available to
 an engineer at a shell, a CI job, a script, or an agent. Operations should be
 low-latency, scriptable, and reviewable in version control. Authored intent

@@ -1,12 +1,12 @@
 [submodule "sidecar-edits"]
 	path = sidecar-edits
-	url = /home/smldis/working/AI/repos/sidecar-edits.git
+	url = https://github.com/smldis/sidecar-edits.git
 [submodule "spice-canonical"]
 	path = spice-canonical
-	url = /home/smldis/working/AI/repos/spice-canonical.git
+	url = https://github.com/smldis/spice-canonical.git
 [submodule "netlist-decomposition"]
 	path = netlist-decomposition
-	url = /home/smldis/working/AI/repos/netlist-decomposition.git
+	url = https://github.com/smldis/netlist-decomposition.git
 [submodule "hedloom"]
 	path = hedloom
-	url = /home/smldis/working/AI/repos/hedloom.git
+	url = https://github.com/smldis/hedloom.git

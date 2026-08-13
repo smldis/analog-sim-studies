@@ -7,3 +7,6 @@
 [submodule "netlist-decomposition"]
 	path = netlist-decomposition
 	url = /home/smldis/working/AI/repos/netlist-decomposition.git
+[submodule "hedloom"]
+	path = hedloom
+	url = /home/smldis/working/AI/repos/hedloom.git

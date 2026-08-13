@@ -4,3 +4,6 @@
 [submodule "spice-canonical"]
 	path = spice-canonical
 	url = /home/smldis/working/AI/repos/spice-canonical.git
+[submodule "netlist-decomposition"]
+	path = netlist-decomposition
+	url = /home/smldis/working/AI/repos/netlist-decomposition.git

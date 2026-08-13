@@ -46,7 +46,9 @@ any affected child ontology.
   relative paths.
 - `composition.py` validates declarations, renders the ontology tree, composes
   child tests with parent integration tests, and builds aggregate docs from
-  child-owned sources.
+  every descendant's owned sources. Descendant documentation is staged by its
+  stable unit ID so cross-unit links do not depend on repository nesting;
+  generated `_runs` evidence is excluded from that authored-documentation view.
 - Child public Python and CLI contracts remain owned and versioned by their
   units.
 - Root integration checks may verify explicit relationships such as
@@ -132,6 +134,4 @@ must use the current four implementations.
 The immediate children authored in `unit.toml` are `hedloom`, `sidecar-edits`,
 `spice-canonical`, and `netlist-decomposition`. Hedloom in turn declares its
 three constituent units. A future child may declare children with the same
-contract; the loader and test traversal already recurse. Deeper documentation
-composition can extend the same explicit source contract when a real nested
-unit requires it.
+contract; the loader, test traversal, and documentation composition recurse.

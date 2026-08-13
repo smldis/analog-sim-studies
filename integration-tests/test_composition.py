@@ -36,12 +36,16 @@ def write_unit(
     *,
     children: tuple[str, ...] = (),
     test_command: tuple[str, ...] | None = None,
+    docs: bool = False,
 ) -> None:
     root.mkdir(parents=True)
     (root / "ONTOLOGY.md").write_text(f"# {unit_id}\n", encoding="utf-8")
     child_text = ", ".join(repr(child) for child in children)
     workflow = (
         f"\n[workflows]\ntest = {list(test_command)!r}\n" if test_command else ""
+    )
+    docs_contract = (
+        '\n[docs]\nsource = "docs"\nindex = "index.md"\n' if docs else ""
     )
     (root / "unit.toml").write_text(
         "\n".join(
@@ -53,10 +57,16 @@ def write_unit(
                 'ontology = "ONTOLOGY.md"',
                 f"children = [{child_text}]",
                 workflow,
+                docs_contract,
             ]
         ),
         encoding="utf-8",
     )
+    if docs:
+        (root / "docs").mkdir()
+        (root / "docs" / "index.md").write_text(
+            f"# {unit_id}\n", encoding="utf-8"
+        )
 
 
 def test_discovery_is_deterministic_by_child_id(tmp_path: Path) -> None:
@@ -112,6 +122,28 @@ def test_child_command_failure_propagates_and_stops_parent(tmp_path: Path) -> No
 
     assert composition.run_tests(composition.load_unit(tmp_path / "root")) == 7
     assert not marker.exists()
+
+
+def test_docs_stage_includes_nested_units_and_links_them(tmp_path: Path) -> None:
+    root = tmp_path / "root"
+    write_unit(root, "root", children=("parent",), docs=True)
+    write_unit(
+        root / "parent", "parent", children=("nested",), docs=True
+    )
+    write_unit(root / "parent" / "nested", "nested", docs=True)
+    run_artifact = root / "parent" / "nested" / "docs" / "_runs" / "report.md"
+    run_artifact.parent.mkdir()
+    run_artifact.write_text("# Not documentation\n", encoding="utf-8")
+
+    stage = tmp_path / "stage"
+    composition.stage_docs(composition.load_unit(root), stage)
+
+    assert (stage / "children" / "parent" / "docs" / "index.md").is_file()
+    assert (stage / "children" / "nested" / "docs" / "index.md").is_file()
+    assert not (stage / "children" / "nested" / "docs" / "_runs").exists()
+    composed = (stage / "_composed-children.md").read_text(encoding="utf-8")
+    assert "parent <children/parent/docs/index.md>" in composed
+    assert "nested <children/nested/docs/index.md>" in composed
 
 
 def test_repository_tree_has_its_declared_units_and_no_root_src() -> None:

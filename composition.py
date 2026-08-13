@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import tomllib
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Sequence
@@ -182,6 +183,14 @@ def ontology_lines(unit: Unit, prefix: str = "") -> list[str]:
     return lines
 
 
+def descendants(unit: Unit) -> Iterator[Unit]:
+    """Yield every contained unit in deterministic pre-order."""
+
+    for child in unit.children:
+        yield child
+        yield from descendants(child)
+
+
 def run_tests(unit: Unit) -> int:
     """Run descendant tests postorder, then this node's integration tests."""
 
@@ -197,7 +206,9 @@ def run_tests(unit: Unit) -> int:
 
 def _copy_path(source: Path, target: Path) -> None:
     if source.is_dir():
-        shutil.copytree(source, target, ignore=shutil.ignore_patterns("_build"))
+        shutil.copytree(
+            source, target, ignore=shutil.ignore_patterns("_build", "_runs")
+        )
     else:
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
@@ -213,18 +224,24 @@ def stage_docs(unit: Unit, stage: Path) -> None:
     stage.mkdir(parents=True)
 
     for source in sorted(unit.docs.source.iterdir(), key=lambda path: path.name):
-        if source.name in {"_build", "conf.py"}:
+        if source.name in {"_build", "_runs", "conf.py"}:
             continue
         _copy_path(source, stage / source.name)
     for resource in unit.docs.resources:
         _copy_path(resource, stage.parent / resource.name)
 
     child_entries: list[tuple[str, str]] = []
-    for child in unit.children:
+    staged_ids: set[str] = set()
+    for child in descendants(unit):
         if child.docs is None:
             raise CompositionError(
                 f"{child.root / MANIFEST_NAME}: child has no [docs] contract"
             )
+        if child.unit_id in staged_ids:
+            raise CompositionError(
+                f"duplicate descendant unit ID cannot be staged: {child.unit_id}"
+            )
+        staged_ids.add(child.unit_id)
         child_stage = stage / "children" / child.unit_id
         _copy_path(child.docs.source, child_stage / child.docs.source.name)
         for resource in child.docs.resources:
@@ -233,14 +250,14 @@ def stage_docs(unit: Unit, stage: Path) -> None:
         child_entries.append((child.name, f"children/{child.unit_id}/{child_index}"))
 
     generated = [
-        "# Composed child documentation",
+        "# Composed unit documentation",
         "",
-        "This page is generated from the immediate child declarations in `unit.toml`.",
-        "The linked sources remain owned by their child units.",
+        "This page is generated recursively from the child declarations in `unit.toml`.",
+        "The linked sources remain owned by their respective units.",
         "",
         "```{toctree}",
         ":maxdepth: 2",
-        ":caption: Child units",
+        ":caption: Units",
         "",
     ]
     generated.extend(f"{name} <{target}>" for name, target in child_entries)

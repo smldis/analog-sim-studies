@@ -64,9 +64,9 @@ python composition.py docs
 `test` walks children postorder, running each child's owned tests before the
 root integration checks. Failures stop composition and retain the child's exit
 status. `docs` creates an ignored, generated Sphinx source view under `build/`;
-it links each immediate child's authored docs, adds the root-owned pages, and
-builds `build/docs/html/`. No child documentation is copied into maintained root
-source.
+it links every descendant's authored docs by stable unit ID, adds the root-owned
+pages, excludes generated `_runs` evidence, and builds `build/docs/html/`. No
+child documentation is copied into maintained root source.
 
 This proves the convention at the root and one child level. The manifest and
 tree loader are recursive, but no generic plugin framework or nested repository

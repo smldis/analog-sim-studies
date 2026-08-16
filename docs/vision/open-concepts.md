@@ -40,13 +40,15 @@ altered by evidence), **deferred** (still wanted, not started), **dropped**
 | Concept | Trigger to revisit |
 | --- | --- |
 | Pooled LSF via `dask_jobqueue.LSFCluster` | **Many short invocations**, where per-job queue dispatch costs more than the work. Not "many invocations": one job each is a good fit for long-running corners regardless of count, and it buys per-corner resource requests, `bkill`, accounting, licence arbitration and failure isolation. `LSFPooledTransport` refuses today. |
-| ~~Concurrency in the driver~~ **Answered by adopting Dask.** | It is `threads_per_worker` on the cluster, and no code in `hedloom-run` owns it. Measured 2026-08-04: a waiting invocation costs ~16 KiB of thread plus one client process, so this is a safety rail rather than a scheduler feature, and the real limiter is the site's MAX JOB policy, per-user process limits, and the licence count. Ask for those numbers rather than inventing one. |
-| ~~Per-job status: a `bjobs` watcher and a sweep view~~ **Built as `hedloom_exec.watch`.** | One `bjobs -o "job_name stat"` per refresh for every live attempt, transitions appended to an `observations.jsonl` beside each record, and `examples/watch_sweep.py` as a terminal view. An observation is evidence about an attempt, never a transition of it, so the observer writes its own file and cannot change an outcome. **Queue latency is now derivable** — the gap between `submit_intent` and the first `running` observation is the per-job dispatch cost the pooled-versus-direct question needs. What is still missing is a real farm: the parsing has never met one, `lsf_preflight.py` checks that `-o` exists, and default `bjobs` output is refused rather than parsed because its columns shift for pending jobs. |
-| ~~Unified flow-level `submit()`~~ **Built as the `hedloom` unit (2026-08-04).** | One file authors and runs a study. The operation body is the implementation and receives `out`, a workspace of its declared file outputs; returning `shell(...)` makes it a launcher whose command runs at the invocation's placement; `sweep(points, key=...)` keys every call inside the loop; the Plan (now schema 3) records each operation's entry point and a fingerprint of its source, so an edited body reruns the work it produced and `operation_version` stops being a promise someone has to remember; declared output bindings live on the operation, retiring the run-time `outputs=` dict; `Site` holds placements, roots, address spaces and threads. Evidence: `hedloom/examples/rc_corners.py` runs three RC corners on real ngspice, reuses all ten invocations on a second run, reruns one corner when its temperature changes, and reruns every use of an operation when its body changes. `hedloom-exec` still imports neither `hedloom_flow` nor Dask. Not yet met: a farm — every placement exercised so far is `local`, so `shell` reaching a `bsub -I` job is designed and untested. |
+| ~~Concurrency in the driver~~ **Answered by adopting Dask; placement budgets built 2026-08-16.** | `Site.placements` now owns one in-flight cap per placement. `cluster_for(site)` derives one in-process `SpecCluster` worker per placement, with `nthreads` and `resources={"placement:<name>": cap}` from the same number; `[kernel] threads` is local concurrency only. A waiting invocation still costs ~16 KiB of thread plus one client process, so the farm cap remains a courtesy rail set from the site's MAX JOB policy and submit-host process limits, not a number to invent. |
+| ~~Per-job status: a `bjobs` watcher and a sweep view~~ **Built as `hedloom_exec.watch`.** | One `bjobs -o "job_name stat"` per refresh for every live attempt, transitions appended to an `observations.jsonl` beside each record, and `examples/watch_sweep.py` as a terminal view. An observation is evidence about an attempt, never a transition of it, so the observer writes its own file and cannot change an outcome. A journal now records `transport` (who submitted) and `substrate` (where the work lands) separately, fixing 2026-08-16 a defect that made the watcher blind to the supported study path: it matched `"lsf-interactive"` while façade journals recorded only `"bound:lsf-interactive"`, and an empty sweep is indistinguishable from a finished one. Queue latency is derivable once the parser is exercised on a real farm; default `bjobs` output remains deliberately refused because its columns shift for pending jobs. |
+| ~~Unified flow-level `submit()`~~ **Built as the `hedloom` unit (2026-08-04).** | One file authors and runs a study. The operation body is the implementation and receives `out`, a workspace of its declared file outputs; returning `shell(...)` makes it a launcher whose command runs at the invocation's placement; `sweep(points, key=...)` keys every call inside the loop; the Plan (now schema 3) records each operation's entry point and a fingerprint of its source, so an edited body reruns the work it produced and `operation_version` stops being a promise someone has to remember; declared output bindings live on the operation, retiring the run-time `outputs=` dict; `Site` holds placements, roots, address spaces and threads. Evidence: `hedloom/examples/rc_corners.py` covers local ngspice, identity and reuse, and `examples/farm_smoke.py` has reached a real farm through the sequential kernel. `hedloom-exec` still imports neither `hedloom_flow` nor Dask. Not yet met: a concurrent Dask run through an LSF-shaped transport. |
 | One-scheduler mixed topology (labelled local, direct-gateway, pooled workers) | Requires pooled mode first; must be demonstrated, not assumed, since `LSFCluster` normally owns its own scheduler. See "What \"both slots\" must not be allowed to mean" below for why mixed, rather than wholly pooled, is the preferred shape. |
 | Delayed versus Futures comparison (evidence ladder 4) | **Now live, since Dask is the driver.** `hedloom_run.graph` uses Futures — `client.submit` with explicit keys, `pure=False`, and `as_completed` for live events — while `hedloom_flow.experimental.local_dask` lowers to Delayed. Futures were chosen for keys an operator can recognise and for reporting as work completes; whether Delayed would express the graph better is untested. |
-| Real direct-LSF smoke test (evidence ladder 6) | Site access. `examples/lsf_preflight.py` is ready; not runnable now. |
+| ~~Real direct-LSF smoke test (evidence ladder 6)~~ **Built through the sequential kernel.** | `examples/farm_smoke.py` passed on the real farm, validating `bsub -I`, artifact chaining, failure recording and reuse. It did not exercise Dask, concurrency, or queue-wait observability; graph kernel × LSF-shaped transport remains open. |
 | Plugins and declarative flow configuration | A concrete multi-repository or non-Python authoring need. |
+| **NFS is being used as a synchronization mechanism, and it may not be one** | **Raised 2026-08-16 (user), unreviewed.** `AttemptJournal.claim` holds an advisory `flock` on a file in the attempt directory, and the whole single-writer argument rests on that lock being honoured. Over NFS it may silently not be: `local_lock=flock`/`local_lock=all`, or NFSv3 `-o nolock`, make it node-local, and NFSv4 locks are leases a partitioned client can lose while believing it holds one — `flock()` returns success in every case. The consequence is not only duplicate `bsub` jobs for one identity: `events.jsonl` is appended with `O_APPEND`, which NFS does **not** make atomic, so a degraded lock can interleave or overwrite the record every recovery, reuse and identity decision is read back from. Manifest publication is unaffected — `rename()` is atomic on NFS. Not reachable today (one process, in-process cluster, and two opens in one process do contend correctly); reachable the moment two controllers share a root, or pooled placement writes journals from farm nodes. Options, cheapest first: probe `/proc/mounts` at run start and refuse a root whose mount cannot honour the lock; replace `flock` with the `link()`-plus-`st_nlink` idiom that holds on v3 and v4; partition roots per controller (costs cross-run reuse). Full write-up in the `DEVNOTE/TODO` block on `hedloom_exec.journal.AttemptJournal.claim`. Trigger to revisit: **before any second controller, any pooled placement, or any farm run whose study root is on NFS.** |
+| Retry policy for indeterminate transport failures | **Delayed (2026-08-16).** `_run_one` catches both `AttemptError` and `TransportError` and returns an outcome, so Dask's own `retries=` can never fire and a transient `bsub` hiccup fails a corner permanently, blocking its dependents, with nothing in the report distinguishing it from a diverged simulation. Dask retries would in fact be *safe* here — identity is chosen before submission and content-addressed, so a re-executed task re-enters `launch_or_attach` and resolves to `attached` rather than duplicating a job — but the policy belongs in `hedloom_exec`, which is the only layer that can tell `SubmissionRefused` (definitely nothing accepted, safe to resubmit) from `TransportError` (indeterminate). Trigger to revisit: the first farm run where a transient submission failure costs a corner. |
 | Artifact checksums and provenance | Deliberate: hashing multi-GB raw files every run is a real cost, and mtime plus size is the cheap staleness signal. Revisit if mtime proves unreliable on NFS. |
 
 ## Dropped without a decision — recovered here
@@ -99,17 +101,18 @@ These fell out during direct development. None was rejected on merit.
   `lsf-direct` blocks on its own `bsub -I` so per-corner `rusage`, `bkill` and
   accounting survive, and `lsf-pool` still refuses. Adopting Dask for readiness
   did *not* route work through pooled workers, and must not.
-- **The recommended cluster is local and threaded** on the submit host:
-  `LocalCluster(processes=False, threads_per_worker=N)`. No nanny to restart a
-  worker holding live clients, and nothing secedes, so a worker with jobs in
-  flight reads as running.
+- **The recommended cluster is local and threaded** on the submit host, built
+  by `cluster_for(site)` as an in-process `SpecCluster` with one `Worker` per
+  placement. Each worker's `nthreads` is derived from that placement's cap; no
+  nanny may restart a worker holding live clients, and nothing secedes, so a
+  worker with jobs in flight reads as running.
 - **`hedloom-exec` stays Dask-free**, which is what keeps this reversible. It has
   already been reversed twice.
 
 Two things the adoption did not resolve. Per-job status still needs the `bjobs`
-watcher — Dask cannot see `PEND`. And the sequential kernel is retained rather
-than deleted: it is the reference that keeps the graph kernel honest, and the
-test that matters is that the two agree on identity and value.
+watcher — Dask cannot see `PEND`, and it has still never met a real farm. And
+the sequential kernel is retained rather than deleted: it is the reference that keeps the graph kernel
+honest, and the test that matters is that the two agree on identity and value.
 
 **Measured while implementing, and worth recording because it contradicts what
 was assumed:** Dask serializes every task even on an in-process cluster, so a
@@ -281,9 +284,9 @@ a pool.
 - **Scale.** If the OTA/PVT study turns out to be a few dozen corners of several
   minutes each, a thread pool and a watcher are enough, and the dependency buys
   ceremony. This is the observation that decides, and it does not exist yet.
-- **Mixed topology proving awkward.** A local cluster for readiness plus a
-  separate `LSFCluster` used as a transport is two clusters in one process; that
-  it composes cleanly is assumed, not demonstrated.
+- **Mixed topology proving awkward.** The in-process `SpecCluster` for readiness
+  plus a separate `LSFCluster` used as a transport is two clusters in one
+  process; that it composes cleanly is assumed, not demonstrated.
 
 ### The tripwire, revised
 
@@ -543,9 +546,35 @@ binds first and silently; and the farm worker must be in-process (`cls=Worker`,
 no nanny), because a nanny restarting it under memory pressure would take its
 `bsub -I` clients and, under owner-bound lifetime, that many running farm jobs.
 
-Not built. `Site.cluster_spec()`, `resources=` on the kernel's `client.submit`,
-and a refusal when a caller-supplied client does not offer the declared
-resources.
+**Built 2026-08-16**, with one correction to the resolution above.
+
+`Site.placements` reads `max_jobs` per placement and refuses an uncapped LSF
+one; `Site.cluster_spec()` derives one in-process worker per placement, its
+`nthreads` taken from that cap; `hedloom_run.cluster.spec_cluster` builds them
+through `SpecCluster`, since `LocalCluster` applies one recipe to every worker
+and cannot express two that differ. `run_plan_graph` annotates every task with
+`resources={"placement:<name>": 1}` and refuses, before submitting anything, a
+cluster that declares no capacity for a placement the plan uses.
+
+**The correction: routing only the farm jobs is not enough.** A task carrying no
+resource is not weakly preferred anywhere — it is legal on *every* worker
+(`valid_workers` returns `None`, scheduler.py:3202), so the scheduler may place
+local work on the farm worker, and work stealing will keep moving it there for
+the whole run: restrictions are strictly enforced during a steal, and a task
+with none has nothing to enforce. The farm worker's threads are the farm's
+in-flight budget, so a local invocation holding one is a `bsub -I` that cannot
+start while its capacity sits unused. Annotating *every* task, `local` included,
+is what makes that unrepresentable — and it is also what makes stealing safe to
+leave switched on.
+
+Two smaller things found while building it. Task keys were `corner-digest`, so
+every task was its own Dask prefix, no duration average was ever learned, and
+every estimate fell back to a flat 500 ms — the number the scheduler uses to
+decide which worker is least busy and what is worth stealing; keys are now
+`operation-corner-digest`. And a placement the *run* cannot serve is deliberately
+left unannotated, because it is refused per invocation by `select_transport`
+exactly as under the sequential kernel: annotating it would hang it instead, and
+the two kernels must not disagree about a plan.
 
 ### Deferred, wanted: an async LSF transport
 

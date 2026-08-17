@@ -3,8 +3,11 @@ members = ["spice-canonical", "netlist-decomposition", "sidecar-edits"]
 exclude = ["hedloom"]
 
 [dependency-groups]
+# bokeh is here for the same reason it is in hedloom's own dev group:
+# dependency groups are not transitive, so this venv would otherwise
+# skip the cluster test that needs a dashboard to exist at all.
 dev = ["hedloom[dask,pooled]", "spice-canonical", "netlist-decomposition",
-       "sidecar-edits[docs]",
+       "sidecar-edits[docs]", "bokeh",
        "build", "pytest", "setuptools>=69", "wheel"]
 
 [tool.uv.dependency-groups]

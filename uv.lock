@@ -437,7 +437,7 @@ pooled = [
 
 [package.metadata]
 requires-dist = [
-    { name = "distributed", marker = "extra == 'dask'", specifier = "==2026.7.1" },
+    { name = "distributed", marker = "extra == 'dask'", specifier = ">=2023.9.2" },
     { name = "hedloom-exec", editable = "hedloom/exec" },
     { name = "hedloom-flow", editable = "hedloom/flow" },
     { name = "hedloom-run", editable = "hedloom/run" },
@@ -448,6 +448,7 @@ provides-extras = ["dask", "pooled"]
 [package.metadata.requires-dev]
 dev = [
     { name = "hedloom-flow", extras = ["dask"], editable = "hedloom/flow" },
+    { name = "hedloom-run", extras = ["pooled"], editable = "hedloom/run" },
     { name = "pytest" },
     { name = "setuptools", specifier = ">=69" },
 ]
@@ -483,7 +484,7 @@ pooled = [
 [package.metadata]
 requires-dist = [
     { name = "dask-jobqueue", marker = "extra == 'pooled'", specifier = ">=0.9" },
-    { name = "distributed", marker = "extra == 'dask'", specifier = "==2026.7.1" },
+    { name = "distributed", marker = "extra == 'dask'", specifier = ">=2023.9.2" },
     { name = "hedloom-exec", editable = "hedloom/exec" },
     { name = "hedloom-run", extras = ["dask"], marker = "extra == 'pooled'", editable = "hedloom/run" },
 ]

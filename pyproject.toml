@@ -3,7 +3,7 @@ members = ["spice-canonical", "netlist-decomposition", "sidecar-edits"]
 exclude = ["hedloom"]
 
 [dependency-groups]
-dev = ["hedloom[dask]", "spice-canonical", "netlist-decomposition",
+dev = ["hedloom[dask,pooled]", "spice-canonical", "netlist-decomposition",
        "sidecar-edits[docs]",
        "build", "pytest", "setuptools>=69", "wheel"]
 

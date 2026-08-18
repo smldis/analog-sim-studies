@@ -138,7 +138,7 @@ EXPECTED_OPERATION_CONTRACTS = {
             "temp_c": (int, True),
             "vdd_v": (float, True),
         },
-        "outputs": {"run": ("prepared-simulation-directory", None)},
+        "outputs": {"run": "prepared-simulation-directory"},
         "resources": (("cpu_cores", 1, "count"),),
     },
     "reference.ota_pvt.canonicalize_deck": {
@@ -151,7 +151,7 @@ EXPECTED_OPERATION_CONTRACTS = {
             "spice_format": (str, True),
             "top_name": (str, True),
         },
-        "outputs": {"canonical": ("canonical-netlist", None)},
+        "outputs": {"canonical": "canonical-netlist"},
         "resources": (),
     },
     "reference.ota_pvt.decompose_ota": {
@@ -166,7 +166,7 @@ EXPECTED_OPERATION_CONTRACTS = {
             "vdd_nets": (list, True),
             "vss_nets": (list, True),
         },
-        "outputs": {"decomposition": ("ota-functional-decomposition", None)},
+        "outputs": {"decomposition": "ota-functional-decomposition"},
         "resources": (("cpu_cores", 1, "count"),),
     },
     "reference.ota_pvt.simulate_ac": {
@@ -182,7 +182,7 @@ EXPECTED_OPERATION_CONTRACTS = {
             "temp_c": (int, True),
             "vdd_v": (float, True),
         },
-        "outputs": {"raw": ("simulator-raw-results", None)},
+        "outputs": {"raw": "simulator-raw-results"},
         "resources": (
             ("cpu_cores", 1, "count"),
             ("memory_gib", 1, "GiB"),
@@ -195,7 +195,7 @@ EXPECTED_OPERATION_CONTRACTS = {
             "raw": ("simulator-raw-results", "scalar", True),
         },
         "config": {"point_id": (str, True)},
-        "outputs": {"measurements": ("ota-point-measurements", None)},
+        "outputs": {"measurements": "ota-point-measurements"},
         "resources": (),
     },
     "reference.ota_pvt.evaluate_pvt": {
@@ -210,7 +210,7 @@ EXPECTED_OPERATION_CONTRACTS = {
             "measurements": ("ota-point-measurements", "collection", True),
         },
         "config": {"point_ids": (list, True)},
-        "outputs": {"evaluation": ("ota-pvt-evaluation", None)},
+        "outputs": {"evaluation": "ota-pvt-evaluation"},
         "resources": (),
     },
 }
@@ -269,10 +269,7 @@ def _operation_contract(definition):
             for contract in definition.config
         },
         "outputs": {
-            contract.name: (
-                contract.artifact.kind,
-                contract.can_materialize_as,
-            )
+            contract.name: contract.artifact.kind
             for contract in definition.outputs
         },
         "resources": tuple(
@@ -467,16 +464,6 @@ def test_sources_declare_exact_data_only_representations_and_value_classes():
     assert all(
         edge["source"]["value_class"] == "ephemeral"
         for edge in serialized["edges"]
-    )
-    assert all(
-        output.can_materialize_as is None
-        for operation_definition in normalized.operations
-        for output in operation_definition.outputs
-    )
-    assert all(
-        output["can_materialize_as"] is None
-        for operation_definition in serialized["operations"]
-        for output in operation_definition["outputs"]
     )
     assert all(
         output.reference.value_class == "ephemeral"

@@ -9,10 +9,8 @@ from hedloom_flow import (
     address,
     artifact,
     artifacts,
-    codec,
     flow,
     input_artifact,
-    materialization,
     named_policy,
     operation,
     parameter,
@@ -54,24 +52,6 @@ POINT_MEASUREMENTS = artifact("ota-point-measurements")
 SPEC_LIMITS = artifact("ota-specification-limits")
 PVT_EVALUATION = artifact("ota-pvt-evaluation")
 
-DIRECTORY_TREE_V1 = codec("directory-tree", version="1")
-PYTHON_SOURCE_V1 = codec("python-source", version="1", encoding="utf-8")
-JSON_V1 = codec("json", version="1", encoding="utf-8")
-REPOSITORY_DIRECTORY_TREE = materialization(
-    codec=DIRECTORY_TREE_V1,
-    address_space="repository-relative",
-    access_scope="repository-checkout",
-)
-REPOSITORY_PYTHON_SOURCE = materialization(
-    codec=PYTHON_SOURCE_V1,
-    address_space="repository-relative",
-    access_scope="repository-checkout",
-)
-REPOSITORY_JSON = materialization(
-    codec=JSON_V1,
-    address_space="repository-relative",
-    access_scope="repository-checkout",
-)
 
 PLAN_DECLARATION_POLICY = named_policy("reference.plan-only")(
     status="declaration-only"
@@ -310,24 +290,20 @@ def build_plan():
         base = input_artifact(
             address("repository-relative", BASE_DIRECTORY_LOCATOR),
             artifact=SIDE_CAR_BASE,
-            materialized_as=REPOSITORY_DIRECTORY_TREE,
         )
         edits = input_artifact(
             address("repository-relative", PVT_EDITS_LOCATOR),
             artifact=SIDE_CAR_EDITS,
-            materialized_as=REPOSITORY_PYTHON_SOURCE,
         )
         measurement_definition = input_artifact(
             address(
                 "repository-relative", MEASUREMENT_DEFINITION_LOCATOR
             ),
             artifact=MEASUREMENT_DEFINITION,
-            materialized_as=REPOSITORY_JSON,
         )
         limits = input_artifact(
             address("repository-relative", SPEC_LIMITS_LOCATOR),
             artifact=SPEC_LIMITS,
-            materialized_as=REPOSITORY_JSON,
         )
         outputs = plan_study.named("ota-pvt-study")(
             base,

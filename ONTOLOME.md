@@ -120,8 +120,8 @@ of declared artifact and operation boundaries. Its Sidecar, canonicalization,
 and decomposition names are proposed adapter seams; its simulator, measurement,
 and evaluation operations are refusing stubs. The validated Plan is evidence of
 static expressiveness and an addressed-source/ephemeral-edge distinction, not
-evidence that addresses resolve, codecs execute, access succeeds, artifacts are
-published, outputs materialize, or any operation can run.
+evidence that addresses resolve, access succeeds, artifacts are published,
+outputs materialize, or any operation can run.
 
 ## Exclusions
 

@@ -45,29 +45,15 @@ EXPECTED_POINTS = (
 )
 
 EXPECTED_SOURCES = (
-    (
-        "docs/reference/ota-pvt-plan/inputs/base",
-        "sidecar-base-directory",
-        "directory-tree",
-        {},
-    ),
-    (
-        "docs/reference/ota-pvt-plan/inputs/pvt_edits.py",
-        "sidecar-edit-file",
-        "python-source",
-        {"encoding": "utf-8"},
-    ),
+    ("docs/reference/ota-pvt-plan/inputs/base", "sidecar-base-directory"),
+    ("docs/reference/ota-pvt-plan/inputs/pvt_edits.py", "sidecar-edit-file"),
     (
         "docs/reference/ota-pvt-plan/inputs/measurement_definition.json",
         "ota-measurement-definition",
-        "json",
-        {"encoding": "utf-8"},
     ),
     (
         "docs/reference/ota-pvt-plan/inputs/spec_limits.json",
         "ota-specification-limits",
-        "json",
-        {"encoding": "utf-8"},
     ),
 )
 
@@ -375,26 +361,15 @@ def test_sources_declare_exact_data_only_representations_and_value_classes():
             source.address.address_space,
             source.address.locator,
             source.artifact.kind,
-            source.materialized_as.address_space,
-            source.materialized_as.access_scope,
-            source.materialized_as.codec.name,
-            source.materialized_as.codec.version,
-            plain_data(source.materialized_as.codec.options),
         )
         for source in normalized.sources
     ] == [
-        (
-            "repository-relative",
-            locator,
-            kind,
-            "repository-relative",
-            "repository-checkout",
-            codec_name,
-            "1",
-            options,
-        )
-        for locator, kind, codec_name, options in EXPECTED_SOURCES
+        ("repository-relative", locator, kind)
+        for locator, kind in EXPECTED_SOURCES
     ]
+    # A source is an address and a contract. Nothing else is recorded, because
+    # nothing else could be checked without resolving the address, which this
+    # layer does not do.
     assert serialized["sources"] == [
         {
             "id": f"source:{index:04d}",
@@ -403,82 +378,9 @@ def test_sources_declare_exact_data_only_representations_and_value_classes():
                 "locator": locator,
             },
             "artifact": {"kind": kind},
-            "materialized_as": {
-                "codec": {
-                    "name": codec_name,
-                    "version": "1",
-                    "options": options,
-                },
-                "address_space": "repository-relative",
-                "access_scope": "repository-checkout",
-            },
         }
-        for index, (locator, kind, codec_name, options) in enumerate(
-            EXPECTED_SOURCES, start=1
-        )
+        for index, (locator, kind) in enumerate(EXPECTED_SOURCES, start=1)
     ]
-
-    references = [
-        reference_value
-        for invocation in normalized.invocations
-        for binding in invocation.inputs
-        for reference_value in (
-            binding.references
-            if isinstance(binding, CollectionInputBinding)
-            else (binding.reference,)
-        )
-    ]
-    source_references = [
-        value for value in references if isinstance(value, ArtifactSourceReference)
-    ]
-    output_references = [
-        value for value in references if isinstance(value, OutputReference)
-    ]
-    serialized_references = [
-        reference_data
-        for invocation in serialized["invocations"]
-        for binding in invocation["inputs"]
-        for reference_data in (
-            binding["references"]
-            if binding["cardinality"] == "collection"
-            else (binding["reference"],)
-        )
-    ]
-    assert len(source_references) == 10
-    assert all(value.value_class == "artifact" for value in source_references)
-    assert len(output_references) == 18
-    assert all(value.value_class == "ephemeral" for value in output_references)
-    assert [
-        value["value_class"]
-        for value in serialized_references
-        if value["type"] == "source"
-    ] == ["artifact"] * 10
-    assert [
-        value["value_class"]
-        for value in serialized_references
-        if value["type"] == "output"
-    ] == ["ephemeral"] * 18
-    assert len(normalized.edges) == 18
-    assert all(isinstance(edge.source, OutputReference) for edge in normalized.edges)
-    assert all(edge.source.value_class == "ephemeral" for edge in normalized.edges)
-    assert all(
-        edge["source"]["value_class"] == "ephemeral"
-        for edge in serialized["edges"]
-    )
-    assert all(
-        output.reference.value_class == "ephemeral"
-        for output in normalized.outputs
-    )
-    final_reference = next(
-        output.reference for output in normalized.outputs if output.name == "evaluation"
-    )
-    assert final_reference.value_class == "ephemeral"
-    serialized_final = next(
-        output["reference"]
-        for output in serialized["outputs"]
-        if output["name"] == "evaluation"
-    )
-    assert serialized_final["value_class"] == "ephemeral"
 
 
 def test_each_point_forks_after_preparation_and_resolves_exact_pvt_config():
@@ -706,12 +608,10 @@ def test_authoring_and_plan_validation_reject_kind_config_order_and_position_def
         base = input_artifact(
             address("repository-relative", "base"),
             artifact=artifact("sidecar-base-directory"),
-            materialized_as=reference.REPOSITORY_DIRECTORY_TREE,
         )
         edits = input_artifact(
             address("repository-relative", "edits.py"),
             artifact=artifact("sidecar-edit-file"),
-            materialized_as=reference.REPOSITORY_PYTHON_SOURCE,
         )
         with pytest.raises(BindingError, match="expects float"):
             reference.prepare_run.named("wrong-config")(

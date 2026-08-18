@@ -62,12 +62,10 @@ from hedloom import (  # noqa: E402
     address,
     artifact,
     artifacts,
-    codec,
     file,
     flow,
     input_artifact,
     local,
-    materialization,
     operation,
     parameter,
     returned,
@@ -125,21 +123,6 @@ MEASUREMENT_DEFINITION = artifact("ota-measurement-definition")
 POINT_MEASUREMENTS = artifact("ota-point-measurements")
 SPEC_LIMITS = artifact("ota-specification-limits")
 
-REPOSITORY_DIRECTORY_TREE = materialization(
-    codec=codec("directory-tree", version="1"),
-    address_space="repository-relative",
-    access_scope="repository-checkout",
-)
-REPOSITORY_PYTHON_SOURCE = materialization(
-    codec=codec("python-source", version="1", encoding="utf-8"),
-    address_space="repository-relative",
-    access_scope="repository-checkout",
-)
-REPOSITORY_JSON = materialization(
-    codec=codec("json", version="1", encoding="utf-8"),
-    address_space="repository-relative",
-    access_scope="repository-checkout",
-)
 
 
 # ---------------------------------------------------------------------------
@@ -414,22 +397,18 @@ def pvt(points=PVT_POINTS):
         input_artifact(
             address("repository-relative", BASE_DIRECTORY_LOCATOR),
             artifact=SIDE_CAR_BASE,
-            materialized_as=REPOSITORY_DIRECTORY_TREE,
         ),
         input_artifact(
             address("repository-relative", PVT_EDITS_LOCATOR),
             artifact=SIDE_CAR_EDITS,
-            materialized_as=REPOSITORY_PYTHON_SOURCE,
         ),
         input_artifact(
             address("repository-relative", MEASUREMENT_DEFINITION_LOCATOR),
             artifact=MEASUREMENT_DEFINITION,
-            materialized_as=REPOSITORY_JSON,
         ),
         input_artifact(
             address("repository-relative", SPEC_LIMITS_LOCATOR),
             artifact=SPEC_LIMITS,
-            materialized_as=REPOSITORY_JSON,
         ),
         points,
     )

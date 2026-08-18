@@ -66,17 +66,15 @@ PYTHONPATH=hedloom/flow/src python docs/reference/ota-pvt-plan/ota_pvt_plan.py \
 The versioned `inputs/` files are descriptive authored sources. In particular,
 `pvt_edits.py` is a typed Sidecar Edits input with the same ordered values as
 the Python declaration, but the Plan module neither imports nor calls Sidecar
-Edits. Schema-2 source declarations record repository-relative addresses and a
-repository-checkout access assumption. The base directory uses a directory-tree
-codec contract; the edit file uses Python-source/UTF-8; the measurement
-definition and limits use JSON/UTF-8. These are data-only declarations: this
-reference does not resolve an address, execute a codec, or check accessibility.
-No generated Plan JSON is maintained.
+Edits. Source declarations record a repository-relative address and an
+artifact contract, and nothing further: anything more would be a claim about
+bytes this layer never opens. These are data-only declarations, so this
+reference does not resolve an address or check accessibility. No generated Plan
+JSON is maintained.
 
 All six operations retain their original logical artifact contracts and
-version `1`. No output advertises a materialization capability because the
-reference has no real output codec. Consequently all 18 operation-output edges
-and the final evaluation reference remain `ephemeral`; only the four external
+version `1`. All 18 operation-output edges and the final evaluation reference
+remain `ephemeral`; only the four external
 source references have value class `artifact`. Nothing published by
 `ota_pvt_plan.py`'s own declarations changes: `value_class` is a planning-time
 fact about the Plan document, not about whether some later binding chooses to

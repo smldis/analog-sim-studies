@@ -15,7 +15,7 @@ was four commits ahead and unpushed, ending at `da2a606 feat: run the OTA
 sign-off study on Dask, with the dashboard open first`. Those four commits are
 exactly the ones the task brief's "Established findings" describe: the Dask
 `LocalCluster`/dashboard/`--fresh`/`SIMULATOR_HOLD_SECONDS` behaviour in
-`hedloom/examples/ota_pvt_clean.py`, and the `hedloom.visualize` module (added in
+`studies/ota_pvt_clean.py`, and the `hedloom.visualize` module (added in
 `0c6d226 feat: recover the Delayed lowering, for looking at a study`). Neither
 existed anywhere in the repository at my worktree's original base commit —
 `grep -r visualize` and `grep -r LocalCluster` both returned nothing.
@@ -139,27 +139,27 @@ enough to certify no other claim has gone stale relative to `hedloom-exec`'s and
 claim against current `hedloom-exec`/`hedloom-run` contracts would be worth doing
 separately.
 
-## 6. `hedloom/ONTOLOGY.md` does not mention `hedloom.visualize` or the Dask cluster example
+## 6. `hedloom/ONTOLOME.md` does not mention `hedloom.visualize` or the Dask cluster example
 
-**What I found.** `hedloom/ONTOLOGY.md`'s "Current contracts" and "Mode of being"
+**What I found.** `hedloom/ONTOLOME.md`'s "Current contracts" and "Mode of being"
 sections describe `study`, `submit`, `Site`, and the two OTA examples, but
 were not updated when `hedloom.visualize` and the Dask-cluster variant of
 `ota_pvt_clean.py` were added (commits `0c6d226` and `da2a606`, both after
-whatever commit last touched `hedloom/ONTOLOGY.md`).
+whatever commit last touched `hedloom/ONTOLOME.md`).
 
 **What I did.** Nothing — the task scoped this pass to `docs/` content and
-docstrings, and `ONTOLOGY.md` files were explicitly background reading
-("Read ... each unit's ONTOLOGY.md ... before writing"), not a stated
+docstrings, and `ONTOLOME.md` files were explicitly background reading
+("Read ... each unit's ONTOLOME.md ... before writing"), not a stated
 deliverable. I did not want to guess at ontology-level language (mode of
 being, evidence claims) under a docs-only mandate.
 
-**Recommendation.** `hedloom/ONTOLOGY.md` should get a short addition recording
+**Recommendation.** `hedloom/ONTOLOME.md` should get a short addition recording
 `hedloom.visualize` as a current contract and the Dask-cluster example as
 `hedloom`'s own evidence that `submit(client=...)` really dispatches to
 `hedloom_run.graph`, the next time someone is doing ontology-owning work on that
 unit.
 
-## 7. Left untouched: `docs/architecture.md`, `ONTOLOGY.md` files, `AGENTS.md` files
+## 7. Left untouched: `docs/architecture.md`, `ONTOLOME.md` files, `AGENTS.md` files
 
 I read all of these as instructed but found no factually false claim in them
 (unlike `hedloom-run/docs/index.md`'s Dask claim and `hedloom/docs/index.md`'s

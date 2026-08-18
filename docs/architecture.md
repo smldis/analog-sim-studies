@@ -18,6 +18,14 @@ each child's original documentation tree. Sphinx reads those owned sources
 directly, so there is no second maintained copy. Generated static HTML is no
 longer tracked because its source and exact build command are reproducible.
 
+Staging moves pages relative to each other — a root page loses its `docs/`
+component, and a child page gains `children/<unit-id>/` — so a relative link
+cannot be correct in both trees at once. **Author the link so it resolves where
+it lives**, which keeps it checkable in an editor and on the forge without
+building anything; the composer restates it for the staged layout. Only
+relative markdown links into files this build stages are moved, so a link that
+is merely broken stays broken and stays a Sphinx warning.
+
 Containment and traversal order do not imply inheritance or precedence.
 Ontologies state semantic responsibility and explicit contributions; manifests
 state executable composition contracts.

@@ -201,7 +201,7 @@ The implementation pass may add only this bounded material:
 - `inputs/spec_limits.json`: explicitly provisional reference limits;
 - `integration-tests/test_ota_pvt_plan_reference.py`: structural, validation,
   determinism, fixture, and no-execution evidence;
-- links/status wording in root `README.md`, `docs/index.md`, and `ONTOLOGY.md`.
+- links/status wording in root `README.md`, `docs/index.md`, and `ONTOLOME.md`.
 
 `unit.toml`, `requirements-dev.txt`, all child packaging and ontologies, Hedloom
 Flow source, and the archived sequential-flow convenience remain unchanged.

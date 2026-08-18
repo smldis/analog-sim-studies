@@ -3,7 +3,7 @@ schema_version = 1
 [unit]
 id = "analog-sim-studies"
 name = "Analog Sim Studies"
-ontology = "ONTOLOGY.md"
+ontology = "ONTOLOME.md"
 children = [
     "hedloom",
     "sidecar-edits",

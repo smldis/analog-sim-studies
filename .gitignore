@@ -11,6 +11,7 @@ spice-canonical/docs/_build/
 netlist-decomposition/docs/_build/
 sidecar_edits.edit.html
 docs/reference/ota-pvt-plan/_runs/
+studies/_runs/
 .toolchain/venv/
 .toolchain/uv-cache/
 .venv/

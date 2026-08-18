@@ -39,7 +39,7 @@ def write_unit(
     docs: bool = False,
 ) -> None:
     root.mkdir(parents=True)
-    (root / "ONTOLOGY.md").write_text(f"# {unit_id}\n", encoding="utf-8")
+    (root / "ONTOLOME.md").write_text(f"# {unit_id}\n", encoding="utf-8")
     child_text = ", ".join(repr(child) for child in children)
     workflow = (
         f"\n[workflows]\ntest = {list(test_command)!r}\n" if test_command else ""
@@ -54,7 +54,7 @@ def write_unit(
                 "[unit]",
                 f'id = "{unit_id}"',
                 f'name = "{unit_id}"',
-                'ontology = "ONTOLOGY.md"',
+                'ontology = "ONTOLOME.md"',
                 f"children = [{child_text}]",
                 workflow,
                 docs_contract,
@@ -78,9 +78,9 @@ def test_discovery_is_deterministic_by_child_id(tmp_path: Path) -> None:
 
     assert [child.unit_id for child in unit.children] == ["alpha", "bravo"]
     assert composition.ontology_lines(unit) == [
-        "root: ONTOLOGY.md",
-        "  alpha: ONTOLOGY.md",
-        "  bravo: ONTOLOGY.md",
+        "root: ONTOLOME.md",
+        "  alpha: ONTOLOME.md",
+        "  bravo: ONTOLOME.md",
     ]
 
 
@@ -144,6 +144,82 @@ def test_docs_stage_includes_nested_units_and_links_them(tmp_path: Path) -> None
     composed = (stage / "_composed-children.md").read_text(encoding="utf-8")
     assert "parent <children/parent/docs/index.md>" in composed
     assert "nested <children/nested/docs/index.md>" in composed
+
+
+def test_staging_retargets_cross_unit_links_both_directions(tmp_path: Path) -> None:
+    """A link authored where it resolves must still resolve where it is built.
+
+    Staging moves a root page up out of `docs/` and a child page down into
+    `children/<unit-id>/`, so the same relative link needs a different spelling
+    in each tree. The authored one is the one that has to be right.
+    """
+
+    root = tmp_path / "root"
+    write_unit(root, "root", children=("parent",), docs=True)
+    write_unit(root / "parent", "parent", docs=True)
+    (root / "docs" / "index.md").write_text(
+        "# root\n\nSee [parent](../parent/docs/index.md#start).\n", encoding="utf-8"
+    )
+    (root / "parent" / "docs" / "index.md").write_text(
+        "# parent\n\nBack to [root](../../docs/index.md).\n", encoding="utf-8"
+    )
+
+    stage = tmp_path / "stage"
+    composition.stage_docs(composition.load_unit(root), stage)
+
+    # Root page loses `docs/`; child page gains `children/parent/docs/`.
+    assert "(children/parent/docs/index.md#start)" in (
+        stage / "index.md"
+    ).read_text(encoding="utf-8")
+    assert "(../../../index.md)" in (
+        stage / "children" / "parent" / "docs" / "index.md"
+    ).read_text(encoding="utf-8")
+
+
+def test_staging_moves_only_relative_links_to_staged_files(tmp_path: Path) -> None:
+    """Everything that is not a relative link into a staged page is left alone.
+
+    A link that is merely broken stays broken: the composer translates layouts,
+    it does not invent targets, and a warning about a real dead link is worth
+    keeping.
+    """
+
+    root = tmp_path / "root"
+    write_unit(root, "root", children=("parent",), docs=True)
+    write_unit(root / "parent", "parent", docs=True)
+    (root / "docs" / "sibling.md").write_text("# sibling\n", encoding="utf-8")
+    page = "\n".join(
+        [
+            "# root",
+            "",
+            "A [sibling](sibling.md) and an [anchor](#here) and a",
+            "[url](https://example.invalid/parent/docs/index.md) and a",
+            "[dead link](../parent/docs/missing.md).",
+            "",
+            "Prose about `[a link](../parent/docs/index.md)` stays prose.",
+            "",
+            "```markdown",
+            "[fenced](../parent/docs/index.md)",
+            "```",
+            "",
+            "But [`index.md`](../parent/docs/index.md) is a real link.",
+            "",
+        ]
+    )
+    (root / "docs" / "index.md").write_text(page, encoding="utf-8")
+
+    stage = tmp_path / "stage"
+    composition.stage_docs(composition.load_unit(root), stage)
+    staged = (stage / "index.md").read_text(encoding="utf-8")
+
+    assert "[sibling](sibling.md)" in staged
+    assert "[anchor](#here)" in staged
+    assert "[url](https://example.invalid/parent/docs/index.md)" in staged
+    assert "[dead link](../parent/docs/missing.md)" in staged
+    assert "`[a link](../parent/docs/index.md)`" in staged
+    assert "[fenced](../parent/docs/index.md)" in staged
+    # Code spans in the *text* of a link do not make it prose about a link.
+    assert "[`index.md`](children/parent/docs/index.md)" in staged
 
 
 def test_repository_tree_has_its_declared_units_and_no_root_src() -> None:

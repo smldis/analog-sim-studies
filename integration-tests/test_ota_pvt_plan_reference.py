@@ -727,7 +727,7 @@ def test_authoring_and_plan_validation_reject_kind_config_order_and_position_def
             materialized_as=reference.REPOSITORY_PYTHON_SOURCE,
         )
         with pytest.raises(BindingError, match="expects float"):
-            reference.prepare_run.options(key="wrong-config")(
+            reference.prepare_run.named("wrong-config")(
                 base,
                 edits,
                 point_id="tt_1v80_27c",
@@ -737,7 +737,7 @@ def test_authoring_and_plan_validation_reject_kind_config_order_and_position_def
                 temp_c=27,
             )
         with pytest.raises(BindingError, match="expects artifact kind"):
-            reference.canonicalize_deck.options(key="wrong-kind")(
+            reference.canonicalize_deck.named("wrong-kind")(
                 base,
                 deck_relpath="ota_ac.cir",
                 spice_format="ngspice",

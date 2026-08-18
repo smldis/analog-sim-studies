@@ -227,7 +227,7 @@ OPERATION_DECLARATIONS = (
 def plan_point(base, edits, measurement_definition, *, point):
     """Declare the independent structural and AC branches for one PVT point."""
 
-    prepared = prepare_run.options(key="prepare-run")(
+    prepared = prepare_run.named("prepare-run")(
         base,
         edits,
         point_id=point.key,
@@ -236,13 +236,13 @@ def plan_point(base, edits, measurement_definition, *, point):
         vdd_v=point.vdd_v,
         temp_c=point.temp_c,
     )
-    canonical = canonicalize_deck.options(key="canonicalize-deck")(
+    canonical = canonicalize_deck.named("canonicalize-deck")(
         prepared,
         deck_relpath="ota_ac.cir",
         spice_format="ngspice",
         top_name="ota_pvt",
     )
-    decomposition = decompose_ota.options(key="decompose-ota")(
+    decomposition = decompose_ota.named("decompose-ota")(
         canonical,
         circuit_name="ota_core",
         vdd_nets=["vdd"],
@@ -250,7 +250,7 @@ def plan_point(base, edits, measurement_definition, *, point):
         max_level=4,
         suppress_false_stacks=True,
     )
-    raw = simulate_ac.options(key="simulate-ac")(
+    raw = simulate_ac.named("simulate-ac")(
         prepared,
         point_id=point.key,
         process=point.process,
@@ -259,7 +259,7 @@ def plan_point(base, edits, measurement_definition, *, point):
         simulator_profile="ngspice-ac",
         analysis="ac",
     )
-    measurements = measure_ac.options(key="measure-ac")(
+    measurements = measure_ac.named("measure-ac")(
         raw,
         measurement_definition,
         point_id=point.key,
@@ -281,7 +281,7 @@ def plan_study(base, edits, measurement_definition, limits, *, points):
     measurements = []
     decompositions = []
     for point in points:
-        outputs = plan_point.options(key=f"point-{point.key}")(
+        outputs = plan_point.named(f"point-{point.key}")(
             base,
             edits,
             measurement_definition,
@@ -291,7 +291,7 @@ def plan_study(base, edits, measurement_definition, limits, *, points):
         measurements.append(outputs["measurements"])
         decompositions.append(outputs["decomposition"])
 
-    evaluation = evaluate_pvt.options(key="evaluate-pvt")(
+    evaluation = evaluate_pvt.named("evaluate-pvt")(
         measurements,
         decompositions,
         limits,
@@ -329,7 +329,7 @@ def build_plan():
             artifact=SPEC_LIMITS,
             materialized_as=REPOSITORY_JSON,
         )
-        outputs = plan_study.options(key="ota-pvt-study")(
+        outputs = plan_study.named("ota-pvt-study")(
             base,
             edits,
             measurement_definition,

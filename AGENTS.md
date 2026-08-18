@@ -2,7 +2,7 @@
 
 ## Establish context
 
-Before acting, read `MANIFESTO.md`, the root `ONTOLOGY.md`, and every ontology
+Before acting, read `MANIFESTO.md`, the root `ONTOLOME.md`, and every ontology
 on the filesystem path to the target component. Also inspect the nearest
 `README.md`, `unit.toml`, relevant implementation and tests, and current Git
 status. The manifesto states intended direction. Ontologies state the current

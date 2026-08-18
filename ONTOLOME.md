@@ -58,20 +58,21 @@ any affected child ontology.
   direct development without a decision. It spans both units, so it belongs at
   the composition root rather than in either one.
 - `docs/reference/ota-pvt-plan/` owns one representative cross-unit Plan
-  declaration (`ota_pvt_plan.py`), its versioned input fixtures, and a
-  companion real-execution binding (`run_study.py`). The Plan declaration
-  itself remains non-executing: it tests static composition through public
+  declaration (`ota_pvt_plan.py`) and its versioned input fixtures. The Plan
+  declaration remains non-executing: it tests static composition through public
   Hedloom Flow contracts alone -- four repository-relative sources declared as
   addressed artifact references with explicit data-only representation/access
   requirements, while all operation-output edges and the final evaluation
-  remain ephemeral. The companion binding is a separate, ordinary consumer of
-  `hedloom-exec`/`hedloom-run`'s already-public execution contracts, in the same shape
-  as `hedloom-exec/examples/planned_characterization.py`: it supplies a real
-  implementation per declared operation name and runs the exact same Plan
-  end to end against real `ngspice` and the real Sidecar Edits, SPICE
-  Canonical, and Netlist Decomposition public APIs. Neither promotes this
-  reference's analog-domain labels into a child API, claims a sibling adapter
-  Hedloom Flow itself provides, or adds a fifth component.
+  remain ephemeral.
+- `studies/` owns the runnable studies, each an ordinary consumer of `hedloom`'s
+  public contracts. `studies/ota_pvt.py` runs the exact same graph end to end
+  against real `ngspice` and the real Sidecar Edits, SPICE Canonical and Netlist
+  Decomposition public APIs. It replaced a companion binding script that
+  re-declared every operation beside the Plan; `hedloom`'s `@study` removed the
+  need for it. Neither the declaration nor the study promotes this reference's
+  analog-domain labels into a child API, claims a sibling adapter Hedloom Flow
+  itself provides, or adds a fifth component. The domain vocabulary lives here
+  and in `studies/`, never inside `hedloom`, which names no simulator anywhere.
 
 ## Contributions from children
 

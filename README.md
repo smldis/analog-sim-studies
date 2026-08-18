@@ -2,11 +2,11 @@
 
 Analog Sim Studies is a composition root for small, independently useful analog
 design tools. The governing direction is [MANIFESTO.md](MANIFESTO.md), while
-[ONTOLOGY.md](ONTOLOGY.md) records the responsibilities implemented here.
+[ONTOLOME.md](ONTOLOME.md) records the responsibilities implemented here.
 
 ## Owned units
 
-- [`hedloom-flow/`](hedloom-flow/) owns executor-neutral Python authoring of static
+- [`hedloom/flow/`](hedloom/flow/) (the unit `hedloom-flow`) owns executor-neutral Python authoring of static
   operation/flow graphs and deterministic, inspectable Plan IR.
 - [`sidecar-edits/`](sidecar-edits/) prepares simulation directories through a
   typed Python edit API and owns its examples and Sphinx user/API guide.
@@ -24,7 +24,7 @@ cross-unit checks.
 All current ontology nodes have development state `prototype`. Here prototype
 means a useful runnable form that lets the repository test hypotheses about its
 architecture, features, and boundaries and revise them from observed evidence;
-it does not mean careless or merely aspirational work. Each `ONTOLOGY.md`
+it does not mean careless or merely aspirational work. Each `ONTOLOME.md`
 records that state and has an adjacent `AGENTS.md`, so filesystem instruction
 scope mirrors semantic scope.
 
@@ -93,19 +93,19 @@ Run sidecar examples and native-helper flows from `sidecar-edits/`; run the
 canonical corpus verifier from `spice-canonical/`; and run decomposition
 dependency generation or OTA verification from `netlist-decomposition/`.
 Exact commands and external prerequisites live in the owning README.
-[`hedloom-flow/`](hedloom-flow/) is the bounded, non-executing static-planning
+[`hedloom/flow/`](hedloom/flow/) is the bounded, non-executing static-planning
 prototype. Its focused tests and simulator-free characterization example run
 from that directory:
 
 ```console
-cd hedloom-flow
+cd hedloom/flow
 python -m pytest -q
 PYTHONPATH=src python examples/characterization.py | python -m json.tool
 ```
 
 Hedloom Flow owns no executor or runtime contract. Its historical sequential-flow
-convenience proposal is inactive and recorded only in the component
-[archive](hedloom-flow/docs/archive/sequential-flow-convenience.md).
+convenience proposal is inactive and recorded only in that unit's unpublished
+[design record](hedloom/flow/design/sequential-flow-convenience.md).
 
 ## OTA/PVT reference: a Plan, and a real execution binding
 
@@ -122,27 +122,27 @@ PYTHONPATH=hedloom/flow/src python docs/reference/ota-pvt-plan/ota_pvt_plan.py \
   | python -m json.tool
 ```
 
-A companion binding, `run_study.py`, now runs that exact Plan for real: real
-Sidecar Edits rendering, real SPICE Canonical extraction, real Netlist
-Decomposition, real `ngspice` AC simulation, measurements computed from the
-real raw waveform, and a real spec-limit check, through unmodified
-`hedloom-exec`/`hedloom-run`. It is a companion script beside the Plan declaration,
-in the same shape as `hedloom-exec/examples/planned_characterization.py`, not a
-change to Hedloom Flow and not a fifth component or reusable OTA-study API. Run
-it with:
+[`studies/`](studies/README.md) runs that same study for real, in one file
+each: real Sidecar Edits rendering, real SPICE Canonical extraction, real
+Netlist Decomposition, real `ngspice` AC simulation, measurements computed from
+the real raw waveform, and a real spec-limit check, through unmodified
+`hedloom`. Run it with:
 
 ```console
-PYTHONPATH=hedloom/flow/src:hedloom/run/src:hedloom/exec/src:sidecar-edits/src:\
-spice-canonical/src:netlist-decomposition/src \
-  python docs/reference/ota-pvt-plan/run_study.py
+python studies/ota_pvt.py
 ```
+
+The binding script that used to sit beside the Plan declaration has been
+retired: `hedloom`'s `@study` makes an operation's body its implementation, so
+the six hundred and fifty lines whose only job was to agree with the Plan have
+no remaining job.
 
 See [`docs/reference/ota-pvt-plan/README.md`](docs/reference/ota-pvt-plan/README.md)
 for what each boundary now really does and what it still does not.
 
 ## Adding another unit
 
-Create a direct directory with `README.md`, `ONTOLOGY.md`, `AGENTS.md`, and
+Create a direct directory with `README.md`, `ONTOLOME.md`, `AGENTS.md`, and
 `unit.toml`; keep its source, packaging, tests, docs, examples, and scripts
 there; then add only its relative directory name to this node's
 `unit.children`. Record development state in its ontology and keep its local

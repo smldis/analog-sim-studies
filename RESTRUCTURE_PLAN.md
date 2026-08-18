@@ -1,7 +1,7 @@
 # Restructuring Plan
 
 Working document. Records decisions taken, the ordered operations, and the
-decisions still open. Supersedes nothing in `MANIFESTO.md` or `ONTOLOGY.md` —
+decisions still open. Supersedes nothing in `MANIFESTO.md` or `ONTOLOME.md` —
 where this plan changes those, it says so explicitly.
 
 **Status:** Ops 0 through 4 COMPLETE on branch `hedloom-rename`.
@@ -33,7 +33,7 @@ as disposable in later ops** — check `git worktree list` before touching it.
 | Decision | Rationale |
 |---|---|
 | `ass*` renames to `hedloom` | "ASS" is unusable publicly. `hedloom` confirmed free on PyPI and uncontested on web search (Op 0.1). |
-| Distributions stay separate — no merge into one | Keeps `flow`/`exec`/`run` as unit directories with `unit.toml` and `ONTOLOGY.md` beside their code, which `composition.py:151-154` and `MANIFESTO.md:173` depend on. A single distribution wants `src/hedloom/{flow,exec,run}/`, stranding each ontology a level from what it describes. Note: with no index publication, the *independent installability* argument no longer applies — the structural one is what carries this. |
+| Distributions stay separate — no merge into one | Keeps `flow`/`exec`/`run` as unit directories with `unit.toml` and `ONTOLOME.md` beside their code, which `composition.py:151-154` and `MANIFESTO.md:173` depend on. A single distribution wants `src/hedloom/{flow,exec,run}/`, stranding each ontology a level from what it describes. Note: with no index publication, the *independent installability* argument no longer applies — the structural one is what carries this. |
 | `hedloom` becomes its own repo | Same treatment as the other units. Reverses the earlier "keep inline" position. |
 | `flow` / `exec` / `run` stay as directories inside the `hedloom` repo | The four-way cluster is not split into four repos; it moves as one. |
 | `study` is never renamed | Public API (`ass/src/ass/__init__.py:130`) and the manifesto's core concept (`MANIFESTO.md:62`). |
@@ -108,7 +108,7 @@ Approximate blast radius (worktrees excluded): ~299 files referencing
 
 - Root `unit.toml` children → `["hedloom", "sidecar-edits", "spice-canonical", "netlist-decomposition"]`
 - `hedloom/unit.toml`: `id = "hedloom"`, and `children = []` → `["flow", "exec", "run"]`
-  — this closes the gap where `ass/ONTOLOGY.md` claimed "the three units beneath
+  — this closes the gap where `ass/ONTOLOME.md` claimed "the three units beneath
   it" while declaring none
 - Four `pyproject.toml` `name` fields
 - `composition.py` and `docs/conf.py` string references
@@ -140,7 +140,7 @@ grep -rnE '"hedloom-(flow|exec|run)"|/hedloom-(flow|exec|run)/|hedloom-(flow|exe
 ```
 
 Known sites: `integration-tests/test_ota_pvt_plan_reference.py`,
-`hedloom/examples/rc_corners.py`, `hedloom/examples/ota_pvt_clean_nested.py`,
+`studies/rc_corners.py`, `studies/ota_pvt_clean_nested.py`,
 `hedloom/pyproject.toml`, `hedloom/README.md`, `README.md`, and three files
 under `docs/reference/ota-pvt-plan/`.
 
@@ -289,8 +289,8 @@ entirely in `spice-canonical` and `netlist-decomposition`.
 
 - Add language admitting a domain-generic execution core that currently serves
   analog use cases first
-- Update root `ONTOLOGY.md` to match
-- `hedloom/ONTOLOGY.md`'s "the three units beneath it" becomes literally true
+- Update root `ONTOLOME.md` to match
+- `hedloom/ONTOLOME.md`'s "the three units beneath it" becomes literally true
   after Op 1.3
 - Record the deferred widening of `analog-sim-studies` inside the document, so
   the deferral is written down rather than forgotten

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import shutil
 import subprocess
@@ -18,6 +19,14 @@ from typing import Any, Sequence
 MANIFEST_NAME = "unit.toml"
 SCHEMA_VERSION = 1
 UNIT_ID = re.compile(r"^[a-z][a-z0-9-]*$")
+
+# Staging moves a page relative to its neighbours, so a relative link that is
+# correct where it was authored is not correct where it is built. See
+# `retarget_links`.
+_CODE_FENCE = re.compile(r"^\s*(`{3,}|~{3,})")
+_CODE_SPAN = re.compile(r"`+[^`]*`+")
+_MARKDOWN_LINK = re.compile(r"!?\[[^\]]*\]\(\s*([^()\s]+?)\s*(\"[^\"]*\")?\s*\)")
+_NOT_A_PATH = re.compile(r"\A(?:[a-z][a-z0-9+.-]*:|//|#|/)", re.IGNORECASE)
 
 
 class CompositionError(ValueError):
@@ -95,7 +104,7 @@ def load_unit(root: Path) -> Unit:
         raise CompositionError(f"{manifest}: unit.name must be a non-empty string")
 
     ontology_rel = _relative_path(
-        unit_data.get("ontology", "ONTOLOGY.md"), "unit.ontology", manifest
+        unit_data.get("ontology", "ONTOLOME.md"), "unit.ontology", manifest
     )
     ontology = root / ontology_rel
     if not ontology.is_file():
@@ -214,6 +223,150 @@ def _copy_path(source: Path, target: Path) -> None:
         shutil.copy2(source, target)
 
 
+def _record_origins(source: Path, target: Path, origins: dict[Path, Path]) -> None:
+    """Remember where each staged file was authored.
+
+    Recorded from what actually landed rather than from what was asked for, so
+    the ignore patterns in `_copy_path` cannot leave phantom entries behind.
+    """
+
+    if target.is_file():
+        origins.setdefault(target.resolve(), source.resolve())
+        return
+    for staged in sorted(target.rglob("*")):
+        if staged.is_file():
+            origins.setdefault(
+                staged.resolve(), (source / staged.relative_to(target)).resolve()
+            )
+
+
+def _protected_spans(line: str) -> list[tuple[int, int]]:
+    """Inline code ranges, which are prose about a link rather than a link."""
+
+    return [(span.start(), span.end()) for span in _CODE_SPAN.finditer(line)]
+
+
+def _retarget(
+    target: str,
+    authored_source: Path,
+    staged_source: Path,
+    staged_by_authored: dict[Path, Path],
+) -> str | None:
+    """Rewrite one link target for the staged layout, or leave it alone.
+
+    Returns ``None`` whenever the link is not a relative path into another
+    staged page — a URL, an anchor, a directory, or a file this build does not
+    stage. A link that is simply broken stays broken and stays a warning, which
+    is the point: this translates layouts, it does not invent targets.
+    """
+
+    if not target or _NOT_A_PATH.match(target):
+        return None
+    path_part, separator, fragment = target.partition("#")
+    if not path_part:
+        return None
+    authored_target = Path(
+        os.path.normpath(authored_source.parent / path_part)
+    ).resolve()
+    staged_target = staged_by_authored.get(authored_target)
+    if staged_target is None:
+        return None
+    rewritten = Path(
+        os.path.relpath(staged_target, staged_source.parent)
+    ).as_posix()
+    if rewritten == path_part:
+        return None
+    return f"{rewritten}{separator}{fragment}"
+
+
+def _retarget_page(
+    text: str,
+    authored_source: Path,
+    staged_source: Path,
+    staged_by_authored: dict[Path, Path],
+) -> tuple[str, int]:
+    """Retarget every relative markdown link on a staged page."""
+
+    rewrites = 0
+    fence: str | None = None
+    lines: list[str] = []
+
+    for line in text.splitlines(keepends=True):
+        opening = _CODE_FENCE.match(line)
+        if fence is not None:
+            if opening and line.strip().startswith(fence):
+                fence = None
+            lines.append(line)
+            continue
+        if opening:
+            fence = opening.group(1)[0] * len(opening.group(1))
+            lines.append(line)
+            continue
+
+        protected = _protected_spans(line)
+        pieces: list[str] = []
+        position = 0
+        for link in _MARKDOWN_LINK.finditer(line):
+            # A link whose text holds code spans is still a link; a whole link
+            # quoted inside one is prose about a link, and must not move.
+            if any(
+                start <= link.start() and link.end() <= end
+                for start, end in protected
+            ):
+                continue
+            target = link.group(1)
+            rewritten = _retarget(
+                target, authored_source, staged_source, staged_by_authored
+            )
+            if rewritten is None:
+                continue
+            start, end = link.span(1)
+            pieces.append(line[position:start])
+            pieces.append(rewritten)
+            position = end
+            rewrites += 1
+        pieces.append(line[position:])
+        lines.append("".join(pieces))
+
+    return "".join(lines), rewrites
+
+
+def retarget_links(stage: Path, origins: dict[Path, Path]) -> tuple[int, int]:
+    """Translate authored relative links into the staged layout.
+
+    Authored links are authoritative: a link is written so it resolves where it
+    lives, which is what makes it checkable in an editor and on the forge
+    without building anything. Staging then moves pages relative to each other —
+    a root page loses its `docs/` component, a child page gains
+    `children/<unit-id>/` — so the same link has to be restated for the built
+    tree. Doing that here keeps the authored tree the single source of truth,
+    rather than asking authors to write paths that are wrong everywhere except
+    inside `build/`.
+
+    Only relative markdown links move, and only to files this build stages.
+    """
+
+    staged_by_authored: dict[Path, Path] = {}
+    for staged, authored in sorted(origins.items()):
+        staged_by_authored.setdefault(authored, staged)
+
+    pages = 0
+    rewrites = 0
+    for staged in sorted(stage.rglob("*.md")):
+        authored = origins.get(staged.resolve())
+        if authored is None:
+            continue
+        text = staged.read_text(encoding="utf-8")
+        rewritten, count = _retarget_page(
+            text, authored, staged.resolve(), staged_by_authored
+        )
+        if count:
+            staged.write_text(rewritten, encoding="utf-8")
+            pages += 1
+            rewrites += count
+    return pages, rewrites
+
+
 def stage_docs(unit: Unit, stage: Path) -> None:
     """Create a generated Sphinx source view from authored unit documentation."""
 
@@ -223,12 +376,15 @@ def stage_docs(unit: Unit, stage: Path) -> None:
         shutil.rmtree(stage)
     stage.mkdir(parents=True)
 
+    origins: dict[Path, Path] = {}
     for source in sorted(unit.docs.source.iterdir(), key=lambda path: path.name):
         if source.name in {"_build", "_runs", "conf.py"}:
             continue
         _copy_path(source, stage / source.name)
+        _record_origins(source, stage / source.name, origins)
     for resource in unit.docs.resources:
         _copy_path(resource, stage.parent / resource.name)
+        _record_origins(resource, stage.parent / resource.name, origins)
 
     child_entries: list[tuple[str, str]] = []
     staged_ids: set[str] = set()
@@ -244,8 +400,12 @@ def stage_docs(unit: Unit, stage: Path) -> None:
         staged_ids.add(child.unit_id)
         child_stage = stage / "children" / child.unit_id
         _copy_path(child.docs.source, child_stage / child.docs.source.name)
+        _record_origins(
+            child.docs.source, child_stage / child.docs.source.name, origins
+        )
         for resource in child.docs.resources:
             _copy_path(resource, child_stage / resource.name)
+            _record_origins(resource, child_stage / resource.name, origins)
         child_index = child.docs.index.relative_to(child.root).as_posix()
         child_entries.append((child.name, f"children/{child.unit_id}/{child_index}"))
 
@@ -264,6 +424,13 @@ def stage_docs(unit: Unit, stage: Path) -> None:
     generated.extend(["```", ""])
     (stage / "_composed-children.md").write_text(
         "\n".join(generated), encoding="utf-8"
+    )
+
+    pages, rewrites = retarget_links(stage, origins)
+    print(
+        f"==> docs {unit.unit_id}: retargeted {rewrites} cross-unit "
+        f"link(s) on {pages} page(s)",
+        flush=True,
     )
 
 

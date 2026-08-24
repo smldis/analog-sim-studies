@@ -17,5 +17,11 @@ studies/_runs/
 .venv/
 .pytest_cache/
 
+# local tool state (holds live git worktrees under .claude/)
+.claude/
+.dialecticH/
+
 # working notes, not part of the published repository
 OBJECTIVE.md
+IDEAS_PROMPT.md
+MANIFESTO_orphans.md

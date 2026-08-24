@@ -15,7 +15,7 @@ altered by evidence), **deferred** (still wanted, not started), **dropped**
 | Concept | Where | Note |
 | --- | --- | --- |
 | Static custom-flow composition; one normalized inspectable Plan | `hedloom-flow` | Accepted with the OTA/PVT domain reference. |
-| Declarative source handoff: address, codec, access scope | `hedloom-flow` | Schema-2 Plan IR. |
+| Declarative source handoff: artifact contract and address | `hedloom-flow` | Schema-2 Plan IR. |
 | Local Dask Delayed lowering (evidence ladder 3) | `hedloom-flow` experimental | Bounded instrument, not an execution API. |
 | Immutable bundle and stable attempt ID chosen before submission | `hedloom-exec` | `attempt_identity`, content-addressed. |
 | `launch_or_attach` claiming, attaching, or completing | `hedloom-exec` | Exactly three dispositions or a loud failure. |
@@ -311,23 +311,20 @@ still open, and it is still the study that should settle it.
   current plan references. Wants a policy — age, superseded-ness, or explicit
   operator action — and must never delete an attempt a live plan still resolves
   to. Recorded as an idea, not scheduled.
-- **A source's identity is its declared address and codec, never its
-  content.** Raised running the OTA/PVT reference's real execution binding
-  (`docs/reference/ota-pvt-plan/run_study.py`, 2026-08-04). `plan_bundles`'s
-  `_source_identity` hashes `{artifact, address, materialized_as}` only; there
-  is no mtime/size check as there is for a declared *output* file
-  (`hedloom_exec.artifacts.ArtifactRef`). Editing `inputs/base/ota_ac.cir` or
-  `inputs/pvt_edits.py` in place, without touching their declared address in
-  `ota_pvt_plan.py`, would not invalidate any cached attempt that reads them —
-  a rerun would silently reuse a result computed from the old file content.
-  This is a different gap from the "Artifact checksums and provenance" row
-  below, which is about declared *outputs*: that row's mtime-plus-size
-  argument was never extended to sources, and small authored text fixtures
-  are exactly the case where hashing content would be cheap. Not scheduled;
-  the honest workaround this run used was to make config that should
-  participate in identity (point_id, process, vdd_v, temp_c) a declared Plan
-  config value rather than fixture content, which is what the edited-corner
-  reuse test actually exercised.
+- **A source's identity is its declared artifact and address, plus an optional
+  runtime fingerprint.** Raised running the OTA/PVT reference's real execution
+  binding (`docs/reference/ota-pvt-plan/run_study.py`, 2026-08-04). The original
+  finding was that declaration-only identity let an in-place fixture edit reuse
+  results computed from the old content. That gap is now bounded explicitly:
+  `plan_bundles`'s `_source_identity` hashes `{artifact, address, fingerprint}`;
+  `hedloom_run` supplies the content fingerprint because it owns address
+  resolution. Without one, identity remains declaration-only and an in-place
+  edit is invisible; with one, the changed fixture invalidates the attempts
+  that read it. The original run's honest workaround was to make config that
+  should participate in identity (point_id, process, vdd_v, temp_c) a declared
+  Plan config value rather than fixture content. The runtime fingerprint now
+  covers the source-content case without conflating it with declared-output
+  checks in `hedloom_exec.artifacts.ArtifactRef`.
 - **`hedloom_exec`'s `Durability.RECORDED` path requires every in-process return
   value to be JSON-safe, not merely inspectable.** Raised by the same run:
   `reconcile()` appends `{"value": ...}` to the append-only journal via

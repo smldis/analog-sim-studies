@@ -14,7 +14,7 @@ from hedloom_flow import (
     named_policy,
     operation,
     parameter,
-    plan,
+    planned,
 )
 
 
@@ -283,36 +283,33 @@ def plan_study(base, edits, measurement_definition, limits, *, points):
 FLOW_DECLARATIONS = (plan_point, plan_study)
 
 
+@planned(default_policy=PLAN_DECLARATION_POLICY)
 def build_plan():
     """Construct and validate the reference Plan without reading fixture files."""
 
-    with plan(default_policy=PLAN_DECLARATION_POLICY) as draft:
-        base = input_artifact(
-            address("repository-relative", BASE_DIRECTORY_LOCATOR),
-            artifact=SIDE_CAR_BASE,
-        )
-        edits = input_artifact(
-            address("repository-relative", PVT_EDITS_LOCATOR),
-            artifact=SIDE_CAR_EDITS,
-        )
-        measurement_definition = input_artifact(
-            address(
-                "repository-relative", MEASUREMENT_DEFINITION_LOCATOR
-            ),
-            artifact=MEASUREMENT_DEFINITION,
-        )
-        limits = input_artifact(
-            address("repository-relative", SPEC_LIMITS_LOCATOR),
-            artifact=SPEC_LIMITS,
-        )
-        outputs = plan_study.named("ota-pvt-study")(
-            base,
-            edits,
-            measurement_definition,
-            limits,
-            points=PVT_POINTS,
-        )
-    return draft.finish(outputs=outputs)
+    base = input_artifact(
+        address("repository-relative", BASE_DIRECTORY_LOCATOR),
+        artifact=SIDE_CAR_BASE,
+    )
+    edits = input_artifact(
+        address("repository-relative", PVT_EDITS_LOCATOR),
+        artifact=SIDE_CAR_EDITS,
+    )
+    measurement_definition = input_artifact(
+        address("repository-relative", MEASUREMENT_DEFINITION_LOCATOR),
+        artifact=MEASUREMENT_DEFINITION,
+    )
+    limits = input_artifact(
+        address("repository-relative", SPEC_LIMITS_LOCATOR),
+        artifact=SPEC_LIMITS,
+    )
+    return plan_study.named("ota-pvt-study")(
+        base,
+        edits,
+        measurement_definition,
+        limits,
+        points=PVT_POINTS,
+    )
 
 
 def main() -> None:

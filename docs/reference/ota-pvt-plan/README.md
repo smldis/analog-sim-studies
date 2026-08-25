@@ -6,7 +6,7 @@ analog-study graph without acquiring simulation or runtime meaning. That
 question is answered and recorded below. A second question was answered
 separately: whether the execution units can run that exact graph for real,
 against a real simulator, with honest reuse. They can, and the file that shows
-it now lives in [`../../../studies/ota_pvt.py`](../../../studies/README.md).
+it now lives in `studies/ota_pvt.py`.
 
 **This directory stays plan-only, and that is its whole job.**
 `ota_pvt_plan.py`'s six operations raise `NotImplementedError` on purpose: it is

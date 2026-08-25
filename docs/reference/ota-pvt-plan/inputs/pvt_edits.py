@@ -3,7 +3,7 @@
 from sidecar_edits import edits
 
 
-BASE_DIR = "base"
+REQUIRES = {"base": "base"}
 
 PARAM_SETS = [
     {
@@ -41,26 +41,27 @@ PARAM_SETS = [
     },
 ]
 
-EDITS = [
-    edits.replace(
-        path="ota_ac.cir",
-        old="* PVT point=seed process=seed vdd_v=seed temp_c=seed",
-        new=(
-            "* PVT point={point_id} process={process} "
-            "vdd_v={vdd_v} temp_c={temp_c}"
+def edits_for(ctx):
+    return [
+        edits.replace(
+            path="ota_ac.cir",
+            old="* PVT point=seed process=seed vdd_v=seed temp_c=seed",
+            new=(
+                "* PVT point={point_id} process={process} "
+                "vdd_v={vdd_v} temp_c={temp_c}"
+            ),
+            description="record the selected sentinel PVT point",
         ),
-        description="record the selected sentinel PVT point",
-    ),
-    edits.replace(
-        path="ota_ac.cir",
-        old=".param vdd_v=1.80",
-        new=".param vdd_v={vdd_v}",
-        description="set the sentinel supply value",
-    ),
-    edits.replace(
-        path="ota_ac.cir",
-        old=".temp 27",
-        new=".temp {temp_c}",
-        description="set the sentinel temperature value",
-    ),
-]
+        edits.replace(
+            path="ota_ac.cir",
+            old=".param vdd_v=1.80",
+            new=".param vdd_v={vdd_v}",
+            description="set the sentinel supply value",
+        ),
+        edits.replace(
+            path="ota_ac.cir",
+            old=".temp 27",
+            new=".temp {temp_c}",
+            description="set the sentinel temperature value",
+        ),
+    ]

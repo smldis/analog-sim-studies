@@ -9,17 +9,11 @@ them, check them against limits, and hand someone a report.
 
 Two things differ beyond the deletions.
 
-**Sidecar fans out, not the flow.** The corners are not written here. They are
-read from the edit file's own ``PARAM_SETS`` at authoring time, expanded through
-sidecar's own ``expand_param_matrix``, and rendered by a *single* ``prepare``
-invocation. The edit file is the one place a corner is declared; adding one
-there adds it to the study.
-
-The trade is real and worth stating: one invocation that renders every corner is
-one unit of reuse. Editing a single corner's parameters re-renders all of them,
-where `ota_pvt.py`'s per-corner prepare re-rendered only the corner that moved.
-Simulation is where the time goes and that stays per corner either way, so this
-is cheap here — but on a study whose rendering is expensive it would not be.
+**The caller supplies the corner definitions.** They are declared config on
+each per-corner ``prepare`` invocation, and Sidecar's data-only variant resolver
+expands those exact definitions while the Plan is composed. The edit file is
+not read at plan time. Hedloom owns the sweep, and each embedded render resolves
+one selector from the supplied definition.
 
 **It writes a deliverable.** ``report.md`` is the artifact a person is given:
 the verdict, the corner table, the limits applied, and the provenance —
@@ -106,12 +100,7 @@ from hedloom import (  # noqa: E402
     study,
     sweep,
 )
-from sidecar_edits.render import (  # noqa: E402
-    RenderPlan,
-    expand_param_matrix,
-    load_editfile,
-    render_job,
-)
+from sidecar_edits.render import materialize, resolve, variants  # noqa: E402
 
 INPUTS = "docs/reference/ota-pvt-plan/inputs"
 BASE_DIRECTORY_LOCATOR = f"{INPUTS}/base"
@@ -123,31 +112,63 @@ DECK_NAME = "ota_ac.cir"
 
 SIDE_CAR_BASE = artifact("sidecar-base-directory")
 SIDE_CAR_EDITS = artifact("sidecar-edit-file")
-PREPARED_RUNS = artifact("prepared-simulation-directory")
+PREPARED_RUN = artifact("prepared-simulation-directory")
 SIMULATOR_RAW = artifact("simulator-raw-results")
 MEASUREMENT_DEFINITION = artifact("ota-measurement-definition")
 POINT_MEASUREMENTS = artifact("ota-point-measurements")
 SPEC_LIMITS = artifact("ota-specification-limits")
 
+PVT_DECLARATIONS = {
+    "PARAM_SETS": [
+        {
+            "name": "tt_1v80_27c",
+            "params": {
+                "point_id": "tt_1v80_27c",
+                "param_set": "tt_1v80_27c",
+                "process": "tt",
+                "vdd_v": 1.80,
+                "temp_c": 27,
+            },
+        },
+        {
+            "name": "ss_1v62_125c",
+            "params": {
+                "point_id": "ss_1v62_125c",
+                "param_set": "ss_1v62_125c",
+                "process": "ss",
+                "vdd_v": 1.62,
+                "temp_c": 125,
+            },
+        },
+        {
+            "name": "ff_1v98_m40c",
+            "params": {
+                "point_id": "ff_1v98_m40c",
+                "param_set": "ff_1v98_m40c",
+                "process": "ff",
+                "vdd_v": 1.98,
+                "temp_c": -40,
+            },
+        },
+    ],
+}
 
 
-def jobs_of(render_plan: RenderPlan) -> list[dict[str, Any]]:
-    """Every corner this edit file fans out to, by sidecar's own expansion.
+def jobs_of(declarations) -> list[dict[str, Any]]:
+    """Give each point only its own complete, identity-bearing definition."""
 
-    Param sets crossed with the param matrix, which is what ``sidecar-edits``
-    means by a job. One definition, called twice: once while authoring, to name
-    the invocations, and once while rendering, to produce them. If those two
-    ever disagreed the study would simulate decks it never rendered, so they
-    are not allowed to be two functions.
-    """
-
-    jobs: list[dict[str, Any]] = []
-    for param_set in render_plan.param_sets:
-        for case in expand_param_matrix(render_plan.param_matrix):
-            name = param_set.name or "default"
-            if case.suffix:
-                name = f"{name}__{case.suffix}"
-            jobs.append({"name": name, "params": {**param_set.params, **case.params}})
+    jobs = []
+    shared = {key: value for key, value in declarations.items() if key != "PARAM_SETS"}
+    for definition in declarations["PARAM_SETS"]:
+        point_declarations = {**shared, "PARAM_SETS": [definition]}
+        (item,) = variants(point_declarations)
+        jobs.append(
+            {
+                "name": item.name or "default",
+                "params": dict(item.params),
+                "declarations": point_declarations,
+            }
+        )
     return jobs
 
 
@@ -155,33 +176,31 @@ def jobs_of(render_plan: RenderPlan) -> list[dict[str, Any]]:
     name="ota_pvt_clean.prepare",
     version="1",
     inputs={"base": SIDE_CAR_BASE, "edits": SIDE_CAR_EDITS},
-    config={"jobs": parameter(list)},
-    outputs={"runs": file("runs", kind="prepared-simulation-directory")},
+    config={"name": parameter(str), "declarations": parameter(dict)},
+    outputs={"run": file("run", kind="prepared-simulation-directory")},
 )
-def prepare(base, edits, out, *, jobs):
-    """Render every corner in one go. Sidecar does the fan-out, not the flow.
+def prepare(base, edits, out, *, name, declarations):
+    """Resolve one selector from caller-supplied, identity-bearing definitions.
 
-    ``base`` is declared and not opened: the edit file reaches the base tree
-    through its own ``BASE_DIR``, and declaring it is what makes editing the
-    base netlist invalidate the study.
-
-    ``jobs`` is config rather than something re-read here, so the Plan states
-    exactly which corners will be rendered and with what — inspectable before
-    anything is spent, and part of this invocation's identity.
+    The complete ``declarations`` mapping is operation config. Passing the same
+    mapping only as a module local would make changes invisible to reuse; this
+    signature makes that invalid usage unnecessary. The resolved named base is
+    exactly the base artifact fingerprinted for this invocation.
     """
 
-    del base  # reached through the edit file's own BASE_DIR; declared for identity
-    render_plan = load_editfile(Path(edits))
-    out.runs.mkdir(parents=True, exist_ok=True)
-    for job in jobs:
-        render_job(render_plan, dict(job["params"]), out.runs / job["name"],
-                   label=job["name"])
+    plan = resolve(
+        Path(edits),
+        declarations=declarations,
+        requires={"base": Path(base).resolve()},
+        selector=name,
+    )
+    materialize(plan, out.run, label=name)
 
 
 @operation(
     name="ota_pvt_clean.simulate_ac",
     version="1",
-    inputs={"runs": PREPARED_RUNS},
+    inputs={"run": PREPARED_RUN},
     config={
         "point_id": parameter(str),
         "analysis": parameter(str),
@@ -192,12 +211,12 @@ def prepare(base, edits, out, *, jobs):
     # own job:  policy=lsf(cores=1, memory_mb=2048, licences={"ngspice": 1}),
     policy=local(),
 )
-def simulate_ac(runs, out, *, point_id, analysis, hold_seconds):
+def simulate_ac(run, out, *, point_id, analysis, hold_seconds):
     """A launcher: the ngspice run is what the placement places."""
 
     if analysis != "ac":
         raise NotImplementedError(f"only the 'ac' analysis is implemented: {analysis!r}")
-    deck = Path(runs) / point_id / DECK_NAME
+    deck = Path(run) / DECK_NAME
     if not deck.exists():
         raise FileNotFoundError(f"prepared deck not found at {deck} for {point_id}")
     if hold_seconds:
@@ -275,10 +294,14 @@ def evaluate_pvt(measurements, limits, *, point_ids):
 def pvt_study(base, edits, definition, limits, jobs):
     """One render for every corner, then one simulation and measurement each."""
 
-    prepared = prepare.named("prepare")(base, edits, jobs=jobs)
-
     measured = []
     for job in sweep(jobs, key=lambda item: item["name"]):
+        prepared = prepare(
+            base,
+            edits,
+            name=job["name"],
+            declarations=job["declarations"],
+        )
         raw = simulate_ac(
             prepared,
             point_id=job["name"],
@@ -294,17 +317,10 @@ def pvt_study(base, edits, definition, limits, jobs):
 
 
 @study(default_policy=local())
-def pvt(edits_path: Path):
-    """The study, with the corners read from the edit file itself.
+def pvt(declarations=PVT_DECLARATIONS):
+    """Compose from caller declarations without reading the edit file."""
 
-    The edit file is opened here, while authoring, which is why the plan can
-    name every corner before anything runs. Note what that costs: the author
-    needs the address resolved before a `Site` exists to resolve it, so the
-    locator is turned into a path twice — once here, once by the site. Worth
-    knowing; not worth a mechanism yet.
-    """
-
-    jobs = jobs_of(load_editfile(edits_path))
+    jobs = jobs_of(declarations)
     return pvt_study.named("ota-pvt")(
         input_artifact(
             address("repository-relative", BASE_DIRECTORY_LOCATOR),
@@ -603,8 +619,8 @@ def main() -> int:
             f"ota-clean-{datetime.now(timezone.utc):%Y%m%dT%H%M%S}"
         )
         print(f"fresh records: {work}")
-    jobs = jobs_of(load_editfile(_REPO / PVT_EDITS_LOCATOR))
-    print(f"{len(jobs)} corners from the edit file: "
+    jobs = jobs_of(PVT_DECLARATIONS)
+    print(f"{len(jobs)} caller-declared corners: "
           f"{', '.join(job['name'] for job in jobs)}\n")
 
     site = Site(
@@ -617,7 +633,7 @@ def main() -> int:
         threads=len(jobs),
     )
 
-    subject = pvt(_REPO / PVT_EDITS_LOCATOR)
+    subject = pvt()
     print(subject.summary(), "\n")
 
     document = subject.document

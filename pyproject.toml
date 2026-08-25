@@ -14,7 +14,10 @@ dev = ["hedloom[dask,pooled]", "spice-canonical", "netlist-decomposition",
 dev = { requires-python = ">=3.11" }
 
 [tool.uv.sources]
-hedloom               = { path = "hedloom" }
+# Editable, unlike a plain path source: a copy of a submodule that this
+# repository develops against goes stale the moment the submodule moves,
+# and the copy shadows the source without saying so.
+hedloom               = { path = "hedloom", editable = true }
 spice-canonical       = { workspace = true }
 netlist-decomposition = { workspace = true }
 sidecar-edits         = { workspace = true }

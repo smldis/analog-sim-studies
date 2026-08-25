@@ -25,7 +25,7 @@ members = [
 dev = [
     { name = "bokeh", marker = "python_full_version >= '3.11'" },
     { name = "build", marker = "python_full_version >= '3.11'" },
-    { name = "hedloom", extras = ["dask", "pooled"], marker = "python_full_version >= '3.11'", directory = "hedloom" },
+    { name = "hedloom", extras = ["dask", "pooled"], marker = "python_full_version >= '3.11'", editable = "hedloom" },
     { name = "netlist-decomposition", marker = "python_full_version >= '3.11'", editable = "netlist-decomposition" },
     { name = "pytest", marker = "python_full_version >= '3.11'" },
     { name = "setuptools", marker = "python_full_version >= '3.11'", specifier = ">=69" },
@@ -525,7 +525,7 @@ wheels = [
 [[package]]
 name = "hedloom"
 version = "0.1.0"
-source = { directory = "hedloom" }
+source = { editable = "hedloom" }
 dependencies = [
     { name = "hedloom-exec" },
     { name = "hedloom-flow" },
@@ -1622,7 +1622,7 @@ wheels = [
 
 [[package]]
 name = "sidecar-edits"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "sidecar-edits" }
 dependencies = [
     { name = "openpyxl" },

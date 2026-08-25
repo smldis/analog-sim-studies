@@ -209,8 +209,26 @@ def run_tests(unit: Unit) -> int:
             return result
     if unit.test_command is None:
         return 0
-    print(f"==> test {unit.unit_id}: {' '.join(unit.test_command)}", flush=True)
-    return subprocess.run(unit.test_command, cwd=unit.root, check=False).returncode
+    command = _same_interpreter(unit.test_command)
+    print(f"==> test {unit.unit_id}: {' '.join(command)}", flush=True)
+    return subprocess.run(command, cwd=unit.root, check=False).returncode
+
+
+def _same_interpreter(command: tuple[str, ...]) -> list[str]:
+    """Run a declared `python` under the interpreter composing the units.
+
+    A unit declares `python`, which resolves from `PATH` and so names whichever
+    environment the caller happened to activate — not the one running this
+    composition. The two disagreeing is not a footnote: the report would say a
+    unit passes while describing an environment nobody asked about, and an
+    unactivated `.venv/bin/python composition.py test` would test the system
+    interpreter instead. `build_docs` already builds with `sys.executable`; this
+    keeps testing honest in the same way.
+    """
+
+    if command and command[0] == "python":
+        return [sys.executable, *command[1:]]
+    return list(command)
 
 
 def _copy_path(source: Path, target: Path) -> None:

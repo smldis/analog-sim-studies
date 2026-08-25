@@ -124,6 +124,25 @@ def test_child_command_failure_propagates_and_stops_parent(tmp_path: Path) -> No
     assert not marker.exists()
 
 
+def test_a_declared_python_runs_under_the_composing_interpreter(tmp_path: Path) -> None:
+    """`python` names an environment; the run must be the one composing."""
+
+    recorded = tmp_path / "interpreter"
+    write_unit(
+        tmp_path / "root",
+        "root",
+        test_command=(
+            "python",
+            "-c",
+            f"import sys; from pathlib import Path; "
+            f"Path({str(recorded)!r}).write_text(sys.executable)",
+        ),
+    )
+
+    assert composition.run_tests(composition.load_unit(tmp_path / "root")) == 0
+    assert recorded.read_text() == sys.executable
+
+
 def test_docs_stage_includes_nested_units_and_links_them(tmp_path: Path) -> None:
     root = tmp_path / "root"
     write_unit(root, "root", children=("parent",), docs=True)

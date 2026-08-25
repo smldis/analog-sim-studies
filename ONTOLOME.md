@@ -46,8 +46,11 @@ any affected child ontology.
   relative paths.
 - `composition.py` validates declarations, renders the ontology tree, composes
   child tests with parent integration tests, and builds aggregate docs from
-  every descendant's owned sources. Descendant documentation is staged by its
-  stable unit ID so cross-unit links do not depend on repository nesting;
+  every descendant's owned sources. A workflow declaring `python` runs under the
+  interpreter composing the units, so a reported pass describes the environment
+  the composition was invoked in rather than whichever one `PATH` names.
+  Descendant documentation is staged by its stable unit ID so cross-unit links
+  do not depend on repository nesting;
   generated `_runs` evidence is excluded from that authored-documentation view.
 - Child public Python and CLI contracts remain owned and versioned by their
   units.

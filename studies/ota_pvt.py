@@ -76,7 +76,7 @@ from hedloom import (  # noqa: E402
 from netlist_decomposition import BlockTag  # noqa: E402
 from netlist_decomposition import decompose as decompose_blocks  # noqa: E402
 from netlist_decomposition import suppress_false_stacks as _suppress  # noqa: E402
-from sidecar_edits.render import load_editfile, render_job  # noqa: E402
+from sidecar_edits.render import materialize, resolve  # noqa: E402
 from spice_canonical.canonical_netlist import (  # noqa: E402
     CanonicalNetlist,
     Circuit,
@@ -146,29 +146,28 @@ SPEC_LIMITS = artifact("ota-specification-limits")
 def prepare_run(base, edits, out, *, point_id, param_set, process, vdd_v, temp_c):
     """Render this point's deck with Sidecar Edits, into this attempt's own dir.
 
-    ``edits`` is the declared edit file, now delivered as a real path rather
-    than read from a constant. ``base`` is declared and not opened here: the
-    edit file reaches the base tree through its own ``BASE_DIR``, and declaring
-    it is what makes editing the base netlist invalidate every point.
+    ``edits`` and ``base`` are declared inputs delivered as real paths. The
+    resolved base is bound to the edit file's named ``base`` requirement, so
+    the tree used for work is the tree fingerprinted for identity.
 
-    ``params`` is built from this call's own declared config -- the values that
-    are in this invocation's identity -- rather than re-read from the edit
-    file's ``PARAM_SETS``, so a config edit and a rerun agree on what changed.
+    This caller deliberately uses explicit params built from its own declared
+    config rather than selecting an authored set. Changing one point then
+    invalidates only that point. A selector would keep one corner definition,
+    but any edit-file change would invalidate every point that declares it.
     """
 
-    del base  # reached through the edit file's own BASE_DIR; declared for identity
-    render_job(
-        load_editfile(Path(edits)),
-        {
+    plan = resolve(
+        Path(edits),
+        requires={"base": Path(base).resolve()},
+        params={
             "point_id": point_id,
             "param_set": param_set,
             "process": process,
             "vdd_v": vdd_v,
             "temp_c": temp_c,
         },
-        out.run,
-        label=point_id,
     )
+    materialize(plan, out.run, label=point_id)
 
 
 @operation(

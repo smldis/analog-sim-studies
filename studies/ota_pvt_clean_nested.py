@@ -97,11 +97,7 @@ from hedloom import (  # noqa: E402
     sweep,
 )
 from hedloom_run.site import fingerprint_file  # noqa: E402
-from sidecar_edits.render import (  # noqa: E402
-    expand_param_matrix,
-    load_editfile,
-    render_job,
-)
+from sidecar_edits.render import materialize, read, resolve, variants  # noqa: E402
 
 INPUTS = "docs/reference/ota-pvt-plan/inputs"
 BASE_DIRECTORY_LOCATOR = f"{INPUTS}/base"
@@ -162,16 +158,21 @@ def load_edit_file(edits):
     output is inspected, so a live `RenderPlan` could not cross this boundary.
     """
 
-    render_plan = load_editfile(Path(edits))
+    authored = read(Path(edits))
     return {
-        "editfile": str(render_plan.editfile_path),
-        "param_sets": [
-            {"name": item.name, "description": item.description,
-             "params": dict(item.params)}
-            for item in render_plan.param_sets
+        "COMMON_PARAMS": dict(authored.common_params),
+        "PARAM_SETS": [
+            {
+                "name": item.name,
+                "description": item.description,
+                "params": dict(item.params),
+                **({"targetdir": item.targetdir} if item.targetdir else {}),
+            }
+            for item in authored.param_sets
+            if item.name is not None
         ],
-        "param_matrix": {
-            key: list(values) for key, values in render_plan.param_matrix.items()
+        "PARAM_MATRIX": {
+            key: list(values) for key, values in authored.param_matrix.items()
         },
     }
 
@@ -185,16 +186,14 @@ def load_edit_file(edits):
 def expand_jobs(described):
     """Sidecar's own fan-out: param sets crossed with the param matrix."""
 
-    jobs: list[dict[str, Any]] = []
-    for param_set in described["param_sets"]:
-        for case in expand_param_matrix(described["param_matrix"]):
-            name = param_set["name"] or "default"
-            if case.suffix:
-                name = f"{name}__{case.suffix}"
-            jobs.append(
-                {"name": name, "params": {**param_set["params"], **case.params}}
-            )
-    return jobs
+    return [
+        {
+            "name": item.name or "default",
+            "selector": item.selector,
+            "params": dict(item.params),
+        }
+        for item in variants(described)
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -207,14 +206,24 @@ def expand_jobs(described):
     name="ota_pvt_nested.prepare_corner",
     version="1",
     inputs={"base": SIDE_CAR_BASE, "edits": SIDE_CAR_EDITS},
-    config={"name": parameter(str), "params": parameter(dict)},
+    config={"name": parameter(str), "selector": parameter(str)},
     outputs={"run": file("run", kind="prepared-simulation-directory")},
 )
-def prepare_corner(base, edits, out, *, name, params):
-    """Render one corner. Its own invocation, so its own unit of reuse."""
+def prepare_corner(base, edits, out, *, name, selector):
+    """Render one authored selector; file fingerprint plus name is its identity.
 
-    del base  # reached through the edit file's own BASE_DIR; declared for identity
-    render_job(load_editfile(Path(edits)), dict(params), out.run, label=name)
+    This staged study intentionally uses selector mode: the prior operation read
+    authored variants at execution time, and the inner Plan selects those same
+    names. Values stay in the fingerprinted edit file, so the trade-off is
+    coarse invalidation when any part of that file changes.
+    """
+
+    plan = resolve(
+        Path(edits),
+        requires={"base": Path(base).resolve()},
+        selector=selector,
+    )
+    materialize(plan, out.run, label=name)
 
 
 @operation(
@@ -301,7 +310,9 @@ def corner_sweep(base, edits, definition, limits, jobs):
 
     measured = []
     for job in sweep(jobs, key=lambda item: item["name"]):
-        run = prepare_corner(base, edits, name=job["name"], params=job["params"])
+        run = prepare_corner(
+            base, edits, name=job["name"], selector=job["selector"]
+        )
         raw = simulate_ac(run, point_id=job["name"], analysis="ac")
         measured.append(measure_ac(raw, definition, point_id=job["name"]))
 

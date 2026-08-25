@@ -177,12 +177,13 @@ class OtaAcTb:
 ### Hybrid: authoritative exported DUT plus a small text harness and typed edits
 
 ```python
-BASE_DIR = "base_spectre_deck"       # contains dut.scs from the schematic
+REQUIRES = {"base": "base_spectre_deck"}  # contains schematic-exported dut.scs
 PARAM_MATRIX = {"vdd": [1.62, 1.8, 1.98], "temp_c": [-40, 27, 125]}
-EDITS = [
-    edits.replace(path="ota_ac.scs", old="VDD vdd 0 1.8",
-                  new="VDD vdd 0 {vdd}"),
-]
+def edits_for(ctx):
+    return [
+        edits.replace(path="ota_ac.scs", old="VDD vdd 0 1.8",
+                      new="VDD vdd 0 {vdd}"),
+    ]
 ```
 
 - **Portability:** high at the framework level because existing decks remain
@@ -373,21 +374,22 @@ Names beyond `edits` are proposed API, not implemented behavior.
 from sidecar_edits import edits
 from analog_studies import Axis, Measurement, Spec, Study, spice
 
-BASE_DIR = "ota_ac_base"          # checked-in harness + exported dut.scs
+REQUIRES = {"base": "ota_ac_base"}  # checked-in harness + exported dut.scs
 COMMON_PARAMS = {"cload": "2p", "vcm_ratio": 0.5}
-EDITS = [
-    edits.write_file(
-        path="generated/case.inc",
-        content=".temp {temp_c}\n.param VDD={vdd} VCM={vdd}*{vcm_ratio}\n",
-        description="materialize PVT operating conditions",
-    ),
-    edits.replace(
-        path="ota_ac.sp",
-        old='.lib "models.spice" tt',
-        new='.lib "models.spice" {process}',
-        description="select process model section",
-    ),
-]
+def edits_for(ctx):
+    return [
+        edits.write_file(
+            path="generated/case.inc",
+            content=".temp {temp_c}\n.param VDD={vdd} VCM={vdd}*{vcm_ratio}\n",
+            description="materialize PVT operating conditions",
+        ),
+        edits.replace(
+            path="ota_ac.sp",
+            old='.lib "models.spice" tt',
+            new='.lib "models.spice" {process}',
+            description="select process model section",
+        ),
+    ]
 
 ota_pvt = Study(
     name="ota_gain_gbw_pm",

@@ -27,7 +27,8 @@ no remaining job. It has been retired rather than updated, and
 python studies/ota_pvt.py
 ```
 
-That study renders each corner's deck with the real Sidecar Edits `render_job`,
+That study resolves and materializes each corner with the real published
+Sidecar Edits Python API,
 parses it with real SPICE Canonical, decomposes it with real Netlist
 Decomposition, simulates it with real `ngspice -b -r` (an AC sweep), computes DC
 gain, gain-bandwidth and phase margin from the real raw waveform file, and checks
@@ -45,8 +46,8 @@ the published packages, not a change to Hedloom Flow, and it does not promote
 this reference into a fifth component or a reusable OTA-study API.
 
 The proposed preparation boundary corresponds to the existing
-`sidecar-render`/`sidecar_edits.render.load_editfile` and `render_job` surfaces,
-now actually called. The canonicalization boundary corresponds to
+`sidecar-render` and `sidecar_edits.render.resolve`/`materialize` surfaces, now
+actually called. The canonicalization boundary corresponds to
 `spice_canonical.canonical_netlist.from_file`, now actually called. The
 structural boundary selects a canonical `Circuit`, calls
 `netlist_decomposition.decompose`, and calls `suppress_false_stacks`, now

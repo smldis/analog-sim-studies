@@ -35,7 +35,7 @@ from hedloom_flow import (  # noqa: E402
     submit,
 )
 from sidecar_edits import edits as sidecar_edit_api  # noqa: E402
-from sidecar_edits.render import load_editfile  # noqa: E402
+from sidecar_edits.render import read, resolve, variants  # noqa: E402
 
 
 EXPECTED_POINTS = (
@@ -696,7 +696,9 @@ def test_fixture_paths_are_repository_relative_and_sidecar_values_match_points()
     assert all((ROOT / locator).exists() for locator in locators)
 
     edit_path = REFERENCE_DIR / "inputs" / "pvt_edits.py"
-    render_plan = load_editfile(edit_path)
+    authored = read(edit_path)
+    expanded = variants(authored)
+    render_plan = resolve(authored, selector="tt_1v80_27c")
     assert render_plan.base_dir == (REFERENCE_DIR / "inputs" / "base").resolve()
     assert render_plan.edits
     assert all(sidecar_edit_api.is_edit_spec(edit) for edit in render_plan.edits)
@@ -707,12 +709,12 @@ def test_fixture_paths_are_repository_relative_and_sidecar_values_match_points()
             param_set.params["vdd_v"],
             param_set.params["temp_c"],
         )
-        for param_set in render_plan.param_sets
+        for param_set in expanded
     ] == list(EXPECTED_POINTS)
     assert all(
         param_set.params["point_id"] == param_set.name
         and param_set.params["param_set"] == param_set.name
-        for param_set in render_plan.param_sets
+        for param_set in expanded
     )
 
     measurement_definition = json.loads(

@@ -26,6 +26,7 @@ altered by evidence), **deferred** (still wanted, not started), **dropped**
 | File-first sidecar: identities, append-only try events, job ID, timestamps, diagnostics, per-try manifests, artifact references | `hedloom-exec` | Deliberately not a workflow database. |
 | Out-of-place execution, declared artifacts, atomic publication | `hedloom-exec` | Per-try workspace; declared outputs only. |
 | Materialization before data crosses to an external substrate | `hedloom-exec` | On a shared store this is recording an address, not moving bytes. |
+| Operator-run workspace retention and per-try pins | `hedloom-exec`, Hedloom `Site` | A dry-run survey classifies spent tries under strict named Site rules; apply rechecks under the record claim and records removal before deleting bytes. Standing results, aliases, pins, live tries, the global floor, and `unreconciled` evidence remain protected. Terminal-only pins store attributable digest inventories in the record and detect rather than claim to prevent drift. Named automatic rules may run after completion; no study-owned pruning argument exists. |
 
 ## Changed by evidence
 
@@ -307,13 +308,6 @@ still open, and it is still the study that should settle it.
 
 ## New ideas raised during development
 
-- **Workspace garbage collection.** Every try keeps its own workspace, and
-  failed tries are retained deliberately beneath their record. Nothing
-  reclaims them. A study
-  with many corners and several reruns will accumulate directories that no
-  current plan references. Wants a policy — age, superseded-ness, or explicit
-  operator action — and must never delete a try a live plan still resolves
-  to. Recorded as an idea, not scheduled.
 - **A source's identity is its declared artifact and address, plus an optional
   runtime fingerprint.** Raised running the OTA/PVT reference's real execution
   binding (`docs/reference/ota-pvt-plan/run_study.py`, 2026-08-04). The original

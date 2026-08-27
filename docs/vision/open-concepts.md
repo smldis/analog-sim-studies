@@ -17,13 +17,14 @@ altered by evidence), **deferred** (still wanted, not started), **dropped**
 | Static custom-flow composition; one normalized inspectable Plan | `hedloom-flow` | Accepted with the OTA/PVT domain reference. |
 | Declarative source handoff: artifact contract and address | `hedloom-flow` | Schema-2 Plan IR. |
 | Local Dask Delayed lowering (evidence ladder 3) | `hedloom-flow` experimental | Bounded instrument, not an execution API. |
-| Immutable bundle and stable attempt ID chosen before submission | `hedloom-exec` | `attempt_identity`, content-addressed. |
+| Immutable bundle and stable record ID derived before submission | `hedloom-exec` | `attempt_identity(plan, invocation, digest)`, content-addressed; Phase 1 removed the old sequence hash slot and deliberately changed renderings. |
+| One record owning numbered try workspaces | `hedloom-exec` | Layout 1: allocation is recorded under the claim before transport, farm operations use `<record>-<try>`, terminal evidence is immutable per try, and `standing.json` selects reusable evidence. No migration from earlier roots. |
 | `launch_or_attach` claiming, attaching, or completing | `hedloom-exec` | Exactly three dispositions or a loud failure. |
 | Idempotent `request_cancel` recording intent before acting | `hedloom-exec` | Cancellation is intent, never established by return. |
 | Success requires observed terminal state *and* atomic publication | `hedloom-exec` | Disagreement publishes `unreconciled`. |
 | Both loss windows (evidence ladder 5) | `hedloom-exec` | Failure injections against a fake substrate. |
-| File-first sidecar: identities, append-only attempts, job ID, timestamps, diagnostics, manifest, artifact references | `hedloom-exec` | Deliberately not a workflow database. |
-| Out-of-place execution, declared artifacts, atomic publication | `hedloom-exec` | Per-attempt workspace; declared outputs only. |
+| File-first sidecar: identities, append-only try events, job ID, timestamps, diagnostics, per-try manifests, artifact references | `hedloom-exec` | Deliberately not a workflow database. |
+| Out-of-place execution, declared artifacts, atomic publication | `hedloom-exec` | Per-try workspace; declared outputs only. |
 | Materialization before data crosses to an external substrate | `hedloom-exec` | On a shared store this is recording an address, not moving bytes. |
 
 ## Changed by evidence
@@ -76,8 +77,9 @@ These fell out during direct development. None was rejected on merit.
 - ~~**Retry and timeout bounds.**~~ **Recovered.**
   `LSFInteractiveTransport(timeout=...)` now bounds our own wait; a client that
   exceeds it is killed, which with `-I` takes the job too, and the result is
-  reported as indeterminate rather than refused. Retry policy beyond
-  `max_attempts` remains unmodelled.
+  reported as indeterminate rather than refused. Phase 1 removed the executor's
+  `max_attempts`: records mechanically allocate unbounded tries, while policy
+  about whether to retry remains unmodelled.
 - **Explicit fallback rule, absent by default.** Named in the policy model,
   never modelled. Related to result-dependent control below.
 - **Result-dependent control and recovery.** Deliberately out of scope
@@ -305,11 +307,12 @@ still open, and it is still the study that should settle it.
 
 ## New ideas raised during development
 
-- **Workspace garbage collection.** Every attempt keeps its own workspace, and
-  failed attempts are retained deliberately. Nothing reclaims them. A study
+- **Workspace garbage collection.** Every try keeps its own workspace, and
+  failed tries are retained deliberately beneath their record. Nothing
+  reclaims them. A study
   with many corners and several reruns will accumulate directories that no
   current plan references. Wants a policy — age, superseded-ness, or explicit
-  operator action — and must never delete an attempt a live plan still resolves
+  operator action — and must never delete a try a live plan still resolves
   to. Recorded as an idea, not scheduled.
 - **A source's identity is its declared artifact and address, plus an optional
   runtime fingerprint.** Raised running the OTA/PVT reference's real execution

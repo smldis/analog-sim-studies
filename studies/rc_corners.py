@@ -176,7 +176,7 @@ def _read_ac_magnitudes(path: Path) -> list[tuple[float, float]]:
     return points
 
 
-@study(default_policy=local())
+@study(name="rc-corners", default_policy=local())
 def rc_corners():
     """The study: every corner swept, in this process."""
 

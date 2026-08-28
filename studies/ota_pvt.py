@@ -388,7 +388,7 @@ def ota_pvt_study(base, edits, definition, limits, points):
     return {"evaluation": evaluation.evaluation}
 
 
-@study(default_policy=local())
+@study(name="ota-pvt-study", default_policy=local())
 def pvt(points=PVT_POINTS):
     """The study: every declared input, then the flow that consumes them."""
 
@@ -607,7 +607,7 @@ def write_report(run, path: Path) -> None:
     """
 
     document = {
-        "plan_id": "ota-pvt-study",
+        "study_name": run.study_name,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "succeeded": run.succeeded,
         "invocations": [

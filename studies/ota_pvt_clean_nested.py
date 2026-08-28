@@ -322,7 +322,7 @@ def corner_sweep(base, edits, definition, limits, jobs):
     return {"evaluation": evaluation.evaluation}
 
 
-@study(default_policy=local())
+@study(name="ota-pvt-clean-nested-corners", default_policy=local())
 def corner_study(jobs: list[dict[str, Any]]):
     """Stage two. Ordinary authoring — the jobs are just a value here."""
 
@@ -502,7 +502,7 @@ def pvt_study(base, edits, definition, limits, *, records_root, workspace_root):
     return {"report": written.report, "verdict": written.verdict}
 
 
-@study(default_policy=local())
+@study(name="ota-pvt-clean-nested", default_policy=local())
 def pvt(*, records_root: str, workspace_root: str):
     """Stage one. Nothing about the corners is read here."""
 

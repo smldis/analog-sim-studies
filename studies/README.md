@@ -23,12 +23,12 @@ python studies/ota_pvt_clean_nested.py
 Results land under `studies/_runs/`, which is generated evidence rather than
 source and is not committed.
 
-| Study | What it is for |
-| --- | --- |
-| [`rc_corners.py`](rc_corners.py) | The smallest honest end-to-end study: three RC corners on real `ngspice`, whose −3 dB frequency is analytic, so the measured number can be checked rather than believed. The 4.3% gap is the `dec 50` sweep grid. |
-| [`ota_pvt.py`](ota_pvt.py) | The full OTA/PVT reference. Sixteen invocations over three PVT points, four declared external sources, real AC sweeps, and gain/GBW/phase-margin computed from the raw file rather than transcribed. |
-| [`ota_pvt_clean.py`](ota_pvt_clean.py) | The same sign-off with the structural analysis removed, fanning corners out from the edit file and writing `report.md` as the deliverable. Opens its own session so the dashboard link is available before anything is submitted. |
-| [`ota_pvt_clean_nested.py`](ota_pvt_clean_nested.py) | The corner set as a *result*: an outer plan whose invocation authors and submits an inner plan, so per-corner identity and reuse survive a fan-out that could not be named in advance. |
+| Study | Hedloom name | What it is for |
+| --- | --- | --- |
+| [`rc_corners.py`](rc_corners.py) | `rc-corners` | The smallest honest end-to-end study: three RC corners on real `ngspice`, whose −3 dB frequency is analytic, so the measured number can be checked rather than believed. The 4.3% gap is the `dec 50` sweep grid. |
+| [`ota_pvt.py`](ota_pvt.py) | `ota-pvt-study` | The full OTA/PVT reference. Sixteen invocations over three PVT points, four declared external sources, real AC sweeps, and gain/GBW/phase-margin computed from the raw file rather than transcribed. |
+| [`ota_pvt_clean.py`](ota_pvt_clean.py) | `ota-pvt-clean` | The same sign-off with the structural analysis removed, fanning corners out from the edit file and writing `report.md` as the deliverable. Opens its own session so the dashboard link is available before anything is submitted. |
+| [`ota_pvt_clean_nested.py`](ota_pvt_clean_nested.py) | `ota-pvt-clean-nested` (outer), `ota-pvt-clean-nested-corners` (inner) | The corner set as a *result*: an outer plan whose invocation authors and submits an inner plan, so per-corner identity and reuse survive a fan-out that could not be named in advance. |
 
 `ota_pvt.py` is the reference the root documentation cites. The other three are
 variations on it, kept because each answers a different question about the

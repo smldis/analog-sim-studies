@@ -316,7 +316,7 @@ def pvt_study(base, edits, definition, limits, jobs):
     return {"evaluation": evaluation.evaluation}
 
 
-@study(default_policy=local())
+@study(name="ota-pvt-clean", default_policy=local())
 def pvt(declarations=PVT_DECLARATIONS):
     """Compose from caller declarations without reading the edit file."""
 

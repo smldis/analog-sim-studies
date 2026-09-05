@@ -2,9 +2,12 @@
 
 This manifesto explains the situation that motivates our work, the needs we
 intend to serve, and the future we want to make possible. It provides shared
-reasons for choosing a direction when the answer is open. Ontolomes describe
-the responsibilities and commitments of the components through which we pursue
-it; their present boundaries and implementations remain open to revision.
+reasons for choosing a direction when the answer is open. Each ONTOLOME is an
+ongoing study of the component at its location. Humans and agents lend it the
+capacity to reflect on its purpose, experience, relationships, and possibilities,
+allowing its understanding of itself to evolve through use. Its responsibilities
+and commitments are part of that understanding; its present boundaries and
+implementation remain open to revision.
 These aims guide judgment. The degree of structure and formality should serve
 the work at hand.
 

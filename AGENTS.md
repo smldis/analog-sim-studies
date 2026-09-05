@@ -5,11 +5,22 @@
 Before acting, read `MANIFESTO.md`, the root `ONTOLOME.md`, and every ontology
 on the filesystem path to the target component. Also inspect the nearest
 `README.md`, `unit.toml`, relevant implementation and tests, and current Git
-status. The manifesto states intended direction. Ontologies state the current
-semantic being: responsibility, contribution, explicit contracts, exclusions,
-and development state.
+status. The manifesto states intended direction. Each ONTOLOME is the ongoing
+self-study of the component rooted at its location: its purpose, experience,
+relationships, commitments, assumptions, and possibilities, including its
+current responsibilities, exclusions, and development state.
 
 ## Work reflectively
+
+When you encounter an ONTOLOME during ordinary work, spend a small amount of
+attention considering the work from that component's perspective. Use the
+context and evidence already available: what does this experience reveal about
+its purpose, commitments, assumptions, or possible evolution? When a useful
+insight emerges and editing is within the task's scope, incorporate it concisely
+into the relevant ONTOLOME. A reflection may leave the file unchanged. Keep
+established commitments distinguishable from observations and possibilities;
+observed behavior does not silently redefine a commitment. Prefer refining the
+existing account over accumulating a diary.
 
 All current nodes are prototypes: runnable forms through which the repository
 studies itself. Ask what the repository currently says the component is, what

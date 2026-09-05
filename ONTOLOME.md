@@ -1,5 +1,10 @@
 # Analog Sim Studies Ontology
 
+This is the ongoing self-study of the component rooted here. Briefly inhabit
+its perspective as you work: what are you learning about what it is, why it
+exists, and what it might become? Help this account evolve when you have
+something useful to add.
+
 ## Purpose and scope
 
 This repository is the composition node for independently useful analog-design
@@ -28,6 +33,15 @@ runnable units propose hypotheses about the system's architecture, features,
 and boundaries; their use supplies evidence for revising those hypotheses and
 this ontology. The implementation is useful capability and an instrument of
 inquiry, not an inevitable final form.
+
+This account holds both chosen commitments and what use teaches us about them.
+A working composition supports its usefulness in the cases examined; it does
+not establish that these are the best boundaries. A disagreement between code
+and a commitment is something to understand, not an automatic contract change.
+The root's integration responsibilities come from its explicit composition
+contract, not its position above the children. Whether that composition keeps
+reducing the effort of combining independently useful capabilities remains a
+question for actual use.
 
 At this stage, architectural learning, useful features, and runnable vertical
 slices take priority over production hardening. High availability, enterprise

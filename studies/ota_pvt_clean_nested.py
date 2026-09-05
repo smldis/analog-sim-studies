@@ -403,7 +403,7 @@ def run_corner_study(
         raise RuntimeError(f"the corner study failed:\n{run.summary()}")
 
     return {
-        "evaluation": run.value,
+        "evaluation": run.outputs["evaluation"].value,
         "invocations": [
             {
                 "authored_key": outcome.authored_key,
@@ -773,7 +773,7 @@ def main() -> int:
     written = Path(run["report"].artifacts["report"]["address"])
     print()
     print(written.read_text(encoding="utf-8"))
-    print(f"verdict:     {run.value}")
+    print(f"verdict:     {run.outputs['verdict'].value}")
     print(f"deliverable: {written}")
     return 0
 

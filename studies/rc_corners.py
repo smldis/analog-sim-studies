@@ -200,7 +200,13 @@ def main() -> int:
     print(subject.summary(), "\n")
 
     run = subject.submit(site=site, watch=True)
-    print("\nconclusion:", run.value)
+    verdict = run.outputs["verdict"]
+    print(
+        "\nconclusion:",
+        verdict.value
+        if verdict.available
+        else f"unavailable ({verdict.outcome.outcome})",
+    )
     print("cold corner measured at", run["cold:corner_frequency"].value, "Hz")
     return 0 if run.succeeded else 1
 

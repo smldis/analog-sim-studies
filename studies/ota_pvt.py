@@ -606,6 +606,9 @@ def write_report(run, path: Path) -> None:
     the Plan is kept free of.
     """
 
+    # Exported by name, so a report of a failed run says the evaluation is
+    # absent rather than quietly recording whatever ran last as one.
+    evaluation = run.outputs["evaluation"]
     document = {
         "study_name": run.study_name,
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -622,7 +625,8 @@ def write_report(run, path: Path) -> None:
             }
             for outcome in run.report.outcomes
         ],
-        "evaluation": run.value,
+        "evaluation": evaluation.value if evaluation.available else None,
+        "evaluation_available": evaluation.available,
     }
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(document, indent=2, default=str), encoding="utf-8")
@@ -649,10 +653,10 @@ def main() -> int:
 
     run = subject.submit(site=site, watch=True)
 
-    evaluation = run.value
-    if evaluation is not None:
+    evaluation = run.outputs["evaluation"]
+    if evaluation.available:
         print()
-        print(json.dumps(evaluation, indent=2, default=str))
+        print(json.dumps(evaluation.value, indent=2, default=str))
 
     report_path = work / "report.json"
     write_report(run, report_path)

@@ -470,6 +470,18 @@ _METRICS = (
 )
 
 
+def _evaluation_of(run):
+    """The study's exported evaluation, or ``None`` when it was not produced.
+
+    Read by name rather than as an aggregate over whatever ran last, and asked
+    before it is read: a failed run has no evaluation, and recording ``None``
+    for it is honest only when nothing else is offered in its place.
+    """
+
+    exported = run.outputs["evaluation"]
+    return exported.value if exported.available else None
+
+
 def render_report(
     run,
     *,
@@ -484,7 +496,7 @@ def render_report(
     the Plan is kept free of.
     """
 
-    evaluation = run.value or {}
+    evaluation = _evaluation_of(run) or {}
     points = evaluation.get("points", {})
     limits = evaluation.get("limits", {})
     verdict = "PASS" if evaluation.get("overall_pass") else "FAIL"
@@ -658,7 +670,8 @@ def main() -> int:
         work.mkdir(parents=True, exist_ok=True)
         (work / "report.md").write_text(report, encoding="utf-8")
         (work / "report.json").write_text(
-            json.dumps(run.value, indent=2, default=str), encoding="utf-8"
+            json.dumps(_evaluation_of(run), indent=2, default=str),
+            encoding="utf-8",
         )
 
         print()

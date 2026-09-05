@@ -5,6 +5,8 @@ intend to serve, and the future we want to make possible. It provides shared
 reasons for choosing a direction when the answer is open. Ontolomes describe
 the responsibilities and commitments of the components through which we pursue
 it; their present boundaries and implementations remain open to revision.
+These aims guide judgment. The degree of structure and formality should serve
+the work at hand.
 
 ## The environment we work in
 
@@ -30,10 +32,11 @@ activities belong to one engineering inquiry even when different tools
 perform them.
 
 Programmable tools and AI assistance create opportunities to build workflows
-closer to these needs. Making more scripts or producing more results does not
-by itself improve engineering understanding. As automation becomes easier,
-preserving intent, evidence, and the reasons for decisions becomes more
-valuable.
+closer to these needs. Autonomous agents can reduce the effort of trying an
+idea, building a prototype, and exploring alternatives. That freedom is
+valuable: it lets us learn from possibilities we would otherwise leave
+unexamined. The system should support this exploration alongside human work
+and conventional automation, and remain useful without AI.
 
 ## The future we want
 
@@ -68,11 +71,10 @@ verification, a design change, a comparison, or an unexplained failure. It may
 begin before the question is precise, and simulation may be central,
 secondary, or initially absent.
 
-The question may change as we learn. The work should retain enough context
-to explain that change: what we sought, what we tried, what we observed, and
-why we accepted a conclusion or chose a next step. Failed experiments and
-rejected alternatives can be valuable knowledge when their meaning remains
-accessible.
+The question may change as we learn. Retaining useful context helps us
+understand what we tried and why we chose a next step. Failed experiments and
+rejected alternatives can be worth preserving when they help us continue the
+inquiry or avoid repeating a mistake.
 
 A completed computation is evidence within this inquiry. An engineering
 conclusion also depends on interpretation, assumptions, and the criteria by
@@ -107,17 +109,17 @@ and understand them through the recorded work.
 ## Make evidence trustworthy and reusable
 
 Confidence should come from evidence that can be examined. We should be able
-to relate a reported result to the inputs, tools, configuration, assumptions,
-and operations that produced it, and relate a conclusion to the evidence and
-criteria that support it. Uncertainty and incomplete knowledge should remain
-visible wherever they affect a decision.
+to understand the basis of a result or conclusion well enough for the use we
+make of it. An exploratory result and a conclusion others will rely on call
+for different depths of verification and supporting context.
 
 Full reproducibility is an ambition of the system. We should preserve or make
 recoverable the dependencies needed to reproduce the work, including external
 models, tool versions, and data. A record should make clear what can be
-reproduced: exact artifacts, a procedure, or an engineering conclusion under
-stated conditions. Limitations should guide further work and be explicit in
-the claims we make.
+reproduced when that matters to its use: exact artifacts, a procedure, or an
+engineering conclusion under stated conditions. Building toward this
+capability should make reproducible work easier, with room for lightweight
+experiments before we decide what deserves fuller preservation.
 
 Reuse should preserve the justification for trusting a result. When something
 changes, we should be able to understand which evidence remains applicable,
@@ -143,27 +145,17 @@ require combining, separating, replacing, or retiring components. The needs
 that motivate the system should guide those choices; an existing division
 of responsibilities is a revisable means of serving them.
 
-## Extend human and automated agency
-
-The same inspectable work should support humans, conventional automation,
-and agents. The system must remain useful without AI while allowing AI to
-help express questions, develop tools, investigate evidence, and propose next
-steps. Every collaborator should use the same public capabilities and meet
-the same standards of evidence and review.
-
-Greater autonomy should carry explicit authority and accountability. Those
-responsible for the work should be able to understand what a collaborator
-may change, what resources it may spend, and which decisions require their
-judgment. The basis for a decision should remain reviewable regardless of
-who or what proposed it. Fluent explanations and successful execution do
-not substitute for evidence that addresses the engineering question.
-
 ## Learn what deserves to be built
 
 The vision is broader than any current implementation. Its pursuit should
 remain responsive to the needs revealed by actual work and to opportunities
 we have not yet anticipated. Useful experiments can test both engineering
 ideas and our assumptions about the tools that support them.
+
+Prototypes benefit from latitude to act, fail, and change direction. Structure,
+documentation, and review earn their effort when they help us learn, use a
+capability, or make a consequential decision. Their cost in time, attention,
+and computation belongs in that judgment.
 
 We should judge progress by whether people can ask better questions, reduce
 recurring effort, understand their evidence, and continue or revise work with

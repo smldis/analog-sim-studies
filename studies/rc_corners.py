@@ -99,7 +99,7 @@ def corner_frequency(raw) -> float:
     reference = magnitudes[0][1]
     for frequency, magnitude in magnitudes:
         if magnitude <= reference / math.sqrt(2.0):
-            return frequency
+            return {'hz': frequency}
     raise ValueError("the response never fell 3 dB; the sweep is too narrow")
 
 
@@ -109,13 +109,13 @@ def compare(corners: list) -> dict:
     """The study's conclusion, computed rather than transcribed."""
 
     expected = 1.0 / (2.0 * math.pi * RESISTANCE_OHM * CAPACITANCE_F)
-    return {
+    return {'verdict': {
         "expected_hz": expected,
         "measured_hz": list(corners),
         "worst_error_pct": max(
             abs(value - expected) / expected * 100.0 for value in corners
         ),
-    }
+    }}
 
 
 @flow

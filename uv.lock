@@ -578,6 +578,7 @@ name = "hedloom-run"
 version = "0.1.0"
 source = { editable = "hedloom/run" }
 dependencies = [
+    { name = "cloudpickle" },
     { name = "hedloom-exec" },
 ]
 
@@ -589,6 +590,7 @@ pooled = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cloudpickle", specifier = ">=3" },
     { name = "dask-jobqueue", marker = "extra == 'pooled'", specifier = ">=0.9" },
     { name = "distributed", marker = "extra == 'dask'", specifier = ">=2023.9.2" },
     { name = "hedloom-exec", editable = "hedloom/exec" },

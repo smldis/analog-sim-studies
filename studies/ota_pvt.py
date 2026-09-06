@@ -187,7 +187,7 @@ def canonicalize_deck(run, *, deck_relpath, spice_format, top_name):
     netlist = from_file(
         Path(run) / deck_relpath, top_name=top_name, spice_format=spice_format
     )
-    return _serialize_canonical(netlist)
+    return {'canonical': _serialize_canonical(netlist)}
 
 
 @operation(
@@ -223,7 +223,7 @@ def decompose_ota(
     )
     if suppress_false_stacks:
         tags = _suppress(tags)
-    return [_serialize_block_tag(tag) for tag in tags]
+    return {'decomposition': [_serialize_block_tag(tag) for tag in tags]}
 
 
 @operation(
@@ -285,7 +285,7 @@ def measure_ac(raw, definition, *, point_id):
     missing = expected - measured.keys()
     if missing:
         raise RawFileError(f"measurement definition names {sorted(missing)}; not computed")
-    return {"point_id": point_id, **measured}
+    return {'measurements': {"point_id": point_id, **measured}}
 
 
 @operation(
@@ -331,11 +331,11 @@ def evaluate_pvt(measurements, decompositions, limits, *, point_ids):
         }
         overall_pass = overall_pass and point_pass
 
-    return {
+    return {'evaluation': {
         "status": declared.get("status"),
         "points": points,
         "overall_pass": overall_pass,
-    }
+    }}
 
 
 @flow(name="ota_pvt.study", version="1")

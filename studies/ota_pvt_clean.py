@@ -245,7 +245,7 @@ def measure_ac(raw, definition, *, point_id):
     missing = expected - measured.keys()
     if missing:
         raise RawFileError(f"measurement definition names {sorted(missing)}; not computed")
-    return {"point_id": point_id, **measured}
+    return {'measurements': {"point_id": point_id, **measured}}
 
 
 @operation(
@@ -282,12 +282,12 @@ def evaluate_pvt(measurements, limits, *, point_ids):
         }
         overall_pass = overall_pass and point_pass
 
-    return {
+    return {'evaluation': {
         "status": declared.get("status"),
         "limits": limit_map,
         "points": points,
         "overall_pass": overall_pass,
-    }
+    }}
 
 
 @flow(name="ota_pvt_clean.study", version="1")

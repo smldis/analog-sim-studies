@@ -43,6 +43,15 @@ contract, not its position above the children. Whether that composition keeps
 reducing the effort of combining independently useful capabilities remains a
 question for actual use.
 
+Architectural challenge is part of ordinary work here. When current contracts
+or exclusions obstruct a user need or create avoidable complexity, humans and
+agents are expected to examine alternatives across the affected components
+without waiting for a separate request. The manifesto supplies the reason and
+`AGENTS.md` the working guidance. Current commitments remain distinguishable
+from proposed revisions; adopted revisions update their contracts and evidence
+explicitly, rather than treating implementation friction as permission to
+weaken the need being served.
+
 At this stage, architectural learning, useful features, and runnable vertical
 slices take priority over production hardening. High availability, enterprise
 deployment, exhaustive compatibility, premature migration machinery, and

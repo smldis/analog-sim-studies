@@ -148,6 +148,23 @@ require combining, separating, replacing, or retiring components. The needs
 that motivate the system should guide those choices; an existing division
 of responsibilities is a revisable means of serving them.
 
+Existing contracts, exclusions, and architectural decisions deserve the same
+scrutiny as new proposals. They record our current understanding of how to
+serve the work; their age, documentation, or passing tests do not establish
+that they remain the best choice. When preserving one creates unnecessary
+coordination, duplicates responsibility, or compromises a needed capability,
+we should examine alternatives at any affected layer before adding a workaround.
+
+Humans and agents should initiate that examination as part of ordinary work,
+without waiting for the operator to request an architectural challenge. Start
+from the need being served, distinguish it from the mechanism currently used,
+and compare keeping, simplifying, replacing, or removing that mechanism.
+Use a small experiment when it can settle the uncertainty. A proposed change
+should explain what it preserves, what it changes, and the evidence and cost
+behind it. Revise contracts explicitly when a better design earns the change;
+do not quietly weaken a user need to fit the implementation. Keep the inquiry
+proportionate to the problem so that reflection helps useful work proceed.
+
 ## Learn what deserves to be built
 
 The vision is broader than any current implementation. Its pursuit should

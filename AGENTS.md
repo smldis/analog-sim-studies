@@ -40,6 +40,24 @@ explicit boundaries, proportionate tests, reversible changes, honest
 limitations, and evidence-backed conclusions. Treat failures and friction as
 evidence that may require changing code, contracts, boundaries, or ontology.
 
+Challenge existing architecture proactively when a task exposes friction.
+Before adding coordination, duplicating responsibility, changing observable
+behavior, or narrowing a requested capability to preserve a current contract,
+separate the user's requirement from the chosen mechanism. Compare the current
+approach with a simpler alternative, including changes at another component
+boundary when relevant. Contracts, exclusions, and decisions marked settled
+can be challenged; do not wait for the user to ask whether they can change.
+Existing tests are evidence about behavior, not proof that a boundary is right.
+
+Investigate and prototype alternatives within the authorized task scope.
+State the contract being challenged, the need it serves, the proposed change,
+and the evidence and consequences. Challenging a contract does not silently
+revise it: make adopted changes explicit in code, tests, maintained docs, and
+the affected ontologies. Preserve explicit user requirements unless the user
+revises them. Keep this inquiry brief for routine changes; expand it when a
+concrete conflict or complexity warrants it, without requiring a separate
+permission step merely to examine an alternative.
+
 ## Preserve composition
 
 Containment is composition, not inheritance, runtime order, precedence, or

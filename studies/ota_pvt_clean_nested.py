@@ -390,6 +390,7 @@ def run_corner_study(
         root=records_root,
         workspace_root=workspace_root,
         address_spaces={"repository-relative": str(repository)},
+        history_root=str(records_root) + "-history",
     )
 
     run = inner.submit(
@@ -398,6 +399,7 @@ def run_corner_study(
             f"      inner | {outcome.authored_key:28} "
             f"{'reused' if outcome.reused else 'ran   '}  {outcome.outcome}"
         ),
+        name="ota-pvt-clean-nested",
     )
     if not run.succeeded:
         raise RuntimeError(f"the corner study failed:\n{run.summary()}")
@@ -753,6 +755,7 @@ def main() -> int:
         root=str(work / "attempts"),
         workspace_root=str(work / "work"),
         address_spaces={"repository-relative": str(_REPO)},
+        history_root=str(work / "attempts") + "-history",
     )
 
     subject = pvt(
@@ -763,7 +766,7 @@ def main() -> int:
     print("No corner appears above: stage one cannot name them, because the\n"
           "corner list is a result. `corners` authors stage two, which can.\n")
 
-    run = subject.submit(site=site, watch=True)
+    run = subject.submit(site=site, watch=True, name="ota-pvt-clean-nested")
     if not run.succeeded:
         print(run.summary())
         return 1

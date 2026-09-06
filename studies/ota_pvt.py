@@ -646,12 +646,13 @@ def main() -> int:
         root=str(work / "attempts"),
         workspace_root=str(work / "work"),
         address_spaces={"repository-relative": str(_REPO)},
+        history_root=str(work / "attempts") + "-history",
     )
 
     subject = pvt()
     print(subject.summary(), "\n")
 
-    run = subject.submit(site=site, watch=True)
+    run = subject.submit(site=site, watch=True, name="ota-pvt")
 
     evaluation = run.outputs["evaluation"]
     if evaluation.available:

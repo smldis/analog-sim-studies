@@ -643,6 +643,7 @@ def main() -> int:
         # number is local concurrency, which is what `threads` has always been
         # about; a farm placement would carry its own `max_jobs` beside it.
         threads=len(jobs),
+        history_root=str(work / "attempts") + "-history",
     )
 
     subject = pvt()
@@ -662,7 +663,7 @@ def main() -> int:
             # The corners finish faster than chromium starts; give it the head
             # start so the task stream has something to draw into.
             time.sleep(DASHBOARD_HEAD_START)
-        run = farm.submit(subject)
+        run = farm.submit(subject, name="ota-pvt-clean")
 
         report = render_report(
             run, jobs=jobs, fingerprints=site.fingerprints(document), document=document

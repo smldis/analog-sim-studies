@@ -159,7 +159,7 @@ def load_edit_file(edits):
     """
 
     authored = read(Path(edits))
-    return {
+    return {'described': {
         "COMMON_PARAMS": dict(authored.common_params),
         "PARAM_SETS": [
             {
@@ -174,7 +174,7 @@ def load_edit_file(edits):
         "PARAM_MATRIX": {
             key: list(values) for key, values in authored.param_matrix.items()
         },
-    }
+    }}
 
 
 @operation(
@@ -186,14 +186,14 @@ def load_edit_file(edits):
 def expand_jobs(described):
     """Sidecar's own fan-out: param sets crossed with the param matrix."""
 
-    return [
+    return {'jobs': [
         {
             "name": item.name or "default",
             "selector": item.selector,
             "params": dict(item.params),
         }
         for item in variants(described)
-    ]
+    ]}
 
 
 # ---------------------------------------------------------------------------
@@ -264,7 +264,7 @@ def measure_ac(raw, definition, *, point_id):
     missing = expected - measured.keys()
     if missing:
         raise RawFileError(f"measurement definition names {sorted(missing)}; not computed")
-    return {"point_id": point_id, **measured}
+    return {'measurements': {"point_id": point_id, **measured}}
 
 
 @operation(
@@ -296,12 +296,12 @@ def evaluate_pvt(measurements, limits, *, point_ids):
         }
         overall_pass = overall_pass and point_pass
 
-    return {
+    return {'evaluation': {
         "status": declared.get("status"),
         "limits": limit_map,
         "points": points,
         "overall_pass": overall_pass,
-    }
+    }}
 
 
 @flow(name="ota_pvt_nested.corners", version="1")
@@ -404,7 +404,7 @@ def run_corner_study(
     if not run.succeeded:
         raise RuntimeError(f"the corner study failed:\n{run.summary()}")
 
-    return {
+    return {'result': {
         "evaluation": run.outputs["evaluation"].value,
         "invocations": [
             {
@@ -416,7 +416,7 @@ def run_corner_study(
             }
             for outcome in run.report.outcomes
         ],
-    }
+    }}
 
 
 def _root_of(delivered: Path, locator: str) -> Path:
@@ -481,11 +481,11 @@ def report(result, jobs, base, edits, definition, limits, out):
         },
     )
     out.report.write_text(text, encoding="utf-8")
-    return {
+    return {'verdict': {
         "overall_pass": bool(evaluation.get("overall_pass")),
         "corners": len(evaluation.get("points") or {}),
         "status": evaluation.get("status"),
-    }
+    }}
 
 
 @flow(name="ota_pvt_nested.study", version="1")

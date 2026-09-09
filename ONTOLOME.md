@@ -112,7 +112,7 @@ any affected child ontology.
 - `netlist-decomposition` contributes functional block recognition over the
   canonical representation.
 
-`hedloom-exec` consumes `hedloom-flow`'s schema-2 Plan **document**, not its package.
+`hedloom-exec` consumes `hedloom-flow`'s schema-4 Plan **document**, not its package.
 The cross-unit contract is therefore the portable plain-data artifact: neither
 unit imports the other, and any producer of the same document composes equally
 well. `hedloom-flow` stays executor-neutral; `hedloom-exec` reads a Plan but neither
@@ -126,20 +126,24 @@ package over those contracts, while the composition root has no unified source
 tree or package distribution; units compose through `unit.toml` and
 `composition.py`, and each distribution remains independently installable.
 
-These contributions compose into the larger vision. Flow execution is now
-partly owned. `hedloom-flow` and `hedloom-exec` together deliver one runnable vertical
-slice — author a flow, plan it, execute it, edit one input, and rerun with
-unchanged work skipped and superseded results retained — demonstrated by
-`hedloom-exec/examples/planned_characterization.py`. No real batch or distributed
-transport has been exercised: direct `bsub -I` submission exists but has never
-contacted a cluster, and pooled execution refuses. The retired `study-flow`
-prototype remains
-recoverable in Git history at `528c02f`, while
+These contributions compose into the larger vision. Hedloom joins authoring,
+execution, named result exports, and durable run discovery; its children retain
+the planning, attempt, and traversal contracts above. The runnable
+`hedloom/examples/grid_refinement.py` demonstrates local execution and reuse.
+`hedloom/examples/farm_smoke.py` has reached real LSF through the sequential
+kernel. Graph execution, placement concurrency, and pooled LSF are implemented,
+with fake-farm evidence; that evidence does not establish real-farm behavior.
+The maintained evidence split is
+[`hedloom/docs/guide/first-farm-run.md`](hedloom/docs/guide/first-farm-run.md).
+Pooling lives in `hedloom-run`, keeping `hedloom-exec` independent of Dask.
+
+The retired `study-flow` prototype remains recoverable in Git history at
+`528c02f`, while
 [`docs/vision/hedloom-flow-rebuild-main.md`](docs/vision/hedloom-flow-rebuild-main.md)
 records the architectural inquiry that preceded the bounded planning work.
-The declared `hedloom-flow` child owns only static planning; its refusing
-`submit(...)` boundary confers no local, distributed, simulator, or study
-runtime authority.
+The declared `hedloom-flow` child still owns only static planning; its refusing
+`submit(...)` boundary confers no runtime authority. The executable submission
+surface belongs to the enclosing `hedloom` package.
 
 The root-owned OTA/PVT reference composes these capabilities only at the level
 of declared artifact and operation boundaries. Its Sidecar, canonicalization,

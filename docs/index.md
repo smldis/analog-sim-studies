@@ -1,13 +1,16 @@
 # Analog Sim Studies
 
-Seven units compose one author-plan-execute-evaluate path.
+Seven units compose the author-plan-execute-evaluate path; Netlist Comparison
+adds a separate headless comparison capability.
 
 **Start with Hedloom.** It is the front door, and it composes the three units
 beneath it: `hedloom-flow` authors a Plan, `hedloom-exec` owns one attempt's durable
 record, and `hedloom-run` walks the Plan and executes it. `sidecar-edits`,
 `spice-canonical` and `netlist-decomposition` contribute netlist preparation,
 canonicalization and structural recognition. The OTA/PVT reference composes
-all seven into one inspectable Plan.
+all seven into one inspectable Plan. Netlist Comparison consumes canonical data
+through a Python API and a CLI: start with `netlist-compare` for the built-in guide
+or `netlist-compare design.sp --inspect` to discover comparison scope.
 
 ```{toctree}
 :maxdepth: 2

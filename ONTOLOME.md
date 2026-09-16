@@ -108,9 +108,26 @@ any affected child ontology.
   Plan IR, `hedloom-exec` owns the durable lifecycle of one attempt, and
   `hedloom-run` owns plan traversal and readiness.
 - `sidecar-edits` contributes reviewable simulation-directory preparation.
-- `spice-canonical` contributes canonical netlist extraction.
+- `spice-canonical` contributes canonical netlist extraction, including ordered raw
+  subcircuit defaults separately from instance overrides. Ambiguous undeclared
+  BJT terminal/model boundaries remain unresolved raw evidence rather than guessed
+  connectivity; available syntax-defined primitives remain usable without model bodies.
 - `netlist-decomposition` contributes functional block recognition over the
   canonical representation.
+- `netlist-comparison` contributes tentative counterpart groups and conditional
+  differences over public canonical objects, preserving defaults and call overrides.
+  It owns occurrence expansion and explicitly supplied global-net scoping; extraction
+  remains canonical-owned. Missing definitions and unavailable internals remain
+  opaque without vetoing unrelated supported matches. Certificates concern represented
+  incidence only, not hidden-library connectivity or electrical equivalence. The
+  headless CLI provides discovery and deterministic previews alongside complete JSON;
+  prototype maturity and the distinction between correspondence and identity remain.
+
+The component registration, workspace dependencies and root contract checks travel
+with pinned public revisions. A submodule URL alone does not make a new capability
+available to the composed test, documentation or installation workflows. The merged
+Hedloom revision also contributes interactive source reloads, direct history-root
+CLI discovery and compact reproducibility records; these remain child-owned features.
 
 `hedloom-exec` consumes `hedloom-flow`'s schema-4 Plan **document**, not its package.
 The cross-unit contract is therefore the portable plain-data artifact: neither

@@ -14,6 +14,8 @@ design tools. The governing direction is [MANIFESTO.md](MANIFESTO.md), while
   representation from Eldo and ngspice netlists.
 - [`netlist-decomposition/`](netlist-decomposition/) recognizes functional MOS
   blocks and explicitly depends on `spice-canonical`.
+- [`netlist-comparison/`](netlist-comparison/) proposes counterparts and conditional
+  differences, with built-in CLI guidance and explicit ambiguity.
 
 These stable capability names are direct children instead of entries in a
 generic `src`, `components`, or `packages` bucket. Each child owns its source,
@@ -30,22 +32,22 @@ scope mirrors semantic scope.
 
 ## Fresh developer setup
 
-Python 3.10 or newer and a C compiler available as `cc` are required. From a
-fresh checkout:
+Python 3.11 or newer, `uv`, and a C compiler available as `cc` are required for
+the development workspace. From a fresh checkout:
 
 ```bash
-python3 -m venv ../eda-venv
-. ../eda-venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements-dev.txt
+git submodule update --init --recursive
+uv sync --locked --group dev
+. .venv/bin/activate
+netlist-compare --help
 ```
 
-There is deliberately no root Python distribution, so `pip install -e .` is
-replaced by the explicit child bootstrap above. It installs the four editable
-distributions together and preserves the imports `hedloom_flow`, `sidecar_edits`,
-`spice_canonical`, and `netlist_decomposition`, plus the `sidecar-render` and
-`spice-canonical` commands. Individual package installation is documented in
-each child README.
+There is no root Python distribution. The workspace installs editable child
+packages and development dependencies, including `netlist-compare`. The comparator
+pins include the merged self-guided CLI and canonical missing-model correction.
+Run `netlist-compare` for examples, or `netlist-compare design.sp --inspect` to
+discover circuit names and actual block paths. Individual package installation is
+documented in each child README.
 
 ## Recursive composition
 

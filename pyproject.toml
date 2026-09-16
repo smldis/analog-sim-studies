@@ -1,5 +1,5 @@
 [tool.uv.workspace]
-members = ["spice-canonical", "netlist-decomposition", "sidecar-edits"]
+members = ["spice-canonical", "netlist-decomposition", "netlist-comparison", "sidecar-edits"]
 exclude = ["hedloom"]
 
 [dependency-groups]
@@ -7,7 +7,7 @@ exclude = ["hedloom"]
 # dependency groups are not transitive, so this venv would otherwise
 # skip the cluster test that needs a dashboard to exist at all.
 dev = ["hedloom[dask,pooled]", "spice-canonical", "netlist-decomposition",
-       "sidecar-edits[docs]", "bokeh",
+       "netlist-comparison", "sidecar-edits[docs]", "bokeh",
        "build", "pytest", "setuptools>=69", "wheel"]
 
 [tool.uv.dependency-groups]
@@ -20,4 +20,5 @@ dev = { requires-python = ">=3.11" }
 hedloom               = { path = "hedloom", editable = true }
 spice-canonical       = { workspace = true }
 netlist-decomposition = { workspace = true }
+netlist-comparison    = { workspace = true }
 sidecar-edits         = { workspace = true }

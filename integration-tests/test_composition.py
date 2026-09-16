@@ -245,9 +245,10 @@ def test_repository_tree_has_its_declared_units_and_no_root_src() -> None:
     unit = composition.load_unit(ROOT)
 
     # Sorted, not in declaration order: `hedloom` composes the three Hedloom units, and
-    # the remaining three siblings supply real circuit work.
+    # the remaining siblings supply real circuit work.
     assert [child.unit_id for child in unit.children] == [
         "hedloom",
+        "netlist-comparison",
         "netlist-decomposition",
         "sidecar-edits",
         "spice-canonical",

@@ -10,3 +10,6 @@
 [submodule "hedloom"]
 	path = hedloom
 	url = https://github.com/smldis/hedloom.git
+[submodule "netlist-comparison"]
+	path = netlist-comparison
+	url = https://github.com/smldis/netlist-comparison.git

@@ -183,3 +183,22 @@ The immediate children authored in `unit.toml` are `hedloom`, `sidecar-edits`,
 `spice-canonical`, and `netlist-decomposition`. Hedloom in turn declares its
 three constituent units. A future child may declare children with the same
 contract; the loader, test traversal, and documentation composition recurse.
+
+## Executable study measurement experience
+
+The runnable `studies/` variants extend the static reference with simulator and
+measurement behavior; the static reference's validation alone does not establish
+those behaviors. The research observatory reproduced a phase-wrap interpolation
+fault in all three OTA study helpers. Measurement version 2 now unwraps phases
+before interpolation, with analytical regression evidence. Legacy metric keys
+remain qualified as first-AC-sample gain and phase plus 180 at a downward unity
+crossing, not general DC/stability qualification. Public nominal study evidence
+and historical outputs retain their recorded versions and limitations.
+
+Actual consumers capture prepared trees with the public directory shape and
+interpolate only authored Sidecar placeholders. Fresh local execution exposed
+nested scheduler-slot contention; the small example now walks its inner plan
+sequentially while retaining per-corner attempts. The wrapper choice is explicitly
+versioned. An isolated measurement-version experiment retained simulation while
+recomputing measurement/evaluation. These are composition observations for the
+public fixture, not a new engine contract or production qualification.

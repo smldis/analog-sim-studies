@@ -50,18 +50,21 @@ def edits_for(ctx):
                 "* PVT point={point_id} process={process} "
                 "vdd_v={vdd_v} temp_c={temp_c}"
             ),
+            interpolate=True,
             description="record the selected sentinel PVT point",
         ),
         edits.replace(
             path="ota_ac.cir",
             old=".param vdd_v=1.80",
             new=".param vdd_v={vdd_v}",
+            interpolate=True,
             description="set the sentinel supply value",
         ),
         edits.replace(
             path="ota_ac.cir",
             old=".temp 27",
             new=".temp {temp_c}",
+            interpolate=True,
             description="set the sentinel temperature value",
         ),
     ]

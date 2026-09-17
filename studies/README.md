@@ -33,3 +33,31 @@ source and is not committed.
 `ota_pvt.py` is the reference the root documentation cites. The other three are
 variations on it, kept because each answers a different question about the
 composition rather than about the circuit.
+
+The OTA measurement helpers retain legacy JSON metric keys. `dc_gain_db` is
+gain at the first AC sample, and `phase_margin_deg` is transfer phase plus 180
+at the first downward unity crossing; neither alone establishes DC gain or loop
+stability. Measurement version 2 unwraps successive phases before interpolation.
+This fixes a phase-wrap error covered by the analytical
+[measurement contract test](../integration-tests/test_ota_ac_measurement_contract.py).
+It still assumes a sufficiently dense frequency grid and a meaningful initial
+phase branch. Historical evidence that used measurement version 1 remains
+versioned as recorded; new study runs use version 2.
+
+Preparation version 2 declares each rendered tree with Hedloom's public
+`directory("run", kind="prepared-simulation-directory")`; raw waveforms and reports
+remain `file(...)` outputs. The shared Sidecar fixture opts into interpolation
+only on its three parameterized replacements (point comment, supply parameter,
+temperature), leaving SPICE expressions in the base deck intact. The
+[preparation contract test](../integration-tests/test_ota_preparation_contract.py)
+checks all three consumer forms against a temporary local Site.
+
+The nested `run_corner_study` operation is version 2 and submits its small local
+inner plan explicitly with `sequential=True`. This avoids a graph scheduler
+requesting the sole local slot while the outer invocation waits for it. Inner
+corners retain separate identities and reuse; this study does not demonstrate
+parallel or farm execution. Its outer API reads all three authored selectors;
+`corner_study(jobs)` can exercise a nominal subset directly. The focused tests
+are contract checks, not simulator runs or proof of production PVT coverage;
+the process labels in this Level-1 fixture remain comments rather than
+process-model corners.

@@ -129,6 +129,23 @@ available to the composed test, documentation or installation workflows. The mer
 Hedloom revision also contributes interactive source reloads, direct history-root
 CLI discovery and compact reproducibility records; these remain child-owned features.
 
+Canonical now owns reusable custom-text artifacts and explicit missing-cell
+interfaces: `Device.black_box` preserves original cell identity and named or
+positional terminals, while saved diagnostics retain unavailable scope. Comparison
+loads those artifacts through the canonical reader. Its `--black-box-missing`
+option applies an explicit stable-cell/interface and unchanged-internals assumption;
+this does not establish hidden-library equivalence. Incompatible interfaces and
+one-sided definitions stay unresolved.
+
+The comparison child also owns saved-result projections, architecture-first
+parameter suppression, regional population evidence and opt-in omission/paired-swap
+search. These are inspection and heuristic-search capabilities, not classifications
+of redesigns or proof that an unmatched occurrence is new. The root documents the
+extract/compare/inspect handoff and tests it across public package APIs. Child help
+owns the maintained feature and option guide. Public mutation trials show improved
+structural explanations while retaining missed better alignments and connected
+frontier failures; prototype maturity and workplace-validation limits remain.
+
 `hedloom-exec` consumes `hedloom-flow`'s schema-4 Plan **document**, not its package.
 The cross-unit contract is therefore the portable plain-data artifact: neither
 unit imports the other, and any producer of the same document composes equally
@@ -175,12 +192,12 @@ outputs materialize, or any operation can run.
 The root does not own a unified Python package, source tree, unit-test suite,
 API guide, example catalog, or component-specific build script. It is not a
 package-distribution boundary and does not imply that every future capability
-must use the current four implementations.
+must use the current implementations.
 
 ## Child composition
 
 The immediate children authored in `unit.toml` are `hedloom`, `sidecar-edits`,
-`spice-canonical`, and `netlist-decomposition`. Hedloom in turn declares its
+`spice-canonical`, `netlist-decomposition`, and `netlist-comparison`. Hedloom in turn declares its
 three constituent units. A future child may declare children with the same
 contract; the loader, test traversal, and documentation composition recurse.
 

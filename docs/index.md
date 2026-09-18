@@ -27,6 +27,7 @@ splits this way today, and the rest will follow.
 :maxdepth: 1
 :caption: Using the system
 
+Compare netlist revisions <netlist-comparison>
 OTA/PVT plan reference <reference/ota-pvt-plan/README>
 ```
 

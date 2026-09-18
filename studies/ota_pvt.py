@@ -13,7 +13,7 @@ Here the declaration and the body are the same statement. What that buys, in
 the order you meet it below:
 
 * ``@operation`` bodies really run, so nothing restates them elsewhere.
-* Declared outputs are ``file(...)``/``returned(...)`` on the operation, so the
+* Declared outputs are ``directory(...)``/``file(...)``/``returned(...)`` on the operation, so the
   path a body writes and the path the executor checks are one declaration.
 * The four external inputs are ``input_artifact`` sources and arrive as real
   paths. ``run_study.py`` could not receive them -- it read them from
@@ -62,6 +62,7 @@ from hedloom import (  # noqa: E402
     address,
     artifact,
     artifacts,
+    directory,
     file,
     flow,
     input_artifact,
@@ -132,7 +133,7 @@ SPEC_LIMITS = artifact("ota-specification-limits")
 
 @operation(
     name="ota_pvt.prepare_run",
-    version="1",
+    version="2",
     inputs={"base": SIDE_CAR_BASE, "edits": SIDE_CAR_EDITS},
     config={
         "point_id": parameter(str),
@@ -141,7 +142,7 @@ SPEC_LIMITS = artifact("ota-specification-limits")
         "vdd_v": parameter(float),
         "temp_c": parameter(int),
     },
-    outputs={"run": file("run", kind="prepared-simulation-directory")},
+    outputs={"run": directory("run", kind="prepared-simulation-directory")},
 )
 def prepare_run(base, edits, out, *, point_id, param_set, process, vdd_v, temp_c):
     """Render this point's deck with Sidecar Edits, into this attempt's own dir.
@@ -266,7 +267,7 @@ def simulate_ac(
 
 @operation(
     name="ota_pvt.measure_ac",
-    version="1",
+    version="2",
     inputs={"raw": SIMULATOR_RAW, "definition": MEASUREMENT_DEFINITION},
     config={"point_id": parameter(str)},
     outputs={"measurements": returned(kind="ota-point-measurements")},
@@ -486,7 +487,15 @@ def measure_ac_metrics(
     positive_input: str = "v(in_p)",
     negative_input: str = "v(in_n)",
 ) -> dict[str, float]:
-    """Gain, GBW and phase margin from a real AC sweep. Refuses, never guesses."""
+    """First-sample gain and phase at the first downward unity crossing.
+
+    Legacy field names are retained. ``dc_gain_db`` is not a separate DC
+    measurement; ``phase_margin_deg`` is 180 plus continuous transfer phase,
+    not a general loop-stability verdict. Unwrapping assumes consecutive
+    samples differ by less than 180 degrees; sparse sweeps can remain ambiguous.
+    The branch starts at the first sample; changing the transfer sign/reference
+    changes this reported phase quantity.
+    """
 
     for name in (output_node, positive_input, negative_input, "frequency"):
         if name not in columns:
@@ -503,7 +512,12 @@ def measure_ac_metrics(
             raise RawFileError("zero differential AC excitation; cannot compute a gain")
         transfer = out / differential
         gains_db.append(20.0 * math.log10(abs(transfer)))
-        phases_deg.append(math.degrees(cmath.phase(transfer)))
+        phase = math.degrees(cmath.phase(transfer))
+        if phases_deg:
+            # Interpolate a continuous phase branch, not +180/-180 endpoints.
+            previous = phases_deg[-1]
+            phase = previous + (phase - previous + 180.0) % 360.0 - 180.0
+        phases_deg.append(phase)
 
     gain_bandwidth_hz: float | None = None
     phase_margin_deg: float | None = None

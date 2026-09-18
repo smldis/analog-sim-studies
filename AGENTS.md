@@ -69,3 +69,29 @@ change. A maturity change must always be explicit there.
 
 Preserve user changes, keep commits focused, and validate in proportion to the
 risk and the affected contracts.
+
+## Delegated agent workspace
+
+When uncertain which workspace to use and the agent may need writing access
+across components, prefer the containing ASS repository over a narrower child
+workspace. State the exact assigned files and preserve unrelated changes;
+workspace breadth does not broaden the task. A clearly bounded report-only
+assignment may remain in its component workspace. User preference, 2026-09-15.
+
+## File links in chat
+
+When sharing ASS file links in chat messages addressed directly to the project
+owner (smldis) for their own reading, use the full servedgui ASS Library URL:
+`https://servedgui.spasyc.com/ass-library/index.html#view=files&path=<repo-relative-path>`.
+Paths are relative to the `analog-sim-studies` root. Keep `/` separators readable;
+URL-encode special characters within path segments. Optionally append
+`&line=<line-number>`. For example:
+`https://servedgui.spasyc.com/ass-library/index.html#view=files&path=research-observatory/AI-FRONTIER.md`.
+The app intercepts relative Markdown links on click; a displayed
+`/ass-library/runs/...` target is not a supported standalone file route. Use the
+app's hash parameters for links shared outside the open document.
+This preference applies only to those direct user-facing chat messages, not
+agent prompts, agent-to-agent messages, or messages intended for other people.
+Keep links inside repository documents in their existing portable form.
+Construct the link directly from the file path without checking file existence
+or ASS Library availability; the user will check it.

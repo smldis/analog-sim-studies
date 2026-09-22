@@ -90,9 +90,14 @@ for each window; `batch-receipt.json` records resources. Full reports and hashes
 remain under `results/`. An incomplete window or no selected cards is not an
 unchanged or equivalent design verdict. The generated `LUNA_TASK.md` may be
 given to an authorized local agent to suggest rename, move, split or merge
-windows from unmatched hierarchy only. Those proposals remain heuristic scope
-inputs and may be empty. Keep the whole trial directory in the authorized local
-environment because it contains design-derived paths and evidence.
+windows from unmatched hierarchy only. After the batch it asks for a short
+`luna-assessment.md` with A/B schematic locations and plain-language,
+result-backed inventory, population, terminal-role or interface differences.
+One-sided branches and count changes may suggest additions or removals, but
+are not historical edit proof. Positional `@N` labels are not named pins.
+The proposals remain heuristic scope inputs and may be empty. Keep the whole
+trial directory in the authorized local environment because it contains
+design-derived paths and evidence.
 
 ## Focus a saved result
 

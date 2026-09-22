@@ -61,6 +61,39 @@ This retains selected pin bindings and original hierarchy locations. Selecting
 unavailable cell internals is rejected. A canonical file root and subcircuit with
 the same name currently require a deliberate file-root rename before comparison.
 
+## Run a bounded hierarchy trial
+
+For a local trial across two known instances in one canonical netlist, prepare
+every shared relative hierarchy path within the configured leaf cap, then run
+those supplied windows in one explicit batch:
+
+```bash
+TRIAL=/secure/local/path/netlist-trial
+python netlist-comparison/examples/luna_hierarchy_trial.py prepare \
+  --input-a /secure/local/path/full.canonical --top-a TOP \
+  --root-a 'TOP/XI0' --root-b 'TOP/XI1' \
+  --globals-complete --omit-parameters --output "$TRIAL"
+python netlist-comparison/examples/luna_hierarchy_trial.py run "$TRIAL"
+```
+
+The example asserts that ground `0` is the complete global-net set and suppresses
+parameter-detail evidence for an architecture-first pass. Add repeatable
+`--global-net NAME` options when the design has other globals; omit
+`--globals-complete` if the set is unknown. Remove `--omit-parameters` for a
+separate parameter-aware trial. For two revisions, supply `--input-b` and both
+top names; selected roots are optional. The child-owned
+[workflow guide](https://github.com/smldis/netlist-comparison/blob/main/examples/luna_hierarchy_workflow.md)
+documents the remaining limits and the local Luna handoff.
+
+`trial-summary.json` lists the exact status, card lanes, charges and A/B paths
+for each window; `batch-receipt.json` records resources. Full reports and hashes
+remain under `results/`. An incomplete window or no selected cards is not an
+unchanged or equivalent design verdict. The generated `LUNA_TASK.md` may be
+given to an authorized local agent to suggest rename, move, split or merge
+windows from unmatched hierarchy only. Those proposals remain heuristic scope
+inputs and may be empty. Keep the whole trial directory in the authorized local
+environment because it contains design-derived paths and evidence.
+
 ## Focus a saved result
 
 ```bash
@@ -89,8 +122,10 @@ terminal discrepancies to one. Later paired swaps reduced two renamed cases to
 six discrepancies, but a verified feasible alignment with two is still missed.
 These are structural development controls, not electrically validated redesigns.
 An unchanged connected 129-leaf control still produces no regional frontier and
-zero pairs. Repeated synthetic scale results do not establish general accuracy
-for thousands of leaves at four or five hierarchy levels.
+zero pairs. The new bounded operator-scoped workflow makes stable-path local
+inspection practical on a public 7k/8k-leaf synthetic fixture, but it does not
+establish correspondence for renamed or moved hierarchy, a useful ranking of
+parent/child findings, or private workplace accuracy.
 
 Use the output to choose schematic locations to inspect. Counts of pairs, wiring
 rows or tests are not independent design edits or a confidence measure. Real

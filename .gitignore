@@ -21,6 +21,11 @@ studies/_runs/
 .claude/
 .dialecticH/
 
+# local research products and disposable development iterations
+/research-observatory/
+/.worktrees/
+/findings/
+
 # working notes, not part of the published repository
 OBJECTIVE.md
 IDEAS_PROMPT.md

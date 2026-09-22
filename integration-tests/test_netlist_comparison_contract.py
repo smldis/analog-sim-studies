@@ -32,6 +32,36 @@ def test_actual_calls_preserve_canonical_defaults_and_physical_binding():
     assert report['boundary']['b']['pins'][0]['resolved_parent_net'] == 'local:TOP:out'
 
 
+def test_operator_batch_keeps_canonical_blackbox_scope_and_independent_reports():
+    from netlist_comparison import InputScope, Options, compare_operator_scoped_batch
+    from netlist_comparison.operator_scoped import validate_saved_extension
+
+    data = from_text('.subckt BLOCK A B\nR1 A B 1k\n.ends\n'
+                     'X1 in 0 BLOCK\nX2 out 0 BLOCK')
+    windows = [
+        {'paths_a': ('TOP/X1',), 'paths_b': ('TOP/X2',)},
+        {'paths_a': ('TOP/X2',), 'paths_b': ('TOP/X1',)},
+    ]
+    scope = InputScope(global_nets=('0',), globals_complete=True)
+    batch = compare_operator_scoped_batch(
+        data, data, top_a='TOP', top_b='TOP', windows=windows,
+        options=Options(matching_mode='operator_scoped', black_box_missing=True),
+        scope_a=scope, scope_b=scope, same_full_netlist=True,
+    )
+    assert batch['kind'] == 'operator_scoped_batch_v1'
+    assert not batch['resources']['incomplete']
+    assert len(batch['results']) == len(windows)
+    for index, report in enumerate(batch['results']):
+        extension = report['operator_scoped']
+        validate_saved_extension(extension)
+        assert extension['resources']['batch_window_index'] == index
+        assert extension['windows'][0]['supplied_scopes'] == {
+            'a': list(windows[index]['paths_a']),
+            'b': list(windows[index]['paths_b']),
+        }
+        assert report['scope']['global_net_declarations_complete']
+
+
 def test_saved_canonical_boundaries_compose_with_architecture_inspection(tmp_path):
     from spice_canonical.canonical_netlist import from_canonical_file, from_file
     from netlist_comparison import Options, project_saved_report

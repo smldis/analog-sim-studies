@@ -146,6 +146,17 @@ owns the maintained feature and option guide. Public mutation trials show improv
 structural explanations while retaining missed better alignments and connected
 frontier failures; prototype maturity and workplace-validation limits remain.
 
+The newly pinned operator-scoped mode accepts explicitly supplied local windows
+and emits conditional cards, proof witnesses or explicit abstentions. A separate
+local workflow enumerates every shared relative hierarchy path within its
+configured leaf and batch limits, while a locally authorized agent may suggest
+bounded rename, move, split or merge trials only for unmatched frontiers. One
+explicit batch reuses immutable input identity and exterior incidence; every
+window retains its own selected graph and proof. The root exposes this composed
+canonical-to-comparison route without making agent proposals into identities or
+claiming private-case usefulness. This is an available prototype slice, not a
+change to the comparator's default matching mode.
+
 `hedloom-exec` consumes `hedloom-flow`'s schema-4 Plan **document**, not its package.
 The cross-unit contract is therefore the portable plain-data artifact: neither
 unit imports the other, and any producer of the same document composes equally

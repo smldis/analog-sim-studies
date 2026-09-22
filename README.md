@@ -45,7 +45,8 @@ netlist-compare --help
 There is no root Python distribution. The workspace installs editable child
 packages and development dependencies, including `netlist-compare`. The comparator
 pins include canonical table loading, explicit black-box interfaces, saved-result
-filters and opt-in regional search improvements.
+filters, opt-in regional search improvements, and bounded operator-scoped
+comparison with an automatic local hierarchy trial.
 Run `netlist-compare` for examples, or `netlist-compare design.sp --inspect` to
 discover circuit names and actual block paths. Individual package installation is
 documented in each child README.
@@ -54,7 +55,8 @@ documented in each child README.
 
 [The extraction-to-inspection workflow](docs/netlist-comparison.md) explains how
 to save canonical netlists, compare missing-library cells, inspect two actual
-instances, and focus a saved result on architecture or selected subblocks.
+instances, run the bounded automatic hierarchy trial, and focus a saved result
+on architecture or selected subblocks.
 Start with `netlist-compare --guide`; `--help` and `view --help` list current options.
 Results remain tentative inspection evidence, with missing scope and search limits
 visible. The prototype does not yet establish accuracy on representative workplace

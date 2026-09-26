@@ -131,7 +131,7 @@ CLI discovery and compact reproducibility records; these remain child-owned feat
 
 Canonical now owns reusable custom-text artifacts and explicit missing-cell
 interfaces: `Device.black_box` preserves original cell identity and named or
-positional terminals, while saved diagnostics retain unavailable scope. Comparison
+positional terminals, while opt-in saved diagnostics retain unavailable scope. Comparison
 loads those artifacts through the canonical reader. Its `--black-box-missing`
 option applies an explicit stable-cell/interface and unchanged-internals assumption;
 this does not establish hidden-library equivalence. Incompatible interfaces and

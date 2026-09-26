@@ -19,8 +19,9 @@ The optional `pins.json` maps external cell names to formal pins in call order,
 for example `{"nmos_lvt": ["d", "g", "s", "b"], "res_cell": ["p", "n"]}`.
 Omit `--external-subcircuits` when only positions are known; tokens `@1`, `@2`,
 and so on retain that distinction. Missing library bodies remain unavailable,
-while available connections, overrides, defaults and diagnostics survive in
-SPICE Canonical's custom tables. The netlist artifact is not JSON.
+while available connections, overrides and defaults survive in SPICE Canonical's
+custom tables. Add `--include-diagnostics` to save extraction diagnostics for
+later comparison; CLI warnings remain on stderr. The netlist artifact is not JSON.
 
 ## Compare and retain the evidence
 

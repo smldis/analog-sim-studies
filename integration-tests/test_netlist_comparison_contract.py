@@ -22,6 +22,20 @@ def test_current_canonical_objects_preserve_default_and_override_scopes():
     assert result["scope"]["comparison"] == "represented_structure"
 
 
+def test_saved_canonical_diagnostics_are_opt_in_for_comparison():
+    from spice_canonical.canonical_netlist import from_canonical_text
+
+    extracted = from_text('X1 a MISSING\n')
+    ordinary = from_canonical_text(extracted.render())
+    with_diagnostics = from_canonical_text(extracted.render(include_diagnostics=True))
+
+    assert ordinary.diagnostics == ()
+    assert with_diagnostics.diagnostics == extracted.diagnostics
+    assert compare(ordinary, ordinary, top_a='TOP', top_b='TOP')['a']['diagnostics'] == []
+    assert len(compare(with_diagnostics, with_diagnostics,
+                       top_a='TOP', top_b='TOP')['a']['diagnostics']) == 1
+
+
 def test_actual_calls_preserve_canonical_defaults_and_physical_binding():
     from netlist_comparison import compare_instances
     source = '.subckt C A B W=2u\nR1 A n W\nC1 n B 1p\n.ends\nX1 in 0 C W=3u\nX2 out 0 C W=4u'

@@ -191,10 +191,10 @@ def main() -> int:
     here = Path(__file__).resolve().parent
     work = here / "_runs"
     site = Site(
-        root=str(work / "attempts"),
-        workspace_root=str(work / "work"),
+        records_dir=str(work / "records"),
+        work_dir=str(work / "work"),
         address_spaces={"repository-relative": str(here)},
-        history_root=str(work / "attempts") + "-history",
+        runs_dir=str(work / "runs"),
     )
 
     subject = rc_corners()

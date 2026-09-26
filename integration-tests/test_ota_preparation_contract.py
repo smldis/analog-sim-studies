@@ -30,8 +30,8 @@ def test_prepared_directory_contains_selected_values_and_keeps_spice_expressions
             prepared = nested.prepare_corner(base, edits, name=point.key, selector=point.key)
         return {"prepared": prepared.run}
 
-    site = Site(root=str(tmp_path / "records"), workspace_root=str(tmp_path / "work"),
-                history_root=str(tmp_path / "history"), address_spaces={"repository-relative": str(ROOT)})
+    site = Site(records_dir=str(tmp_path / "records"), work_dir=str(tmp_path / "work"),
+                runs_dir=str(tmp_path / "runs"), address_spaces={"repository-relative": str(ROOT)})
     run = subject().submit(site=site, name="prepare", sequential=True)
     assert run.succeeded, run.summary()
     output = run.outputs["prepared"]

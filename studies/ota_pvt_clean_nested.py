@@ -349,7 +349,7 @@ def corner_study(jobs: list[dict[str, Any]]):
         "limits": SPEC_LIMITS,
         "jobs": SIDECAR_JOBS,
     },
-    config={"records_root": parameter(str), "workspace_root": parameter(str)},
+    config={"records_dir": parameter(str), "work_dir": parameter(str)},
     outputs={
         # One returned output, not two: a body returns one object, and every
         # value-bound output would be handed all of it. So this carries the
@@ -359,7 +359,7 @@ def corner_study(jobs: list[dict[str, Any]]):
     },
 )
 def run_corner_study(
-    base, edits, definition, limits, jobs, out, *, records_root, workspace_root
+    base, edits, definition, limits, jobs, out, *, records_dir, work_dir
 ):
     """Author the corner plan from the jobs, run it, and answer with its result.
 
@@ -368,7 +368,7 @@ def run_corner_study(
     one measure per corner, and is complete and inspectable before it spends
     anything, exactly like the plan that contains this invocation.
 
-    The inner records live at `records_root`, which is *outside* this attempt's
+    The inner records live at `records_dir`, which is *outside* this attempt's
     workspace on purpose. Put them inside and every inner attempt would be
     thrown away whenever this invocation's own digest moved — which it does the
     moment a corner is added. Kept outside, adding a corner re-authors the inner
@@ -388,10 +388,10 @@ def run_corner_study(
     # delivered for: the executor hands a body its inputs, not its site.
     repository = _root_of(Path(edits), PVT_EDITS_LOCATOR)
     site = Site(
-        root=records_root,
-        workspace_root=workspace_root,
+        records_dir=records_dir,
+        work_dir=work_dir,
         address_spaces={"repository-relative": str(repository)},
-        history_root=str(records_root) + "-history",
+        runs_dir=str(Path(records_dir).with_name("corner-runs")),
     )
 
     # Walk the small local inner plan without starting a graph scheduler while
@@ -493,14 +493,14 @@ def report(result, jobs, base, edits, definition, limits, out):
 
 
 @flow(name="ota_pvt_nested.study", version="1")
-def pvt_study(base, edits, definition, limits, *, records_root, workspace_root):
+def pvt_study(base, edits, definition, limits, *, records_dir, work_dir):
     """Read the edit file, expand it, plan and run it, and write the report."""
 
     described = load_edit_file.named("load")(edits)
     jobs = expand_jobs.named("expand")(described)
     result = run_corner_study.named("corners")(
         base, edits, definition, limits, jobs,
-        records_root=records_root, workspace_root=workspace_root,
+        records_dir=records_dir, work_dir=work_dir,
     )
     written = report.named("report")(
         result.result, jobs, base, edits, definition, limits
@@ -509,15 +509,15 @@ def pvt_study(base, edits, definition, limits, *, records_root, workspace_root):
 
 
 @study(name="ota-pvt-clean-nested", default_policy=local())
-def pvt(*, records_root: str, workspace_root: str):
+def pvt(*, records_dir: str, work_dir: str):
     """Stage one. Nothing about the corners is read here."""
 
     sources = _declare_sources()
     return pvt_study.named("ota-pvt")(
         sources["base"], sources["edits"], sources["definition"],
         sources["limits"],
-        records_root=records_root,
-        workspace_root=workspace_root,
+        records_dir=records_dir,
+        work_dir=work_dir,
     )
 
 
@@ -769,15 +769,15 @@ def main() -> int:
 
     work = _HERE / "_runs" / "ota-nested"
     site = Site(
-        root=str(work / "attempts"),
-        workspace_root=str(work / "work"),
+        records_dir=str(work / "records"),
+        work_dir=str(work / "work"),
         address_spaces={"repository-relative": str(_REPO)},
-        history_root=str(work / "attempts") + "-history",
+        runs_dir=str(work / "runs"),
     )
 
     subject = pvt(
-        records_root=str(work / "corner-attempts"),
-        workspace_root=str(work / "corner-work"),
+        records_dir=str(work / "corner-records"),
+        work_dir=str(work / "corner-work"),
     )
     print(subject.summary(), "\n")
     print("No corner appears above: stage one cannot name them, because the\n"

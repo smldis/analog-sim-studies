@@ -95,3 +95,6 @@ agent prompts, agent-to-agent messages, or messages intended for other people.
 Keep links inside repository documents in their existing portable form.
 Construct the link directly from the file path without checking file existence
 or ASS Library availability; the user will check it.
+For agent skills, link the visible `skills/<name>/SKILL.md` source in its unit.
+The `.agents/skills` discovery entry is a symlink and is not browsable in ASS
+Library, even though ordinary hidden source files are browsable.

@@ -51,6 +51,16 @@ Run `netlist-compare` for examples, or `netlist-compare design.sp --inspect` to
 discover circuit names and actual block paths. Individual package installation is
 documented in each child README.
 
+## Agent skills
+
+Agent usage instructions are kept in visible files:
+[Hedloom study](hedloom/skills/hedloom-study/SKILL.md) and
+[SPICE Canonical](spice-canonical/skills/spice-canonical/SKILL.md). Each unit's
+`.agents/skills` entry points to its visible skill for Codex discovery when
+working inside that unit. The usage guides explain when to invoke them:
+[Hedloom](hedloom/docs/guide/agent-skill.md) and
+[SPICE Canonical](spice-canonical/docs/agent-skill.md).
+
 ## Compare revisions and inspect differences
 
 [The extraction-to-inspection workflow](docs/netlist-comparison.md) explains how

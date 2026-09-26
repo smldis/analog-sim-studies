@@ -650,14 +650,14 @@ def main() -> int:
           f"{', '.join(job['name'] for job in jobs)}\n")
 
     site = Site(
-        root=str(work / "attempts"),
-        workspace_root=str(work / "work"),
+        records_dir=str(work / "records"),
+        work_dir=str(work / "work"),
         address_spaces={"repository-relative": str(_REPO)},
         # Everything here is in-process, so one placement and one worker. The
         # number is local concurrency, which is what `threads` has always been
         # about; a farm placement would carry its own `max_jobs` beside it.
         threads=len(jobs),
-        history_root=str(work / "attempts") + "-history",
+        runs_dir=str(work / "runs"),
     )
 
     subject = pvt()

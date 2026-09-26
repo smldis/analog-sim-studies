@@ -173,7 +173,12 @@ tree or package distribution; units compose through `unit.toml` and
 
 These contributions compose into the larger vision. Hedloom joins authoring,
 execution, named result exports, and durable run discovery; its children retain
-the planning, attempt, and traversal contracts above. The runnable
+the planning, attempt, and traversal contracts above. Hedloom's storage
+contract exposes independent `records_dir`, `runs_dir`, and
+`work_dir` locations. Named runs live directly under `runs_dir`, with shared
+allocation and dispatch bookkeeping in `_meta`; computation records and try
+files retain their separate identities. The breaking script and saved-run
+change is owned by Hedloom rather than by root composition. The runnable
 `hedloom/examples/grid_refinement.py` demonstrates local execution and reuse.
 `hedloom/examples/farm_smoke.py` has reached real LSF through the sequential
 kernel. Graph execution, placement concurrency, and pooled LSF are implemented,

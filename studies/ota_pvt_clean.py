@@ -20,10 +20,9 @@ the verdict, the corner table, the limits applied, and the provenance —
 including each declared source's content fingerprint, so the report says which
 inputs produced it rather than asserting a date.
 
-**It runs on Dask.** This is the one example that opens the session by hand
-rather than letting `submit` do it, because it wants the dashboard link before
-anything is submitted. The session builds one worker per placement, sized by
-that placement's own cap — how many corners a site tolerates at once is an
+**It runs on Dask.** The Runtime opens explicitly and `ready()` exposes its
+dashboard before anything is submitted. The Runtime builds one worker per
+placement, sized by that placement's own cap — how many corners a site tolerates at once is an
 operational fact, so it comes from the site rather than from a library guess,
 and a placement that declares no capacity is refused up front rather than
 hanging. The corners then run concurrently instead of one after another, and the
@@ -96,7 +95,7 @@ from hedloom import (  # noqa: E402
     operation,
     parameter,
     returned,
-    session,
+    runtime,
     shell,
     study,
     sweep,
@@ -665,19 +664,16 @@ def main() -> int:
 
     document = subject.document
 
-    # Threads, in this process, as `hedloom_run.graph` argues at length: an
-    # invocation waiting on a simulator costs a blocked thread and nothing
-    # scarce, and a process pool would only copy the transport further. The
-    # shape comes from the site so that the capacity each worker declares and
-    # the placement each task asks for are one reading, not two — which is why
-    # the session takes the site and nothing else.
-    with session(site, watch=True) as farm:
-        print(f"dashboard: {farm.client.dashboard_link}")
-        if _open_dashboard(farm.client.dashboard_link):
+    # Explicit startup observation lets the browser connect before submission.
+    # The Runtime otherwise accepts Runs without waiting for its controller.
+    with runtime(site, watch=True) as farm:
+        farm.ready()
+        print(f"dashboard: {farm.dashboard_link}")
+        if _open_dashboard(farm.dashboard_link):
             # The corners finish faster than chromium starts; give it the head
             # start so the task stream has something to draw into.
             time.sleep(DASHBOARD_HEAD_START)
-        run = farm.submit(subject, name="ota-pvt-clean")
+        run = farm.submit(subject, name="ota-pvt-clean").wait()
 
         report = render_report(
             run, jobs=jobs, fingerprints=site.fingerprints(document), document=document

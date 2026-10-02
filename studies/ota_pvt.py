@@ -70,6 +70,7 @@ from hedloom import (  # noqa: E402
     operation,
     parameter,
     returned,
+    runtime,
     shell,
     study,
     sweep,
@@ -666,7 +667,8 @@ def main() -> int:
     subject = pvt()
     print(subject.summary(), "\n")
 
-    run = subject.submit(site=site, watch=True, name="ota-pvt")
+    with runtime(site, watch=True) as live:
+        run = live.submit(subject, name="ota-pvt").wait()
 
     evaluation = run.outputs["evaluation"]
     if evaluation.available:

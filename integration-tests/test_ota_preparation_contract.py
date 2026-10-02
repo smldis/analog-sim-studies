@@ -6,7 +6,7 @@ import pytest
 from studies import ota_pvt as full
 from studies import ota_pvt_clean as clean
 from studies import ota_pvt_clean_nested as nested
-from hedloom import Site, address, input_artifact, local, study
+from hedloom import Site, address, input_artifact, local, runtime, study
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,7 +32,8 @@ def test_prepared_directory_contains_selected_values_and_keeps_spice_expressions
 
     site = Site(records_dir=str(tmp_path / "records"), work_dir=str(tmp_path / "work"),
                 runs_dir=str(tmp_path / "runs"), address_spaces={"repository-relative": str(ROOT)})
-    run = subject().submit(site=site, name="prepare", sequential=True)
+    with runtime(site) as live:
+        run = live.submit(subject(), name="prepare").wait()
     assert run.succeeded, run.summary()
     output = run.outputs["prepared"]
     assert output.available

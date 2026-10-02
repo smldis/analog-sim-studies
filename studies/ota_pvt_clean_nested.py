@@ -1,59 +1,21 @@
-"""The corner set is a result — and the corners are still invocations.
+"""The corner set is a result; three caller stages retain per-corner evidence.
 
     python studies/ota_pvt_clean_nested.py
 
-`ota_pvt_clean.py` reads the edit file while authoring, so the Plan can name one
-simulation per corner. Moving that read into the graph makes the corner list a
-*result*, and a Plan states what will run before anything runs — so the outer
-plan cannot name them.
+The historical filename describes the earlier worker-held nesting. The caller
+now waits for a discovery Run, authors an inspectable corner Plan from its job
+values, then records a report Run from the corner evidence. A single Runtime
+owns these stages; no operation submits or waits for another Plan.
 
-The way out is not to give up the fan-out. It is to stop assuming one plan:
+Each corner retains its own prepare, simulation and measurement identities.
+Spec changes reuse simulation results. The exact corner Plan is a declared
+artifact of the final stage, alongside the report and verdict. Storage paths
+belong to the Runtime Site and no longer enter operation configuration.
 
-    described = load_edit_file(edits)     # operation 1
-    jobs      = expand_jobs(described)    # operation 2
-    result    = run_corner_study(jobs, …) # operation 3 — authors a Plan and runs it
-
-`run_corner_study` is one invocation of the outer plan. Inside it, the jobs are
-an ordinary Python value, so it authors a second Plan that names one prepare,
-one simulate and one measure *per corner*, and submits it. Per-corner identity,
-placement, reuse and observability all come back — they belong to the inner
-plan, which is complete and inspectable before it spends anything, exactly like
-the outer one.
-
-Nothing here is result-dependent control. No plan branches on its own results.
-Plans are *staged*: each one is fully determined at the moment it is authored,
-and the later stage is authored after the earlier stage has produced its
-values. The invariant holds per plan, which is where it was always stated.
-
-What this buys over collapsing the fan-out into monolithic operations:
-
-* each corner is its own attempt. Tightening a spec limit reruns the outer
-  `corners` invocation, which re-authors stage two — and stage two then reuses
-  nine of its ten invocations, running only the evaluation. Every simulation
-  survives a change to the thing that judges simulations.
-* each corner can take its own placement, because `simulate_ac` returns
-  `shell(...)` again and the inner run binds it;
-* the inner plan document is a declared output of the outer invocation, so what
-  the second stage decided to run is recorded rather than inferred.
-
-What it does *not* buy, measured rather than assumed: **adding a corner still
-reruns every corner.** `prepare_corner` declares the edit file as an input, a
-source is fingerprinted whole, and that file carries two independent things —
-which corners exist, and how every corner is edited. Adding a corner changes the
-fingerprint, so the system correctly concludes that every corner's render might
-have changed. It is right; the declaration is too coarse.
-
-The staged shape is where that becomes fixable, which is worth noticing. `load_
-edit_file` already separates the param sets from the rest of the file. If
-stage two's corners depended on the *edit recipe* rather than on the file that
-carries it, adding a corner would leave the others alone. Nothing here does that
-yet — it needs a way to declare "this part of that source", which does not
-exist.
-
-The wart, stated rather than hidden: the inner records root arrives as config,
-which puts a machine path into the outer plan's identity. An operation that
-runs a study needs to know its site, and today the only way to tell it is to
-author the answer. See `docs/vision/open-concepts.md`.
+Adding a corner can still invalidate all prepared corners: preparation declares
+the whole edit file as its source, so its identity remains intentionally coarse.
+The report records stage-two dispositions as supplied data; changing those data
+can produce a new report even when the computational evaluation is reused.
 """
 
 from __future__ import annotations
@@ -93,6 +55,7 @@ from hedloom import (  # noqa: E402
     operation,
     parameter,
     returned,
+    runtime,
     shell,
     study,
     sweep,
@@ -335,99 +298,22 @@ def corner_study(jobs: list[dict[str, Any]]):
 
 
 # ---------------------------------------------------------------------------
-# The third member of the outer flow: an invocation that authors a Plan.
+# Stage three records the caller's completed stage-two evidence.
 # ---------------------------------------------------------------------------
 
 
 @operation(
-    name="ota_pvt_nested.run_corner_study",
-    version="2",
-    inputs={
-        "base": SIDE_CAR_BASE,
-        "edits": SIDE_CAR_EDITS,
-        "definition": MEASUREMENT_DEFINITION,
-        "limits": SPEC_LIMITS,
-        "jobs": SIDECAR_JOBS,
-    },
-    config={"records_dir": parameter(str), "work_dir": parameter(str)},
-    outputs={
-        # One returned output, not two: a body returns one object, and every
-        # value-bound output would be handed all of it. So this carries the
-        # whole of what stage two produced, and is named for that.
-        "result": returned(kind="ota-pvt-study-result"),
-        "plan": file("corner-plan.json", kind="hedloom-plan-document"),
-    },
+    name="ota_pvt_nested.capture_stage",
+    version="1",
+    config={"result": parameter(dict), "jobs": parameter(list), "plan_document": parameter(dict)},
+    outputs={"result": returned(kind="ota-pvt-study-result"),
+             "jobs": returned(kind="sidecar-jobs"),
+             "plan": file("corner-plan.json", kind="hedloom-plan-document")},
 )
-def run_corner_study(
-    base, edits, definition, limits, jobs, out, *, records_dir, work_dir
-):
-    """Author the corner plan from the jobs, run it, and answer with its result.
-
-    This is the whole point. `jobs` is a value here, so authoring a Plan over it
-    is ordinary authoring: the inner plan names one prepare, one simulate and
-    one measure per corner, and is complete and inspectable before it spends
-    anything, exactly like the plan that contains this invocation.
-
-    The inner records live at `records_dir`, which is *outside* this attempt's
-    workspace on purpose. Put them inside and every inner attempt would be
-    thrown away whenever this invocation's own digest moved — which it does the
-    moment a corner is added. Kept outside, adding a corner re-authors the inner
-    plan, and the corners that did not change are found by content and reused.
-
-    The inner plan document is a declared output, so what the second stage
-    decided to run is recorded rather than inferred from what happened.
-    """
-
-    inner = corner_study(list(jobs))
-    out.plan.write_text(
-        json.dumps(inner.document, indent=2, default=str), encoding="utf-8"
-    )
-
-    # The inner site resolves the same address space the outer one does. The
-    # repository root is recovered from a delivered path and the locator it was
-    # delivered for: the executor hands a body its inputs, not its site.
-    repository = _root_of(Path(edits), PVT_EDITS_LOCATOR)
-    site = Site(
-        records_dir=records_dir,
-        work_dir=work_dir,
-        address_spaces={"repository-relative": str(repository)},
-        runs_dir=str(Path(records_dir).with_name("corner-runs")),
-    )
-
-    # Walk the small local inner plan without starting a graph scheduler while
-    # the outer invocation holds its local slot. Per-corner records still reuse.
-    run = inner.submit(
-        site=site,
-        sequential=True,
-        on_event=lambda outcome: print(
-            f"      inner | {outcome.authored_key:28} "
-            f"{'reused' if outcome.reused else 'ran   '}  {outcome.outcome}"
-        ),
-        name="ota-pvt-clean-nested",
-    )
-    if not run.succeeded:
-        raise RuntimeError(f"the corner study failed:\n{run.summary()}")
-
-    return {'result': {
-        "evaluation": run.outputs["evaluation"].value,
-        "invocations": [
-            {
-                "authored_key": outcome.authored_key,
-                "operation": outcome.operation,
-                "placement": outcome.placement,
-                "outcome": outcome.outcome,
-                "reused": outcome.reused,
-            }
-            for outcome in run.report.outcomes
-        ],
-    }}
-
-
-def _root_of(delivered: Path, locator: str) -> Path:
-    """Recover the address space root a delivered path was resolved under."""
-
-    depth = len(Path(locator).parts)
-    return delivered.resolve().parents[depth - 1]
+def capture_stage(out, *, result, jobs, plan_document):
+    """Record the exact Plan and terminal evidence handed over by the caller."""
+    out.plan.write_text(json.dumps(plan_document, indent=2, default=str), encoding="utf-8")
+    return {"result": result, "jobs": jobs}
 
 
 @operation(
@@ -492,33 +378,47 @@ def report(result, jobs, base, edits, definition, limits, out):
     }}
 
 
-@flow(name="ota_pvt_nested.study", version="1")
-def pvt_study(base, edits, definition, limits, *, records_dir, work_dir):
-    """Read the edit file, expand it, plan and run it, and write the report."""
-
+@flow(name="ota_pvt_nested.study", version="2")
+def pvt_study(edits):
+    """Stage one discovers the corner declarations without running corners."""
     described = load_edit_file.named("load")(edits)
-    jobs = expand_jobs.named("expand")(described)
-    result = run_corner_study.named("corners")(
-        base, edits, definition, limits, jobs,
-        records_dir=records_dir, work_dir=work_dir,
-    )
-    written = report.named("report")(
-        result.result, jobs, base, edits, definition, limits
-    )
-    return {"report": written.report, "verdict": written.verdict}
+    return {"jobs": expand_jobs.named("expand")(described).jobs}
 
 
 @study(name="ota-pvt-clean-nested", default_policy=local())
-def pvt(*, records_dir: str, work_dir: str):
-    """Stage one. Nothing about the corners is read here."""
-
+def pvt():
     sources = _declare_sources()
-    return pvt_study.named("ota-pvt")(
-        sources["base"], sources["edits"], sources["definition"],
-        sources["limits"],
-        records_dir=records_dir,
-        work_dir=work_dir,
+    return pvt_study.named("ota-pvt")(sources["edits"])
+
+
+@study(name="ota-pvt-clean-staged-report", default_policy=local())
+def report_study(result, jobs, plan_document):
+    sources = _declare_sources()
+    captured = capture_stage.named("capture")(
+        result=result, jobs=jobs, plan_document=plan_document,
     )
+    written = report.named("report")(
+        captured.result, captured.jobs, sources["base"], sources["edits"],
+        sources["definition"], sources["limits"],
+    )
+    return {"report": written.report, "verdict": written.verdict, "corner_plan": captured.plan}
+
+
+def run_stages(live, *, name="ota-pvt-clean-nested"):
+    """Caller-driven dynamic fan-out; each Plan is fixed before its submission."""
+    discovery = live.submit(pvt(), name=f"{name}-discovery").result()
+    jobs = list(discovery.outputs["jobs"].value)
+    corners = corner_study(jobs)
+    print(corners.summary())
+    run = live.submit(corners, name=f"{name}-corners").result()
+    result = {
+        "evaluation": run.outputs["evaluation"].value,
+        "invocations": [{"authored_key": item.authored_key, "operation": item.operation,
+                         "placement": item.placement, "outcome": item.outcome,
+                         "reused": item.reused} for item in run.report.outcomes],
+    }
+    written = live.submit(report_study(result, jobs, dict(corners.document)), name=name).result()
+    return discovery, run, written
 
 
 # ---------------------------------------------------------------------------
@@ -775,18 +675,10 @@ def main() -> int:
         runs_dir=str(work / "runs"),
     )
 
-    subject = pvt(
-        records_dir=str(work / "corner-records"),
-        work_dir=str(work / "corner-work"),
-    )
-    print(subject.summary(), "\n")
-    print("No corner appears above: stage one cannot name them, because the\n"
-          "corner list is a result. `corners` authors stage two, which can.\n")
-
-    run = subject.submit(site=site, watch=True, name="ota-pvt-clean-nested")
-    if not run.succeeded:
-        print(run.summary())
-        return 1
+    print(pvt().summary(), "\n")
+    print("The caller discovers the job list, then authors the corner Plan.\n")
+    with runtime(site, watch=True) as live:
+        discovery, corners, run = run_stages(live)
 
     # The deliverable is an artifact of the study, not something this script
     # produced afterwards. All that is left to do is say where it is.

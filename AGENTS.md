@@ -10,6 +10,22 @@ self-study of the component rooted at its location: its purpose, experience,
 relationships, commitments, assumptions, and possibilities, including its
 current responsibilities, exclusions, and development state.
 
+## Python environment and local farm checks
+
+When working in the containing ASS checkout, use its `.venv/bin/python` for
+Python checks and probes. Resolve that path against the ASS root when working
+from a child unit. Inspect versions and imports in this environment before
+concluding that an optional dependency is unavailable; the system interpreter
+may have a different package set. Root `pyproject.toml` and `uv.lock` describe
+the composed development environment, including Hedloom's Dask and pooled
+extras. Standalone child checkouts use their own documented environment.
+
+Hedloom's local fake LSF commands live in `hedloom/exec/tests/fakefarm`, with
+existing fixtures in `hedloom/run/tests/test_pooled_farm.py`. Use an isolated
+`FAKE_LSF_STATE` directory and verify that `bsub`, `bjobs`, and `bkill` resolve
+to those fake commands for ad hoc probes. Fake-farm checks do not establish
+real-farm scheduling or resource guarantees. User direction, 2026-10-01.
+
 ## Work reflectively
 
 When you encounter an ONTOLOME during ordinary work, spend a small amount of

@@ -34,6 +34,7 @@ from hedloom import (  # noqa: E402
     operation,
     parameter,
     returned,
+    runtime,
     shell,
     study,
     sweep,
@@ -200,7 +201,8 @@ def main() -> int:
     subject = rc_corners()
     print(subject.summary(), "\n")
 
-    run = subject.submit(site=site, watch=True, name="rc-corners")
+    with runtime(site, watch=True) as live:
+        run = live.submit(subject, name="rc-corners").wait()
     verdict = run.outputs["verdict"]
     print(
         "\nconclusion:",

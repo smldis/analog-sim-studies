@@ -14,10 +14,10 @@ inside the `hedloom` checkout on their own.
 Run any of them from the repository root:
 
 ```console
-python studies/rc_corners.py
-python studies/ota_pvt.py
-python studies/ota_pvt_clean.py
-python studies/ota_pvt_clean_nested.py
+.venv/bin/python studies/rc_corners.py
+.venv/bin/python studies/ota_pvt.py
+.venv/bin/python studies/ota_pvt_clean.py
+.venv/bin/python studies/ota_pvt_clean_nested.py
 ```
 
 Results land under `studies/_runs/`, which is generated evidence rather than
@@ -27,8 +27,8 @@ source and is not committed.
 | --- | --- | --- |
 | [`rc_corners.py`](rc_corners.py) | `rc-corners` | The smallest honest end-to-end study: three RC corners on real `ngspice`, whose −3 dB frequency is analytic, so the measured number can be checked rather than believed. The 4.3% gap is the `dec 50` sweep grid. |
 | [`ota_pvt.py`](ota_pvt.py) | `ota-pvt-study` | The full OTA/PVT reference. Sixteen invocations over three PVT points, four declared external sources, real AC sweeps, and gain/GBW/phase-margin computed from the raw file rather than transcribed. |
-| [`ota_pvt_clean.py`](ota_pvt_clean.py) | `ota-pvt-clean` | The same sign-off with the structural analysis removed, fanning corners out from the edit file and writing `report.md` as the deliverable. Opens its own session so the dashboard link is available before anything is submitted. |
-| [`ota_pvt_clean_nested.py`](ota_pvt_clean_nested.py) | `ota-pvt-clean-nested` (outer), `ota-pvt-clean-nested-corners` (inner) | The corner set as a *result*: an outer plan whose invocation authors and submits an inner plan, so per-corner identity and reuse survive a fan-out that could not be named in advance. |
+| [`ota_pvt_clean.py`](ota_pvt_clean.py) | `ota-pvt-clean` | The same sign-off with the structural analysis removed, fanning corners out from the edit file and writing `report.md` as the deliverable. Opens its own Runtime so the dashboard link is available before anything is submitted. |
+| [`ota_pvt_clean_nested.py`](ota_pvt_clean_nested.py) | `ota-pvt-clean-nested` (outer), `ota-pvt-clean-nested-corners` (inner) | The corner set as a *result*: caller stages discover jobs, submit their corner Plan, and record a report Plan, preserving per-corner identity and reuse without worker-held nesting. |
 
 `ota_pvt.py` is the reference the root documentation cites. The other three are
 variations on it, kept because each answers a different question about the
@@ -52,12 +52,12 @@ temperature), leaving SPICE expressions in the base deck intact. The
 [preparation contract test](../integration-tests/test_ota_preparation_contract.py)
 checks all three consumer forms against a temporary local Site.
 
-The nested `run_corner_study` operation is version 2 and submits its small local
-inner plan explicitly with `sequential=True`. This avoids a graph scheduler
-requesting the sole local slot while the outer invocation waits for it. Inner
-corners retain separate identities and reuse; this study does not demonstrate
-parallel or farm execution. Its outer API reads all three authored selectors;
-`corner_study(jobs)` can exercise a nominal subset directly. The focused tests
-are contract checks, not simulator runs or proof of production PVT coverage;
-the process labels in this Level-1 fixture remain comments rather than
-process-model corners.
+The historically nested study now uses `run_stages(live)` at the caller: the
+first Run exposes jobs, the second executes `corner_study(jobs)`, and the third
+records the exact corner Plan, report and verdict. Operations never submit
+other Runs. All stages share one Runtime and its placement capacity, including
+a single-slot Site. Existing simulation evidence can be reused across new spec
+limits; report data explicitly records the chosen corner outcomes. Future
+hierarchical submission remains deferred. The focused tests are contract
+checks, not proof of production PVT coverage; process labels in this Level-1
+fixture remain comments rather than process-model corners.

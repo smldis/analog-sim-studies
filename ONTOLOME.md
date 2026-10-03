@@ -191,6 +191,13 @@ The maintained evidence split is
 [`hedloom/docs/guide/first-farm-run.md`](hedloom/docs/guide/first-farm-run.md).
 Pooling lives in `hedloom-run`, keeping `hedloom-exec` independent of Dask.
 
+The authenticated-pool revision adds per-pool mutual TLS by default and a public,
+placement-scoped opt-out. The composed pooled installation includes the
+cryptography support for automatic credentials; the execution boundary remains
+child-owned. The shared-host use case distinguishes authenticated execution
+connections from unauthenticated diagnostic HTTP. Local and fake-farm evidence
+must remain distinguishable from actual-farm filesystem and network guarantees.
+
 The retired `study-flow` prototype remains recoverable in Git history at
 `528c02f`, while
 [`docs/vision/hedloom-flow-rebuild-main.md`](docs/vision/hedloom-flow-rebuild-main.md)

@@ -180,9 +180,13 @@ allocation and dispatch bookkeeping in `_meta`; computation records and try
 files retain their separate identities. The breaking script and saved-run
 change is owned by Hedloom rather than by root composition. The runnable
 `hedloom/examples/grid_refinement.py` demonstrates local execution and reuse.
-`hedloom/examples/farm_smoke.py` has reached real LSF through the sequential
-kernel. Graph execution, placement concurrency, and pooled LSF are implemented,
-with fake-farm evidence; that evidence does not establish real-farm behavior.
+`hedloom/examples/farm_smoke.py` historically reached real LSF through the now
+retired sequential kernel. Hedloom now owns immediate Run receipts and automatic
+Runtime lifetime around one async controller and Dask execution. Placement bounds,
+submission priorities, sharing and pooled LSF have local/fake-farm evidence; the
+replacement has not met a real farm. Receipt admission has no arbitrary count
+quota; entered execution and offload work are bounded. The breaking API and
+schema-4 consumer-history change belong to Hedloom, while saved data is preserved.
 The maintained evidence split is
 [`hedloom/docs/guide/first-farm-run.md`](hedloom/docs/guide/first-farm-run.md).
 Pooling lives in `hedloom-run`, keeping `hedloom-exec` independent of Dask.
@@ -230,8 +234,10 @@ and historical outputs retain their recorded versions and limitations.
 
 Actual consumers capture prepared trees with the public directory shape and
 interpolate only authored Sidecar placeholders. Fresh local execution exposed
-nested scheduler-slot contention; the small example now walks its inner plan
-sequentially while retaining per-corner attempts. The wrapper choice is explicitly
-versioned. An isolated measurement-version experiment retained simulation while
+nested scheduler-slot contention. With the async replacement, the former nested
+example stages discovery, corner execution and reporting as three caller-owned
+Runs, retaining per-corner attempts and a recorded report artifact. A real local
+ngspice integration check exercises this path, saved Plans and reuse. Worker-held
+nesting is deferred rather than adopted as a permanent exclusion. An isolated measurement-version experiment retained simulation while
 recomputing measurement/evaluation. These are composition observations for the
 public fixture, not a new engine contract or production qualification.

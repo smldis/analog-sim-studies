@@ -197,6 +197,9 @@ cryptography support for automatic credentials; the execution boundary remains
 child-owned. The shared-host use case distinguishes authenticated execution
 connections from unauthenticated diagnostic HTTP. Local and fake-farm evidence
 must remain distinguishable from actual-farm filesystem and network guarantees.
+Hedloom also exposes `run_study` for scripts wanting one completed result with
+automatic Runtime cleanup. Caller-side waiting composes the async engine;
+repeated submissions retain a Runtime to share capacity and warm pools.
 
 The retired `study-flow` prototype remains recoverable in Git history at
 `528c02f`, while
